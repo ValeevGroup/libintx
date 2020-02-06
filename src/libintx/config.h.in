@@ -1,0 +1,22 @@
+#ifndef LIBINTX_CONFIG_H
+#define LIBINTX_CONFIG_H
+
+// automatically generated from libintx/config.h.in
+
+#define LIBINTX_MAX_L @LIBINTX_MAX_L@
+#define LIBINTX_MAX_X @LIBINTX_MAX_X@
+
+#cmakedefine LIBINTX_MAX_K @LIBINTX_MAX_K@
+#ifndef LIBINTX_MAX_K
+#define LIBINTX_MAX_K 10
+#endif
+
+namespace libintx {
+
+  constexpr int LMAX = LIBINTX_MAX_L;
+  constexpr int XMAX = LIBINTX_MAX_X;
+  constexpr int KMAX = LIBINTX_MAX_K;
+
+}
+
+#endif /* LIBINTX_CONFIG_H */
