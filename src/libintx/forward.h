@@ -25,6 +25,9 @@ namespace libintx {
   template<typename T, int N>
   struct array;
 
+  struct Shell;
+  struct Gaussian;
+
 }
 
 #endif /* LIBINTX_FORWARD_H */
