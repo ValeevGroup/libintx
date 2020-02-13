@@ -20,4 +20,11 @@ namespace boys {
 
 }
 
+namespace libintx {
+
+  template<typename T, int N>
+  struct array;
+
+}
+
 #endif /* LIBINTX_FORWARD_H */
