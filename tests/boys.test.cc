@@ -1,8 +1,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "boys/asymptotic.h"
 #include "boys/reference.h"
+#include "boys/asymptotic.h"
+#include "boys/chebyshev.h"
 
 using doctest::Approx;
 
@@ -18,6 +19,17 @@ TEST_CASE("asymptotic") {
       for (size_t m = 0; m < 10; ++m) {
         CHECK(s[m] == Approx(reference.compute(X,k+m)));
       }
+    }
+  }
+}
+
+TEST_CASE("chebyshev") {
+  auto chebyshev = boys::chebyshev();
+  boys::Reference reference;
+  for (size_t i = 0; i < 300; ++i) {
+    double X = (double)i/3;
+    for (size_t m = 0; m < 10; ++m) {
+      CHECK(chebyshev->compute(X,m) == Approx(reference.compute(X,m)));
     }
   }
 }
