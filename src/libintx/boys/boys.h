@@ -17,6 +17,8 @@ namespace boys {
   };
 
   std::unique_ptr<Boys> reference();
+  std::unique_ptr<Boys> chebyshev();
+  std::unique_ptr<double[]> chebyshev_interpolation_table(int Order, int M, int MaxT, int Segments);
 
 }
 

@@ -13,4 +13,11 @@
 #define LIBINTX_GPU_CONSTANT
 #endif
 
+namespace boys {
+
+  template<int Order, int M, int MaxT, int Segments>
+  struct Chebyshev;
+
+}
+
 #endif /* LIBINTX_FORWARD_H */
