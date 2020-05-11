@@ -27,3 +27,12 @@ endif()
 add_executable(libintx.test EXCLUDE_FROM_ALL libintx.test.cc)
 target_link_libraries(libintx.test libintx.os ${libintx_test_reference})
 add_test(NAME libintx COMMAND libintx.test)
+
+if (TARGET libintx.cuda)
+  add_executable(libintx.cuda.test EXCLUDE_FROM_ALL libintx.cuda.test.cc)
+  target_link_libraries(libintx.cuda.test libintx.cuda ${libintx_test_reference})
+  add_test(NAME libintx.cuda COMMAND libintx.cuda.test)
+  add_executable(libintx.cuda.benchmarks EXCLUDE_FROM_ALL libintx.cuda.benchmarks.cc)
+  target_link_libraries(libintx.cuda.benchmarks libintx.cuda libintx.os)
+endif()
+
