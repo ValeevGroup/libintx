@@ -65,6 +65,12 @@ add_executable(pure-harmonics-table EXCLUDE_FROM_ALL src/libintx/pure-harmonics-
 
 add_subdirectory(src/libintx/engine/rysq/)
 
+option(LIBINTX_LIBINT2 "" OFF)
+if (LIBINTX_LIBINT2)
+  find_package(Libint2 REQUIRED)
+  add_subdirectory(src/libintx/engine/libint2)
+endif()
+
 include(CTest)
 if (BUILD_TESTING)
   add_subdirectory(tests)
