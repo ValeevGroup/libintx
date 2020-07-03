@@ -11,6 +11,11 @@
 #define LIBINTX_MAX_K 10
 #endif
 
+#cmakedefine LIBINTX_CUDA_MAX_SHMEM @LIBINTX_CUDA_MAX_SHMEM@
+#ifndef LIBINTX_CUDA_MAX_SHMEM
+#define LIBINTX_CUDA_MAX_SHMEM (96*1024)
+#endif
+
 namespace libintx {
 
   constexpr int LMAX = LIBINTX_MAX_L;
