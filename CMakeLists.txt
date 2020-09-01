@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.1)
 
+if (NOT CMAKE_VERSION VERSION_LESS "3.13")
+  # CMP0077: option() honors normal variables
+  # https://cmake.org/cmake/help/latest/policy/CMP0077.html
+  cmake_policy(SET CMP0077 NEW)
+endif()
+
 # set the project name
 project(libintx)
 
