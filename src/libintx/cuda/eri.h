@@ -40,6 +40,14 @@ namespace libintx::cuda {
   template<>
   struct ERI<3> {
     virtual ~ERI() = default;
+    virtual void set_centers(const std::vector< Double<3> > &centers);
+    virtual void compute(
+      const Gaussian &P, const Gaussian &Q,
+      const Gaussian &R,
+      const IntegralList<3> &list
+    );
+  protected:
+    cuda::device::vector< Double<3> > centers_;
   };
 
   template<>
