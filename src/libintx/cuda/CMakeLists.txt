@@ -26,3 +26,11 @@ add_library(
   )
 set_target_properties(libintx.cuda.eri PROPERTIES OUTPUT_NAME intx.cuda.eri)
 target_link_libraries(libintx.cuda.eri libintx.cuda)
+
+add_library(
+  libintx.cuda.jengine
+  EXCLUDE_FROM_ALL
+  jengine/os/jengine.cu
+  )
+set_target_properties(libintx.cuda.jengine PROPERTIES OUTPUT_NAME intx.cuda.jengine)
+target_link_libraries(libintx.cuda.jengine libintx.cuda)
