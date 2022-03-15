@@ -61,6 +61,8 @@ if (LIBINTX_ENABLE_CUDA)
   add_subdirectory(src/libintx/cuda)
 endif()
 
+add_executable(pure-harmonics-table EXCLUDE_FROM_ALL src/libintx/pure-harmonics-table.cc)
+
 include(CTest)
 if (BUILD_TESTING)
   add_subdirectory(tests)
