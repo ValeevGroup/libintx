@@ -28,6 +28,8 @@ namespace libintx {
   struct Shell;
   struct Gaussian;
 
+  struct JEngine;
+
 }
 
 #endif /* LIBINTX_FORWARD_H */
