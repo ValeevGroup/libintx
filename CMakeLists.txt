@@ -63,6 +63,8 @@ endif()
 
 add_executable(pure-harmonics-table EXCLUDE_FROM_ALL src/libintx/pure-harmonics-table.cc)
 
+add_subdirectory(src/libintx/engine/rysq/)
+
 include(CTest)
 if (BUILD_TESTING)
   add_subdirectory(tests)
