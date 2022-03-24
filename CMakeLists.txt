@@ -50,5 +50,7 @@ endif()
 
 add_executable(harmonics-table EXCLUDE_FROM_ALL src/harmonics-table.cc)
 
+add_subdirectory(src/libintx/engine/rysq/)
+
 enable_testing()
 add_subdirectory(tests)
