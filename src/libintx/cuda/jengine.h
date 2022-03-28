@@ -2,6 +2,7 @@
 #define LIBINTX_CUDA_JENGINE_H
 
 #include "libintx/jengine.h"
+#include <memory>
 
 namespace libintx::cuda {
 
