@@ -313,11 +313,50 @@ constexpr inline size_t index(const Orbital &o) {
 
 }
 
+namespace libintx::hermitian {
+
+LIBINTX_GPU_ENABLED
+constexpr inline int nherm2(int L) {
+  return cartesian::ncartsum(L);
+}
+
+LIBINTX_GPU_ENABLED
+constexpr inline int nherm1(int L) {
+  int n = 0;
+  for (int i = L; i >= 0; i -= 2) {
+    n += cartesian::ncart(i);
+  }
+  return n;
+}
+
+template<class Orbital>
+LIBINTX_GPU_ENABLED
+constexpr inline auto index2(const Orbital &h) {
+  return cartesian::index<0>(h);
+}
+
+template<class Orbital>
+LIBINTX_GPU_ENABLED
+constexpr auto index1(const Orbital &h) {
+  int idx = 0;
+  for (int i = h.L()%2; i < h.L(); i += 2) {
+    idx += cartesian::ncart(i);
+  }
+  return idx+cartesian::index(h);
+}
+
+template<int L>
+constexpr auto orbitals = cartesian::orbitals(cartesian::index_sequence<L>);
+
+}
+
 namespace libintx {
   using libintx::cartesian::ncart;
   using libintx::cartesian::ncartsum;
   using libintx::cartesian::Orbital;
   using libintx::pure::npure;
+  using libintx::hermitian::nherm1;
+  using libintx::hermitian::nherm2;
 }
 
 #endif /* LIBINTX_SHELL_H */

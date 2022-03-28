@@ -36,3 +36,7 @@ if (TARGET libintx.cuda)
   target_link_libraries(libintx.cuda.benchmarks libintx.cuda.eri libintx.os)
 endif()
 
+add_executable(libintx.md.test EXCLUDE_FROM_ALL libintx.md.test.cc)
+target_link_libraries(libintx.md.test libboys)
+add_test(NAME libintx.md COMMAND libintx.md.test)
+
