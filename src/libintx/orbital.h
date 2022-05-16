@@ -117,14 +117,14 @@ struct Orbital {
 
 LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
 constexpr int index(const Orbital &t) {
-  const auto& [i,j,k] = t;
+  auto [i,j,k] = t;
   return cartesian::index(i,j,k);
 }
 
 template<int L>
 LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
 constexpr auto index(const Orbital &t) {
-  const auto& [i,j,k] = t;
+  const auto [i,j,k] = t;
   return cartesian::index<L>(i,j,k);
 }
 
