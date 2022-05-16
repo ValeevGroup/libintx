@@ -49,8 +49,8 @@ inline id_t create_on_current_device(
 	id_t new_stream_id;
 	auto status = cudaStreamCreateWithPriority(&new_stream_id, flags, priority);
 	cuda::throw_if_error(status,
-		std::string("Failed creating a new stream on CUDA device ")
-		+ std::to_string(device::current::get_id()));
+		::std::string("Failed creating a new stream on CUDA device ")
+		+ ::std::to_string(device::current::get_id()));
 	return new_stream_id;
 }
 
@@ -82,7 +82,7 @@ inline bool is_associated_with(stream::id_t stream_id, device::id_t device_id)
 	case cudaErrorInvalidResourceHandle:
 		return false;
 	default:
-		throw(std::logic_error("unexpected status returned from cudaStreamQuery()"));
+		throw(::std::logic_error("unexpected status returned from cudaStreamQuery()"));
 	}
 }
 
@@ -99,12 +99,12 @@ inline bool is_associated_with(stream::id_t stream_id, device::id_t device_id)
 inline device::id_t associated_device(stream::id_t stream_id)
 {
 	if (stream_id == cuda::stream::default_stream_id) {
-		throw std::invalid_argument("Cannot determine device association for the default/null stream");
+		throw ::std::invalid_argument("Cannot determine device association for the default/null stream");
 	}
 	for(device::id_t device_index = 0; device_index < device::count(); device_index++) {
 		if (is_associated_with(stream_id, device_index)) { return device_index; }
 	}
-	throw std::runtime_error(
+	throw ::std::runtime_error(
 		"Could not find any device associated with stream " + cuda::detail::ptr_as_hex(stream_id));
 }
 
@@ -167,8 +167,8 @@ public: // other non-mutators
 		unsigned int flags;
 		auto status = cudaStreamGetFlags(id_, &flags);
 		throw_if_error(status,
-			std::string("Failed obtaining flags for a stream")
-			+ " on CUDA device " + std::to_string(device_id_));
+			::std::string("Failed obtaining flags for a stream")
+			+ " on CUDA device " + ::std::to_string(device_id_));
 		return flags & cudaStreamNonBlocking;
 	}
 
@@ -177,8 +177,8 @@ public: // other non-mutators
 		int the_priority;
 		auto status = cudaStreamGetPriority(id_, &the_priority);
 		throw_if_error(status,
-			std::string("Failure obtaining priority for a stream")
-			+ " on CUDA device " + std::to_string(device_id_));
+			::std::string("Failure obtaining priority for a stream")
+			+ " on CUDA device " + ::std::to_string(device_id_));
 		return the_priority;
 	}
 
@@ -242,7 +242,7 @@ protected: // static methods
 		status_t      status,
 		void *        invokable_on_heap)
 	{
-		auto retyped_callback = std::unique_ptr<Invokable>{ 
+		auto retyped_callback = ::std::unique_ptr<Invokable>{
 			reinterpret_cast<Invokable*>(invokable_on_heap)
 		 };
 		(*retyped_callback)(stream_id, status);
@@ -375,7 +375,7 @@ public: // mutators
 		 * Execute the specified function on the calling host thread once all
 		 * hereto-scheduled work on this stream has been completed.
 		 *
-		 * @todo avoid the overhead of constructing an std::function
+		 * @todo avoid the overhead of constructing an ::std::function
 		 *
 		 * @param callback a function to execute on the host. It must be invokable
 		 * with two parameters: `cuda::stream::id_t stream_id, cuda::event::id_t event_id`
@@ -394,16 +394,16 @@ public: // mutators
 			// and we don't know anything about the scope of the original argument with
 			// which we were called, we must make a copy of `callback_` on the heap
 			// and pass that as the user-defined data
-			Invokable * invokable_on_the_heap = new Invokable(std::move(callback_));
+			Invokable * invokable_on_the_heap = new Invokable(::std::move(callback_));
 
 			// This always registers the static function callback_adapter as the callback -
 			// but what that one will do is call the actual callback we were passed;
 			auto status = cudaStreamAddCallback(
 				stream_id_, &callback_adapter<Invokable>, invokable_on_the_heap, fixed_flags);
 			throw_if_error(status,
-				std::string("Failed scheduling a callback to be launched")
+				::std::string("Failed scheduling a callback to be launched")
 				+ " on stream " + cuda::detail::ptr_as_hex(stream_id_)
-				+ " on CUDA device " + std::to_string(device_id_));
+				+ " on CUDA device " + ::std::to_string(device_id_));
 		}
 
 		/**
@@ -433,9 +433,9 @@ public: // mutators
 			auto status =  cudaStreamAttachMemAsync(
 				stream_id_, managed_region_start, length, cudaMemAttachSingle);
 			throw_if_error(status,
-				std::string("Failed scheduling an attachment of a managed memory region")
+				::std::string("Failed scheduling an attachment of a managed memory region")
 				+ " on stream " + cuda::detail::ptr_as_hex(stream_id_)
-				+ " on CUDA device " + std::to_string(device_id_));
+				+ " on CUDA device " + ::std::to_string(device_id_));
 		}
 
 		/**
@@ -464,8 +464,8 @@ public: // mutators
 		// TODO: some kind of string representation for the stream
 		auto status = cudaStreamSynchronize(id_);
 		throw_if_error(status,
-			std::string("Failed synchronizing a stream")
-			+ " on CUDA device " + std::to_string(device_id_));
+			::std::string("Failed synchronizing a stream")
+			+ " on CUDA device " + ::std::to_string(device_id_));
 	}
 
 public: // constructors and destructor

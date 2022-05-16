@@ -17,21 +17,21 @@ namespace detail {
 
 
 template<typename T, typename Deleter>
-struct make_unique_selector { using non_array = std::unique_ptr<T, Deleter>; };
-template<typename U, typename Deleter> struct make_unique_selector<U[], Deleter> { using unbounded_array = std::unique_ptr<U[], Deleter>; };
+struct make_unique_selector { using non_array = ::std::unique_ptr<T, Deleter>; };
+template<typename U, typename Deleter> struct make_unique_selector<U[], Deleter> { using unbounded_array = ::std::unique_ptr<U[], Deleter>; };
 template<typename T, size_t N, typename Deleter> struct make_unique_selector<T[N], Deleter> { struct bounded_array { }; };
 
 
 /**
- * A CUDA equivalent of the std::make_unique, using cuda::memory::unique_ptr
- * rather than std::unique_ptr (i.e. using cuda::memory::free() for freeing
+ * A CUDA equivalent of the ::std::make_unique, using cuda::memory::unique_ptr
+ * rather than ::std::unique_ptr (i.e. using cuda::memory::free() for freeing
  *
  * @note Only trivially-constructible types are supported
  */
 template<typename T, typename Allocator, typename Deleter>
 inline typename detail::make_unique_selector<T, Deleter>::non_array make_unique()
 {
-	static_assert(std::is_trivially_constructible<T>::value,
+	static_assert(::std::is_trivially_constructible<T>::value,
 		"Allocating with non-trivial construction on the device is not supported.");
 	auto space_ptr = Allocator()(sizeof(T));
 	return typename detail::make_unique_selector<T, Deleter>::non_array(static_cast<T*>(space_ptr));
@@ -40,10 +40,10 @@ template<typename T, typename Allocator, typename Deleter>
 inline typename detail::make_unique_selector<T, Deleter>::unbounded_array make_unique(size_t num_elements)
 {
 	// If this function is instantiated, T is of the form "element_type[]"
-	using element_type = typename std::remove_extent<T>::type;
+	using element_type = typename ::std::remove_extent<T>::type;
 	static_assert(sizeof(element_type) % alignof(element_type) == 0,
 		"Alignment handling unsupported for now");
-	static_assert(std::is_trivially_constructible<element_type>::value,
+	static_assert(::std::is_trivially_constructible<element_type>::value,
 		"Allocating with non-trivial construction on the device is not supported.");
 	void* space_ptr = Allocator()(sizeof(element_type) * num_elements);
 	return typename detail::make_unique_selector<T, Deleter>::unbounded_array(static_cast<element_type*>(space_ptr));
@@ -56,7 +56,7 @@ inline typename detail::make_unique_selector<T, Deleter>::bounded_array make_uni
 namespace device {
 
 template<typename T>
-using unique_ptr = std::unique_ptr<T, detail::deleter>;
+using unique_ptr = ::std::unique_ptr<T, detail::deleter>;
 
 template<typename T>
 inline unique_ptr<T> make_unique(cuda::device::id_t device_id, size_t n)
@@ -90,7 +90,7 @@ inline unique_ptr<T> make_unique(T* raw_ptr)
 namespace host {
 
 template<typename T>
-using unique_ptr = std::unique_ptr<T, detail::deleter>;
+using unique_ptr = ::std::unique_ptr<T, detail::deleter>;
 
 template<typename T>
 inline unique_ptr<T> make_unique(size_t n)
@@ -109,11 +109,11 @@ inline unique_ptr<T> make_unique()
 namespace managed {
 
 template<typename T>
-using unique_ptr = std::unique_ptr<T, detail::deleter>;
+using unique_ptr = ::std::unique_ptr<T, detail::deleter>;
 
 template<typename T>
 inline unique_ptr<T> make_unique(
-	size_t                n, 
+	size_t                n,
 	initial_visibility_t  initial_visibility = initial_visibility_t::to_all_devices)
 {
 	return (initial_visibility == initial_visibility_t::to_all_devices) ?

@@ -67,27 +67,27 @@ using handle_t = uint64_t;
 
 namespace mark {
 
-void point (const std::string& message, color_t color);
+void point (const ::std::string& message, color_t color);
 
-inline void point (const std::string& message)
+inline void point (const ::std::string& message)
 {
 	point(message, color_t::Black());
 }
 
 range::handle_t range_start (
-	const std::string&  description,
+	const ::std::string&  description,
 	range::Type         type,
 	color_t             color);
 
 inline range::handle_t range_start (
-	const std::string&  description,
+	const ::std::string&  description,
 	range::Type         type)
 {
 	return range_start(description, type, color_t::LightRed());
 }
 
 inline range::handle_t range_start (
-	const std::string&  description)
+	const ::std::string&  description)
 {
 	return range_start(description, range::Type::unspecified);
 }
@@ -106,7 +106,7 @@ void range_end (range::handle_t range);
 class scoped_range_marker {
 public:
 	scoped_range_marker(
-		const std::string& description,
+		const ::std::string& description,
 		profiling::range::Type type = profiling::range::Type::unspecified);
 	~scoped_range_marker();
 protected:
@@ -146,10 +146,10 @@ namespace naming {
  * @param[in] name The string identifier to use for the specified thread
  */
 template <typename CharT>
-void name_host_thread(uint32_t thread_id, const std::basic_string<CharT>& name);
+void name_host_thread(uint32_t thread_id, const ::std::basic_string<CharT>& name);
 #if defined(__unix__) || defined(_WIN32)
 template <typename CharT>
-void name_this_thread(const std::basic_string<CharT>& name);
+void name_this_thread(const ::std::basic_string<CharT>& name);
 #endif
 
 //void name_device_stream(device::id_t  device, stream::id_t stream);

@@ -111,9 +111,9 @@ inline void stream_t<AssumesDeviceIsCurrent>::enqueue_t::wait(const event_t& eve
 {
 #ifndef NDEBUG
 	if (event_.device_id() != device_id_) {
-		throw std::invalid_argument("Attempt to have a stream on CUDA device "
-			+ std::to_string(device_id_) + " wait for an event on another device ("
-			"device " + std::to_string(event_.device_id()) + ")");
+		throw ::std::invalid_argument("Attempt to have a stream on CUDA device "
+			+ ::std::to_string(device_id_) + " wait for an event on another device ("
+			"device " + ::std::to_string(event_.device_id()) + ")");
 	}
 #endif
 
@@ -123,9 +123,9 @@ inline void stream_t<AssumesDeviceIsCurrent>::enqueue_t::wait(const event_t& eve
 
 	auto status = cudaStreamWaitEvent(stream_id_, event_.id(), flags);
 	throw_if_error(status,
-		std::string("Failed scheduling a wait for event ") + cuda::detail::ptr_as_hex(event_.id())
+		::std::string("Failed scheduling a wait for event ") + cuda::detail::ptr_as_hex(event_.id())
 		+ " on stream " + cuda::detail::ptr_as_hex(stream_id_)
-		+ " on CUDA device " + std::to_string(device_id_));
+		+ " on CUDA device " + ::std::to_string(device_id_));
 
 }
 
@@ -134,16 +134,16 @@ inline event_t& stream_t<AssumesDeviceIsCurrent>::enqueue_t::event(event_t& exis
 {
 #ifndef NDEBUG
 	if (existing_event.device_id() != device_id_) {
-		throw std::invalid_argument("Attempt to have a stream on CUDA device "
-			+ std::to_string(device_id_) + " wait for an event on another device ("
-			"device " + std::to_string(existing_event.device_id()) + ")");
+		throw ::std::invalid_argument("Attempt to have a stream on CUDA device "
+			+ ::std::to_string(device_id_) + " wait for an event on another device ("
+			"device " + ::std::to_string(existing_event.device_id()) + ")");
 	}
 #endif
 	auto status = cudaEventRecord(existing_event.id(), stream_id_);
 	throw_if_error(status,
 		"Failed scheduling event " + cuda::detail::ptr_as_hex(existing_event.id()) + " to occur"
 		+ " on stream " + cuda::detail::ptr_as_hex(stream_id_)
-		+ " on CUDA device " + std::to_string(device_id_));
+		+ " on CUDA device " + ::std::to_string(device_id_));
 	return existing_event;
 }
 
@@ -163,9 +163,9 @@ namespace memory {
 
 template <typename T>
 inline device_t<cuda::detail::do_not_assume_device_is_current>
-pointer_t<T>::device() const 
-{ 
-	return cuda::device::get(attributes().device); 
+pointer_t<T>::device() const
+{
+	return cuda::device::get(attributes().device);
 }
 
 namespace async {

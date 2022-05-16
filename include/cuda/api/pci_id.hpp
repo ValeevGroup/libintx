@@ -30,9 +30,9 @@ struct pci_location_t {
 	int bus;
 	int device;
 
-	operator std::string() const;
+	operator ::std::string() const;
 	// This is not a ctor so as to maintain the PODness
-	static pci_location_t parse(const std::string& id_str);
+	static pci_location_t parse(const ::std::string& id_str);
 };
 
 /**
@@ -43,7 +43,7 @@ struct pci_location_t {
  */
 inline id_t resolve_id(pci_location_t pci_id)
 {
-	std::string as_string = pci_id;
+	::std::string as_string = pci_id;
 	id_t cuda_device_id;
 	auto result = cudaDeviceGetByPCIBusId(&cuda_device_id, as_string.c_str());
 	throw_if_error(result,

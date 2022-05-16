@@ -26,10 +26,10 @@ namespace device {
 
 ///@cond
 
-inline std::istream& operator>>(std::istream& is, cuda::device::pci_location_t& pci_id)
+inline ::std::istream& operator>>(::std::istream& is, cuda::device::pci_location_t& pci_id)
 {
 	auto format_flags(is.flags());
-	is >> std::hex;
+	is >> ::std::hex;
 	is >> pci_id.domain; is.ignore(1); // ignoring a ':'
 	is >> pci_id.bus;    is.ignore(1); // ignoring a ':'
 	is >> pci_id.device;
@@ -37,24 +37,24 @@ inline std::istream& operator>>(std::istream& is, cuda::device::pci_location_t& 
 	return is;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const cuda::device::pci_location_t& pci_id)
+inline ::std::ostream& operator<<(::std::ostream& os, const cuda::device::pci_location_t& pci_id)
 {
 	auto format_flags(os.flags());
-	os << std::hex << pci_id.domain << ':' << pci_id.bus << ':' << pci_id.device;
+	os << ::std::hex << pci_id.domain << ':' << pci_id.bus << ':' << pci_id.device;
 	os.flags(format_flags);
 	return os;
 }
 
-inline pci_location_t::operator std::string() const
+inline pci_location_t::operator ::std::string() const
 {
-	std::ostringstream oss;
+	::std::ostringstream oss;
 	oss << (*this);
 	return oss.str();
 }
 
-inline pci_location_t pci_location_t::parse(const std::string& id_str)
+inline pci_location_t pci_location_t::parse(const ::std::string& id_str)
 {
-	std::istringstream iss(id_str);
+	::std::istringstream iss(id_str);
 	pci_location_t id;
 	iss >> id;
 	return id;

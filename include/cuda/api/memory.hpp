@@ -34,9 +34,9 @@ namespace memory {
 
 /**
  * @namespace mapped
- * Memory regions appearing in both on the host-side and device-side address 
- * spaces with the regions in both spaces mapped to each other (i.e. guaranteed 
- * to have the same contents on access up to synchronization details). See @url 
+ * Memory regions appearing in both on the host-side and device-side address
+ * spaces with the regions in both spaces mapped to each other (i.e. guaranteed
+ * to have the same contents on access up to synchronization details). See @url
  * http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#mapped-memory
  * for more details.
  */
@@ -121,9 +121,9 @@ inline void* allocate(size_t num_bytes)
 		status = cudaErrorUnknown;
 	}
 	throw_if_error(status,
-		"Failed allocating " + std::to_string(num_bytes) +
+		"Failed allocating " + ::std::to_string(num_bytes) +
 		" bytes of global memory on CUDA device " +
-		std::to_string(cuda::device::current::get_id()));
+		::std::to_string(cuda::device::current::get_id()));
 	return allocated;
 }
 
@@ -172,7 +172,7 @@ struct deleter {
 /**
  * @brief Sets all bytes in a region of memory to a fixed value
  *
- * @note The equivalent of @ref std::memset for CUDA device-side memory
+ * @note The equivalent of @ref ::std::memset for CUDA device-side memory
  *
  * @param buffer_start position from where to start
  * @param byte_value value to set the memory region to
@@ -214,7 +214,7 @@ inline void copy(void *destination, const void *source, size_t num_bytes)
 {
 	auto result = cudaMemcpy(destination, source, num_bytes, cudaMemcpyDefault);
 	if (is_failure(result)) {
-		std::string error_message("Synchronously copying data");
+		::std::string error_message("Synchronously copying data");
 		// TODO: Determine whether it was from host to device, device to host etc and
 		// add this information to the error string
 		throw cuda::runtime_error(result, error_message);
@@ -259,7 +259,7 @@ inline void copy(void *destination, const void *source, size_t num_bytes, stream
 {
 	auto result = cudaMemcpyAsync(destination, source, num_bytes, cudaMemcpyDefault, stream_id);
 	if (is_failure(result)) {
-		std::string error_message("Scheduling a memory copy on stream " + cuda::detail::ptr_as_hex(stream_id));
+		::std::string error_message("Scheduling a memory copy on stream " + cuda::detail::ptr_as_hex(stream_id));
 		// TODO: Determine whether it was from host to device, device to host etc and
 		// add this information to the error string
 		throw_if_error(result, error_message);
@@ -402,7 +402,7 @@ inline void* allocate(size_t size_in_bytes /* write me:, bool recognized_by_all_
 		// Can this even happen? hopefully not
 		result = cudaErrorUnknown;
 	}
-	throw_if_error(result, "Failed allocating " + std::to_string(size_in_bytes) + " bytes of host memory");
+	throw_if_error(result, "Failed allocating " + ::std::to_string(size_in_bytes) + " bytes of host memory");
 	return allocated;
 }
 
@@ -492,7 +492,7 @@ inline void deregister(void *ptr)
 
 inline void set(void* buffer_start, int byte_value, size_t num_bytes)
 {
-	std::memset(buffer_start, byte_value, num_bytes);
+	::std::memset(buffer_start, byte_value, num_bytes);
 	// TODO: Error handling?
 }
 
@@ -545,7 +545,7 @@ inline void* allocate(
 		status = (status_t) status::unknown;
 	}
 	throw_if_error(status,
-		"Failed allocating " + std::to_string(num_bytes) + " bytes of managed CUDA memory");
+		"Failed allocating " + ::std::to_string(num_bytes) + " bytes of managed CUDA memory");
 	return allocated;
 }
 
@@ -625,8 +625,8 @@ inline void prefetch(
 {
 	auto result = cudaMemPrefetchAsync(managed_ptr, num_bytes, destination, stream_id);
 	throw_if_error(result,
-		"Prefetching " + std::to_string(num_bytes) + " bytes of managed memory at address "
-		 + cuda::detail::ptr_as_hex(managed_ptr) + " to device " + std::to_string(destination));
+		"Prefetching " + ::std::to_string(num_bytes) + " bytes of managed memory at address "
+		 + cuda::detail::ptr_as_hex(managed_ptr) + " to device " + ::std::to_string(destination));
 }
 
 } // namespace detail
@@ -682,8 +682,8 @@ inline region_pair allocate(
 			get_device_pointer_flags);
 	}
 	throw_if_error(status,
-		"Failed allocating a mapped pair of memory regions of size " + std::to_string(size_in_bytes)
-			+ " bytes of global memory on device " + std::to_string(cuda::device::current::get_id()));
+		"Failed allocating a mapped pair of memory regions of size " + ::std::to_string(size_in_bytes)
+			+ " bytes of global memory on device " + ::std::to_string(cuda::device::current::get_id()));
 	return allocated;
 }
 

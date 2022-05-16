@@ -94,8 +94,8 @@ inline attribute_value_t get_attribute(attribute_t attribute, id_t source, id_t 
 	attribute_value_t value;
 	auto status = cudaDeviceGetP2PAttribute(&value, attribute, source, destination);
 	throw_if_error(status,
-		"Failed obtaining peer-to-peer device attribute for device pair (" + std::to_string(source) + ", "
-			+ std::to_string(destination) + ')');
+		"Failed obtaining peer-to-peer device attribute for device pair (" + ::std::to_string(source) + ", "
+			+ ::std::to_string(destination) + ')');
 	return value;
 }
 
@@ -134,7 +134,7 @@ protected:
 	using resource_id_t = cudaLimit;
 	using resource_limit_t = size_t;
 	using shared_memory_bank_size_t = cudaSharedMemConfig;
-	using priority_range_t = std::pair<stream::priority_t, stream::priority_t>;
+	using priority_range_t = ::std::pair<stream::priority_t, stream::priority_t>;
 
 	// This relies on valid CUDA device IDs being non-negative, which is indeed
 	// always the case for CUDA <= 8.0 and unlikely to change; however, it's
@@ -154,7 +154,7 @@ protected:
 		mutable device::id_t id { invalid_id };
 	};
 
-	using id_holder_type = typename std::conditional<
+	using id_holder_type = typename ::std::conditional<
 		AssumedCurrent,
 		mutable_id_holder_t,
 		immutable_id_holder_t
@@ -163,7 +163,7 @@ protected:
 		// current one, we want to be able to set the device_id after construction; but
 		// when not making that assumption, we need a const field, initialized on construction;
 		// this hack allows both the options to coexist without the compiler complaining
-		// about assigning to a const lvalue (we use it since std::conditional can't
+		// about assigning to a const lvalue (we use it since ::std::conditional can't
 		// be used to select between making a field mutable or not).
 
 public:	// types
@@ -240,7 +240,7 @@ public:	// types
 			size_t total_mem_in_bytes;
 			auto status = cudaMemGetInfo(nullptr, &total_mem_in_bytes);
 			throw_if_error(status,
-				std::string("Failed determining amount of total memory "
+				::std::string("Failed determining amount of total memory "
 					"for CUDA device ") + device_id_as_str(device_id_));
 			return total_mem_in_bytes;
 		}
@@ -274,8 +274,8 @@ public:	// types
 		int result;
 		auto status = cudaDeviceCanAccessPeer(&result, id(), peer.id());
 		throw_if_error(status,
-			"Failed determining whether CUDA device " + std::to_string(id()) + " can access CUDA device "
-				+ std::to_string(peer.id()));
+			"Failed determining whether CUDA device " + ::std::to_string(id()) + " can access CUDA device "
+				+ ::std::to_string(peer.id()));
 		return (result == 1);
 	}
 
@@ -292,7 +292,7 @@ public:	// types
 		scoped_setter_t set_device_for_this_scope(id());
 		auto status = cudaDeviceEnablePeerAccess(peer.id(), fixed_flags);
 		throw_if_error(status,
-			"Failed enabling access of device " + std::to_string(id()) + " to device " + std::to_string(peer.id()));
+			"Failed enabling access of device " + ::std::to_string(id()) + " to device " + ::std::to_string(peer.id()));
 	}
 
 	/**
@@ -305,7 +305,7 @@ public:	// types
 		scoped_setter_t set_device_for_this_scope(id());
 		auto status = cudaDeviceDisablePeerAccess(peer.id());
 		throw_if_error(status,
-			"Failed disabling access of device " + std::to_string(id()) + " to device " + std::to_string(peer.id()));
+			"Failed disabling access of device " + ::std::to_string(id()) + " to device " + ::std::to_string(peer.id()));
 	}
 
 protected:
@@ -327,12 +327,12 @@ protected:
 			| (allow_pinned_mapped_memory_allocation ? cudaDeviceMapHost         : 0));
 	}
 
-	static std::string device_id_as_str(device::id_t id)
+	static ::std::string device_id_as_str(device::id_t id)
 	{
-		return AssumedCurrent ? "current device" : "device " + std::to_string(id);
+		return AssumedCurrent ? "current device" : "device " + ::std::to_string(id);
 	}
 
-	std::string device_id_as_str() const
+	::std::string device_id_as_str() const
 	{
 		return device_id_as_str(id_);
 	}
@@ -366,7 +366,7 @@ public:
 	/**
 	 * Obtains this device's human-readable name, e.g. "GeForce GTX 650 Ti BOOST".
 	 */
-	std::string name() const
+	::std::string name() const
 	{
 		// I could get the name directly, but that would require
 		// direct use of the driver, and I'm not ready for that
@@ -749,14 +749,14 @@ public:
 	 * Drops the assumption of a device being current ("recasting" it as a
 	 * not-assumed-current device).
 	 *
-	 * @note 
+	 * @note
 	 * 1. This involve some template voodoo - making a copy of AssumedCurrent -
-	 *    to delay the evaluation here until this template is instantiated 
-	 *    rather than at class instantiation. See: 
+	 *    to delay the evaluation here until this template is instantiated
+	 *    rather than at class instantiation. See:
 	 *    https://stackoverflow.com/q/46907372/1593077
-	 * 2. We only want this method to return a non-current device, yet the 
+	 * 2. We only want this method to return a non-current device, yet the
 	 *    return value corresponds to flipping the current-assumption. This
-	 *    is due to getting (clang) warnings in the case we actually want, 
+	 *    is due to getting (clang) warnings in the case we actually want,
 	 *    about A conversion operator into the same class. The effect is the
 	 *    same, since we only actually instantiate this for the assumed-current
 	 *    case
@@ -764,7 +764,7 @@ public:
 	 */
 	template <
 		bool AssumedCurrentCopy = AssumedCurrent,
-		typename = typename std::enable_if<AssumedCurrentCopy == detail::assume_device_is_current>::type>
+		typename = typename ::std::enable_if<AssumedCurrentCopy == detail::assume_device_is_current>::type>
 	operator device_t<not AssumedCurrentCopy>()
 	{
 		return device_t<detail::do_not_assume_device_is_current> { id() };
@@ -874,7 +874,7 @@ inline device_t<detail::do_not_assume_device_is_current> get(pci_location_t pci_
  * @param pci_id_str A string listing of the GPU's location on the PCI bus
  * @return a device_t proxy object for the device at the specified location
  */
-inline cuda::device_t<detail::do_not_assume_device_is_current> get(const std::string& pci_id_str)
+inline cuda::device_t<detail::do_not_assume_device_is_current> get(const ::std::string& pci_id_str)
 {
 	auto parsed_pci_id = pci_location_t::parse(pci_id_str);
 	return get(parsed_pci_id);
@@ -886,7 +886,7 @@ namespace memory {
 namespace device {
 
 /**
- * @brief Create a variant of std::unique_pointer for an array in
+ * @brief Create a variant of ::std::unique_pointer for an array in
  * device-global memory
  *
  * @tparam T  the type of individual array elements
@@ -895,7 +895,7 @@ namespace device {
  *
  * @param device  on which to construct the array of T elements
  * @param n       the number of elements of type T
- * @return an std::unique_ptr pointing to the allocated memory
+ * @return an ::std::unique_ptr pointing to the allocated memory
  */
 template<typename T, bool AssumedCurrent = cuda::detail::do_not_assume_device_is_current>
 inline unique_ptr<T> make_unique(device_t<AssumedCurrent>& device, size_t n)
@@ -905,7 +905,7 @@ inline unique_ptr<T> make_unique(device_t<AssumedCurrent>& device, size_t n)
 }
 
 /**
- * @brief Create a variant of std::unique_pointer for a single value
+ * @brief Create a variant of ::std::unique_pointer for a single value
  * in device-global memory
  *
  * @tparam T  the type of value to construct in device memory
@@ -913,7 +913,7 @@ inline unique_ptr<T> make_unique(device_t<AssumedCurrent>& device, size_t n)
  * set before the allocation is made
  *
  * @param device  on which to construct the T element
- * @return an std::unique_ptr pointing to the allocated memory
+ * @return an ::std::unique_ptr pointing to the allocated memory
  */
 template<typename T, bool AssumedCurrent = cuda::detail::do_not_assume_device_is_current>
 inline unique_ptr<T> make_unique(device_t<AssumedCurrent>& device)
