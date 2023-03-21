@@ -35,6 +35,18 @@ include_directories(${PROJECT_BINARY_DIR})
 option(LIBINTX_ENABLE_CUDA "" OFF)
 if (LIBINTX_ENABLE_CUDA)
   enable_language(CUDA)
+  find_package(CUDAToolkit 11 REQUIRED)
+
+  set(CMAKE_CUDA_FLAGS
+"${CMAKE_CUDA_FLAGS} \
+-Wall \
+--expt-relaxed-constexpr \
+--expt-extended-lambda \
+--ptxas-options=--verbose \
+-keep --source-in-ptx -lineinfo \
+--objdir-as-tempdir"
+  )
+
   set(cuda_max_shmem 98304)
   if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 61)
@@ -42,6 +54,7 @@ if (LIBINTX_ENABLE_CUDA)
   endif()
   set(LIBINTX_CUDA_MAX_SHMEM ${cuda_max_shmem} CACHE STRING "")
   mark_as_advanced(LIBINTX_CUDA_MAX_SHMEM)
+
   add_subdirectory(src/libintx/cuda)
 endif()
 
