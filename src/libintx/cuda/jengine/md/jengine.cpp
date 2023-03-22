@@ -219,7 +219,7 @@ namespace libintx::cuda::jengine::md {
     std::mutex mutex_;
   };
 
-  void JEngine::J(const TileIn &D, const TileOut &J) {
+  void JEngine::J(const TileIn &D, const TileOut &J, const AllSum& allsum) {
 
     auto t = time::now();
 
@@ -249,6 +249,8 @@ namespace libintx::cuda::jengine::md {
     }
     threads.wait();
     printf("J-Engine X: %f\n", time::since(t));
+
+    allsum(X.data(), X.size());
 
     t = time::now();
     v_transform_(X.data());
@@ -340,6 +342,7 @@ namespace libintx::cuda::jengine::md {
         //printf("%i,%i,ijs=%i\n", i,j,ijs.size());
         const auto &A = AB_.basis.at(i);
         const auto &B = AB_.basis.at(j);
+        if (!D(A.range,B.range,nullptr)) continue;
         int K = A.K*B.K;
         int n = nbf(A)*nbf(B);
         ijs.push_back(
@@ -517,6 +520,7 @@ namespace libintx::cuda::jengine::md {
         //printf("%i,%i,ijs=%i\n", i,j,ijs.size());
         const auto &A = AB_.basis.at(i);
         const auto &B = AB_.basis.at(j);
+        if (!J(A.range,B.range,nullptr)) continue;
         int K = A.K*B.K;
         int n = nbf(A)*nbf(B);
         ijs0.push_back(

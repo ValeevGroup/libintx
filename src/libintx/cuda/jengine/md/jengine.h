@@ -24,7 +24,7 @@ namespace libintx::cuda::jengine::md {
       std::shared_ptr<const Screening> screening = nullptr
     );
 
-    void J(const TileIn &D, const TileOut &J) override;
+    void J(const TileIn &D, const TileOut &J, const AllSum&) override;
 
     // memory limits
     size_t maxij = 128*1024;

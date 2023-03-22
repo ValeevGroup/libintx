@@ -9,13 +9,14 @@ namespace libintx {
   struct JEngine {
 
     using TileIndex = std::pair<size_t,size_t>;
-    using TileIn = std::function<void(TileIndex, TileIndex, double*)>;
-    using TileOut = std::function<void(TileIndex, TileIndex, const double*)>;
+    using TileIn = std::function<bool(TileIndex, TileIndex, double*)>;
+    using TileOut = std::function<bool(TileIndex, TileIndex, const double*)>;
+    using AllSum = std::function<void(double*, size_t)>;
 
     struct Screening;
 
     virtual ~JEngine() = default;
-    virtual void J(const TileIn &D, const TileOut &J) = 0;
+    virtual void J(const TileIn &D, const TileOut &J, const AllSum&) = 0;
 
   };
 
