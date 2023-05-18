@@ -1,0 +1,43 @@
+                     CITING RESULTS PRODUCED WITH LIBINT
+
+If you publish results using LIBINT, please cite it using:
+
+An unmodified standard release:
+
+LibintX: A library for accelerated evaluation of molecular integrals of many-body operators over Gaussian atomic orbitals, Version X.Y.Z
+Andrey Asadchev and Edward F. Valeev, https://github.com/ValeevGroup/LibintX .
+
+A modified release:
+
+LibintX: A library for accelerated evaluation of molecular integrals of many-body operators over Gaussian atomic orbitals, Version X.Y.Z
+Andrey Asadchev and Edward F. Valeev, https://github.com/ValeevGroup/LibintX . Modified by An Author, institution, location, year.
+
+The literature citation for the present release in bibtex format is:
+
+@Misc{LibintX,
+  author = "Andrey~Asadchev and Edward~F.~Valeev",
+  title = "LibintX: A library for accelerated evaluation of molecular integrals of many-body operators over Gaussian atomic orbitals",
+  howpublished = "https://github.com/ValeevGroup/LibintX",
+  note = "version 0.1.0",
+  year =         2023
+}
+
+We also request that the users cite the papers describing the algorithmic developments and implementation of LibintX:
+
+- Obara-Saika evaluation of 3-center AO integrals and DF-based Coulomb matrix evaluation is described in
+
+@article{DOI:10.1021/acs.jctc.2c00995,
+  title = {Memory-{{Efficient Recursive Evaluation}} of 3-{{Center Gaussian Integrals}}},
+  author = {Asadchev, Andrey and Valeev, Edward F.},
+  year = {2023},
+  month = mar,
+  journal = {Journal of Chemical Theory and Computation},
+  volume = {19},
+  number = {6},
+  pages = {1698--1710},
+  doi = {10.1021/acs.jctc.2c00995},
+  url = {https://pubs.acs.org/doi/10.1021/acs.jctc.2c00995},
+  langid = {english}
+}
+
+Also, please include the scientific citations for the basis sets you use.

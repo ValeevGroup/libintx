@@ -1,0 +1,12 @@
+LibintX - a library for accelerated evaluation of molecular integrals of many-body operators over Gaussian atomic orbitals
+
+Copyright (C) 2020-2023 Andrey Asadchev and Edward F. Valeev
+
+LibintX is free software. The source code of LibintX is distributed under
+the GNU Lesser General Public License, version 3, (see the file COPYING,
+or <http://www.gnu.org/licenses/>).
+
+LibintX is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.

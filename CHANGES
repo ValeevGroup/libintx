@@ -1,0 +1,9 @@
+
+                           LIBINTX REVISION HISTORY
+
+Following is a brief summary of changes made in each release of LibintX.
+
+- 19-May-2023: 0.1.0
+  - Distributed DF-based J engine
+  - Obara-Saika-based evaluation of 3-center Coulomb integrals
+
