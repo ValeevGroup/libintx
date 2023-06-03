@@ -12,6 +12,7 @@ add_library(
   libintx.cuda
   api/api.cc
   boys.cc
+  blas.cu
   )
 set_target_properties(libintx.cuda PROPERTIES OUTPUT_NAME intx.cuda)
 target_link_libraries(libintx.cuda libintx.boys CUDA::cudart)
