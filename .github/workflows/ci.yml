@@ -1,0 +1,49 @@
+name: libintx CI
+
+on: [push]
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL : 4
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  configure-build:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os : [ macos-latest ]
+        cxx : [ clang++ ]
+        build_type : [ Debug ]
+
+    name: "${{ matrix.os }}: ${{ matrix.cxx }} ${{ matrix.build_type }}"
+    runs-on: ${{ matrix.os }}
+    env:
+      CXX : ${{ matrix.cxx }}
+      CMAKE_CONFIG : >
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DLIBINTX_MAX_L=2
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: "Configure: ${{ env.CMAKE_CONFIG }}"
+      run: |
+        set -x;
+        cmake -B${{github.workspace}}/build $CMAKE_CONFIG
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: |
+        cmake --build . --target all libintx.rysq
+
+    # - name: Test
+    #   working-directory: ${{github.workspace}}/build
+    #   run: |
+    #     cmake --build . --target libintx.test
+    #     cmake --build . --target check-tiledarray
+    #     ctest -C $${{matrix.build_type}}
