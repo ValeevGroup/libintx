@@ -1,10 +1,9 @@
 #ifndef BOYS_INTERPOLATE_H
 #define BOYS_INTERPOLATE_H
 
-#include "boys/reference.h"
-#include <vector>
-#include <iostream>
+#include "libintx/boys/reference.h"
 #include <Eigen/Dense>
+#include <vector>
 
 namespace boys {
 

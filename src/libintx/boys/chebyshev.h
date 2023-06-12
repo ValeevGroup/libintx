@@ -1,12 +1,10 @@
 #ifndef BOYS_CHEBYSHEV_H
 #define BOYS_CHEBYSHEV_H
 
-#include "boys/boys.h"
-#include "boys/asymptotic.h"
-#include "boys/reference.h"
+#include "libintx/boys/boys.h"
+#include "libintx/boys/asymptotic.h"
+#include "libintx/boys/reference.h"
 #include "libintx/interpolate/chebyshev.h"
-#include <vector>
-#include <math.h>
 
 namespace boys {
 

@@ -6,7 +6,12 @@
 
 #ifdef __AVX__
 #include <immintrin.h>
-//#define LIBINTX_SIMD_AVX
+#define LIBINTX_SIMD_AVX
+#endif
+
+#ifdef __SSE3__
+#include <xmmintrin.h>
+#define LIBINTX_SIMD_128
 #endif
 
 namespace libintx {
@@ -32,9 +37,7 @@ namespace simd {
     }
   }
 
-#ifdef __SSE3__
-
-#define LIBINTX_SIMD_128
+#ifdef LIBINTX_SIMD_128
 
   inline __m128d load2(const double* p) {
     return _mm_loadu_pd(p);

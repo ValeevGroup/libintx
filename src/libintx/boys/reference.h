@@ -1,7 +1,7 @@
 #ifndef BOYS_REFERENCE_H
 #define BOYS_REFERENCE_H
 
-#include "boys/boys.h"
+#include "libintx/boys/boys.h"
 
 #include <cmath>
 #include <stdexcept>

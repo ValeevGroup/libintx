@@ -6,6 +6,7 @@
 #include "libintx/config.h"
 
 #include <vector>
+#include <string>
 #include <utility>
 #include <memory>
 #include <stdexcept>

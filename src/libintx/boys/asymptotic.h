@@ -1,7 +1,7 @@
 #ifndef BOYS_ASYMPTOTIC_H
 #define BOYS_ASYMPTOTIC_H
 
-#include <math.h>
+#include <cmath>
 
 namespace boys {
 
@@ -14,7 +14,7 @@ namespace boys {
 #ifdef __CUDACC__
     const double rsqrt_x = rsqrt(x);
 #else
-    const double rsqrt_x = sqrt(one_over_x);
+    const double rsqrt_x = std::sqrt(one_over_x);
 #endif
     double Fm = 0.88622692545275801365 * rsqrt_x; // see Eq. (9.8.9) in Helgaker-Jorgensen-Olsen
     // this upward recursion formula omits - e^(-x)/(2x), which for x>T_crit is small enough to guarantee full double precision
@@ -34,7 +34,7 @@ namespace boys {
 #ifdef __CUDACC__
     const double rsqrt_x = rsqrt(x);
 #else
-    const double rsqrt_x = sqrt(one_over_x);
+    const double rsqrt_x = std::sqrt(one_over_x);
 #endif
     double Fm = 0.88622692545275801365 * rsqrt_x; // see Eq. (9.8.9) in Helgaker-Jorgensen-Olsen
     // this upward recursion formula omits - e^(-x)/(2x), which for x>T_crit is small enough to guarantee full double precision

@@ -1,6 +1,6 @@
-#include "boys/boys.h"
-#include "boys/reference.h"
-#include "boys/chebyshev.h"
+#include "libintx/boys/boys.h"
+#include "libintx/boys/reference.h"
+#include "libintx/boys/chebyshev.h"
 
 #include <pybind11/pybind11.h>
 

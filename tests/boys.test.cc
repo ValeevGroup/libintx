@@ -1,9 +1,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "boys/reference.h"
-#include "boys/asymptotic.h"
-#include "boys/chebyshev.h"
+#include "libintx/boys/reference.h"
+#include "libintx/boys/asymptotic.h"
+#include "libintx/boys/chebyshev.h"
 
 using doctest::Approx;
 

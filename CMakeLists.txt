@@ -32,7 +32,6 @@ configure_file(src/libintx/config.h.in ${PROJECT_BINARY_DIR}/libintx/config.h)
 include_directories(src include)
 include_directories(${PROJECT_BINARY_DIR})
 
-include_directories(src/libintx)
 add_subdirectory(src/libintx/boys)
 
 option(LIBINTX_ENABLE_CUDA "" OFF)

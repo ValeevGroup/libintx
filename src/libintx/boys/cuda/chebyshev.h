@@ -1,8 +1,8 @@
 #ifndef BOYS_CUDA_CHEBYSHEV_H
 #define BOYS_CUDA_CHEBYSHEV_H
 
-#include "boys/boys.h"
-#include "boys/asymptotic.h"
+#include "libintx/boys/boys.h"
+#include "libintx/boys/asymptotic.h"
 
 //#include <cuda/api_wrappers.hpp>
 #include <cuda/api/memory.hpp>
