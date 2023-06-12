@@ -137,8 +137,8 @@ struct OrbitalTransform {
   }
 
   constexpr OrbitalTransform() {
-    constexpr auto pure = this->pure();
-    constexpr auto cart = this->cart();
+    constexpr auto pure = OrbitalTransform::pure();
+    constexpr auto cart = OrbitalTransform::cart();
     for (size_t j = 0, k = 0; j < pure.size(); ++j) {
       assert(k <= std::numeric_limits<uint16_t>::max());
       index_[j].offset = k;
