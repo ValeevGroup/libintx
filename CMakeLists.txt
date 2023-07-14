@@ -11,7 +11,11 @@ project(libintx)
 
 set(LIBINTX_MAX_L 3 CACHE STRING "")
 if (NOT LIBINTX_MAX_X)
-  math(EXPR LIBINTX_MAX_X "${LIBINTX_MAX_L}+1")
+  if (LIBINTX_MAX_L GREATER 5)
+    set(LIBINTX_MAX_X ${LIBINTX_MAX_L})
+  else()
+    math(EXPR LIBINTX_MAX_X "${LIBINTX_MAX_L}+1")
+  endif()
   #set(LIBINTX_MAX_X ${LIBINTX_MAX_X} CACHE FORCE STRING "")
 endif()
 
