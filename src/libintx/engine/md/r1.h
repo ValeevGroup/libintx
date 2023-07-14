@@ -92,8 +92,8 @@ void visit(F f, const PQ& pq,
            const R<I,J,K,0> &r1_0,
            const R1& ... r1)
 {
-  static_assert(Order == BreadthFirst || Order == DepthFirst);
-  if constexpr (Order == BreadthFirst) {
+  static_assert(Order == Order::BreadthFirst || Order == Order::DepthFirst);
+  if constexpr (Order == Order::BreadthFirst) {
     f(r1_0);
   }
   if constexpr (sizeof...(r1)) {
@@ -107,7 +107,7 @@ void visit(F f, const PQ& pq,
       visit<Order,I+1,J,K>(f, pq, std::tie(r1...), r1_plus_axis<0>(pq, r1, r2)...);
     }
   }
-  if constexpr (Order == DepthFirst) {
+  if constexpr (Order == Order::DepthFirst) {
     f(r1_0);
   }
 }
@@ -122,6 +122,15 @@ template<Order Order, int N, class F>
 LIBINTX_GPU_ENABLED
 void visit(F f, const PQ& pq, const double (&s)[N]) {
   visit<Order>(f, pq, s, std::make_index_sequence<N>());
+}
+
+template<int L, Order Order = Order::BreadthFirst>
+LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
+void compute(const auto &PQ, const auto &s, double* __restrict__ R) {
+  auto f = [&](auto &r) constexpr {
+    if constexpr (L >= r.L) R[r.index] = r.value;
+  };
+  visit<Order>(f, PQ, s);
 }
 
 }
