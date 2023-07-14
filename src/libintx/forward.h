@@ -30,6 +30,13 @@ namespace libintx {
   struct Shell;
   struct Gaussian;
 
+  struct Index2 {
+    int first, second;
+  };
+
+  template<int Centers, int Electrons = 2>
+  struct IntegralEngine;
+
   struct JEngine;
 
 }

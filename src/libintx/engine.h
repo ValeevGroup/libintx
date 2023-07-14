@@ -106,6 +106,16 @@ namespace libintx {
     return kernel;
   }
 
+  template<>
+  struct IntegralEngine<4,2> {
+    virtual ~IntegralEngine() = default;
+    virtual void compute(
+      const std::vector<Index2>&,
+      const std::vector<Index2>&,
+      double*
+    ) = 0;
+  };
+
 }
 
 #endif /* LIBINTX_ENGINE_H */
