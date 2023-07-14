@@ -1,6 +1,7 @@
 #ifndef LIBINTX_PURE_H
 #define LIBINTX_PURE_H
 
+#include "libintx/forward.h"
 #include "libintx/math.h"
 #include "libintx/simd.h"
 #include "libintx/orbital.h"
@@ -78,6 +79,11 @@ constexpr inline double coefficient(int l, int m, int lx, int ly, int lz) {
 
 }
 
+template<int L, int M, int LX, int LY, int LZ>
+struct Coefficient {
+  static constexpr double value = coefficient(L,M,LX,LY,LZ);
+};
+
 template<typename Orbitals>
 constexpr static size_t nnzero(const Orbitals& orbitals) {
   size_t n = 0;
@@ -128,6 +134,7 @@ struct OrbitalTransform {
 
   template<typename F>
   LIBINTX_GPU_ENABLED
+  // idx - pure index
   constexpr void apply(F &&f, int idx) const {
     auto [k,bf] = this->index_[idx];
     f(bf[0], this->coefficients_[k]);
