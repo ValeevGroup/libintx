@@ -15,7 +15,8 @@ add_library(
   blas.cu
   )
 set_target_properties(libintx.cuda PROPERTIES OUTPUT_NAME intx.cuda)
-target_link_libraries(libintx.cuda libintx.boys CUDA::cudart)
+target_link_libraries(libintx.cuda libintx.boys)
+target_link_libraries(libintx.cuda CUDA::cudart)
 
 add_library(
   libintx.cuda.eri
@@ -51,3 +52,5 @@ add_library(
   )
 set_target_properties(libintx.cuda.jengine PROPERTIES OUTPUT_NAME intx.cuda.jengine)
 target_link_libraries(libintx.cuda.jengine libintx.cuda)
+
+add_subdirectory(md)
