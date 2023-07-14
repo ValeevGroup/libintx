@@ -32,11 +32,17 @@ if (TARGET libintx.cuda)
   add_executable(libintx.cuda.test EXCLUDE_FROM_ALL libintx.cuda.test.cc)
   target_link_libraries(libintx.cuda.test libintx.cuda.eri ${libintx_test_reference})
   add_test(NAME libintx.cuda COMMAND libintx.cuda.test)
+
   add_executable(libintx.cuda.benchmarks EXCLUDE_FROM_ALL libintx.cuda.benchmarks.cc)
-  target_link_libraries(libintx.cuda.benchmarks libintx.cuda.eri libintx.os)
+  target_link_libraries(libintx.cuda.benchmarks libintx.cuda.md.eri4)
+  target_link_libraries(libintx.cuda.benchmarks ${libintx_test_reference})
+
+  add_executable(libintx.cuda.md.test EXCLUDE_FROM_ALL libintx.cuda.md.test.cu)
+  target_link_libraries(libintx.cuda.md.test libintx.cuda.md.eri4)
+  target_link_libraries(libintx.cuda.md.test ${libintx_test_reference})
+
 endif()
 
 add_executable(libintx.md.test EXCLUDE_FROM_ALL libintx.md.test.cc)
 target_link_libraries(libintx.md.test libboys)
 add_test(NAME libintx.md COMMAND libintx.md.test)
-
