@@ -48,6 +48,7 @@ namespace libintx {
       const Double<3>&, const Double<3>&,
       const Double<3>&, const Double<3>&
     ) = 0;
+    virtual const double* buffer() = 0;
   };
 
   template<int Order, class ... Args>

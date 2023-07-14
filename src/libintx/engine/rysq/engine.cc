@@ -81,10 +81,15 @@ namespace rysq {
       const Double<3> &c, const Double<3> &d) override
     {
       assert(impl_);
-      return impl_->compute({ cast(a), cast(b), cast(c), cast(d) });
+      buffer_ = impl_->compute({ cast(a), cast(b), cast(c), cast(d) });
+      return this->buffer();
+    }
+    const double* buffer() override {
+      return this->buffer_;
     }
   private:
     std::unique_ptr<::rysq::Kernel4> impl_;
+    const double *buffer_;
   };
 
   std::unique_ptr< Kernel<3> > eri(const Gaussian& a, const Gaussian& b, const Gaussian& x) {
