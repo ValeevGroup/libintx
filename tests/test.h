@@ -32,10 +32,40 @@ namespace libintx::test {
     mutable std::default_random_engine g_;
   };
 
+  auto& default_random_engine() {
+    static std::default_random_engine g;
+    return g;
+  }
+
+  template<typename T, typename ... Args>
+  T random(Args ... args) {
+    if constexpr (std::is_floating_point<T>::value) {
+      std::uniform_real_distribution<double> r(args...);
+      return r(default_random_engine());
+    }
+    else {
+      std::uniform_int_distribution<T> r(args...);
+      return r(default_random_engine());
+    }
+  }
+
+  template<typename T, size_t N, typename ... Args>
+  libintx::array<T,N> random(Args ... args) {
+    libintx::array<T,N> r;
+    for (auto &v : r) {
+      v = random<T>(args...);
+    }
+    return r;
+  }
+
   struct enabled {
     const bool status;
     enabled(int I, int J, int K) :
       status(I <= LMAX && J <= LMAX && K <= XMAX)
+    {
+    }
+    enabled(int I, int J, int K, int L) :
+      status(std::max({I,J,K,L}) <= LMAX)
     {
     }
     operator bool() const { return status; }
@@ -76,10 +106,34 @@ namespace libintx::test {
   inline auto gaussian(int L, int K, bool pure = true) {
     std::vector<Gaussian::Primitive> ps(K);
     for (int k = 0; k < K; ++k) {
-      ps[k] = { K/(k+1.0), K*(k+1.0) };
+      ps[k] = { double(5.12)/(L+k+1.37), double(L+K)*(k+2) };
       //ps[k] = { 0.5+k, K*(k+1.0) };
+      //printf("g[%i,%i] = %f*e**%f\n", L, k, ps[k].C, ps[k].a);
     }
-    return Gaussian(L, ps, pure);
+    return (
+      Gaussian(L, ps, pure)
+    );
+  }
+
+  template<typename F>
+  void check4(
+    F Check,
+    int na, int nb, int nc, int nd,
+    const double *ref, double tolerance = 1e-6)
+  {
+    for (int kl = 0; kl < nc*nd; ++kl) {
+      for (int ij = 0; ij < na*nb; ++ij) {
+        //printf("idx=%i,%i,%i\n", ij, kl, (kl) + (ij)*ld);
+        test::ReferenceValue ab_cd_reference(
+          ref ? ref[kl+ij*nc*nd] : 0,
+          tolerance,
+          ij%nb, ij/nb,
+          kl%nd, kl/nd
+        );
+        Check(ij, kl, ab_cd_reference);
+        //CHECK(*ab++ == ab_x_reference);
+      }
+    }
   }
 
 }
