@@ -23,7 +23,7 @@ LibintX is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Vi
 
 # License
 
-LibintX is freely available under the terms of the LGPL v3+ licence. See the included LICENSE file for details. If you are interested in using TiledArray under different licensing terms, please contact us.
+LibintX is freely available under the terms of the LGPL v3+ licence. See the included LICENSE file for details. If you are interested in using LibintX under different licensing terms, please contact us.
 
 # How to Cite
 
