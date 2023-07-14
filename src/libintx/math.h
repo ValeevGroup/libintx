@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cassert>
+#include <utility>
 
 namespace libintx::math {
 
@@ -88,6 +89,25 @@ namespace libintx::math {
     return (i%2 ? -1 : 1);
   }
 
+  template<int K, typename T = int64_t>
+  constexpr inline auto figurate(int n) {
+    int64_t nk = 1;
+    for (size_t k = 0; k < K; ++k) {
+      nk *= (n+k);
+    }
+    return T(nk/factorial(K));
+  };
+
+  template<int K, std::size_t ... Idx>
+  constexpr auto make_figurate_numbers(std::index_sequence<Idx...>) {
+    return std::index_sequence< figurate<K>(Idx)... >{};
+  }
+
+  template<int N>
+  constexpr auto triangular_numbers = make_figurate_numbers<2>(std::make_index_sequence<N>{});
+
+  template<int N>
+  constexpr auto tetrahedral_numbers = make_figurate_numbers<3>(std::make_index_sequence<N>{});
 
 }
 
