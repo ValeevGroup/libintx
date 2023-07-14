@@ -23,9 +23,14 @@ namespace libintx {
     return (str(as) + ...);
   }
 
-  template<typename ... Ts>
-  auto max(Ts&& ... ts) {
-    return std::max({ ts... });
+  template<typename T, typename U>
+  constexpr auto max(T&& t, U&& u) {
+    return ::std::max(t,u);
+  }
+
+  template<typename T, typename ... Ts>
+  constexpr auto max(T&& t, Ts&& ... ts) {
+    return ::std::max<T>({ t, ts... });
   }
 
   template<typename It>
@@ -52,7 +57,11 @@ namespace libintx {
 
   };
 
+
 }
+
+#define libintx_assert(EXPR)                            \
+  if (!(EXPR)) { throw std::runtime_error(#EXPR); }
 
 #define LIBINTX_LAMBDA(...) __VA_ARGS__
 

@@ -40,6 +40,12 @@ struct array {
 
 template<typename T, int N>
 ARRAY_GPU_ENABLED
+constexpr auto* begin(array<T,N> &a) {
+  return a.data;
+}
+
+template<typename T, int N>
+ARRAY_GPU_ENABLED
 constexpr auto* begin(const array<T,N> &a) {
   return a.data;
 }
@@ -170,7 +176,7 @@ template<typename ... Ts>
 constexpr auto array_cat(Ts ... ts) {
   return std::apply(
     [](auto ... ts) { return make_array(ts...); },
-    std::tuple_cat(ts...)
+    ::std::tuple_cat(ts...)
   );
 }
 
