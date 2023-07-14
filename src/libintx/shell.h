@@ -46,6 +46,8 @@ constexpr inline int nbf(const Shell &s) {
 
 struct alignas(32) Gaussian : Shell {
 
+  constexpr static int KMAX = libintx::KMAX;
+
   struct Primitive {
     double a = 1, C = NAN;
     template<int N>
@@ -59,10 +61,11 @@ struct alignas(32) Gaussian : Shell {
     }
   };
 
-  array<Primitive,10> prims = { };
+  array<Primitive,KMAX> prims = { };
   int K = 0;
 
-  LIBINTX_GPU_ENABLED Gaussian() {}
+  //LIBINTX_GPU_ENABLED
+  Gaussian() = default;
 
   Gaussian(int L, std::vector<Primitive> ps, bool pure = true)
     : Shell({L,(int)pure}),
@@ -139,6 +142,42 @@ inline bool operator==(const Gaussian &lhs, const Gaussian &rhs) {
     if (!(lhs.prims[k] == rhs.prims[k])) return false;
   }
   return true;
+}
+
+struct Gaussian2 {
+  Gaussian first, second;
+  struct {
+    array<double,3> first, second;
+  } r;
+};
+
+template<typename Shell>
+using Basis = std::vector< std::tuple<Shell,array<double,3> > >;
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+constexpr auto& shell(const std::tuple< Shell,array<double,3> > &g) {
+  return std::get<0>(g);
+}
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+constexpr auto& center(const std::tuple< Shell,array<double,3> > &g) {
+  return std::get<1>(g);
+}
+
+template<typename Shell>
+int nbf(const std::tuple< Shell,array<double,3> > &g) {
+  return nbf(std::get<0>(g));
+}
+
+template<typename Shell>
+size_t nbf(Basis<Shell> &basis) {
+  size_t n = 0;
+  for (auto &[a,r] : basis) {
+    n += nbf(a);
+  }
+  return n;
 }
 
 }
