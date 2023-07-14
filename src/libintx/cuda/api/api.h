@@ -4,6 +4,9 @@
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
+#include <cassert>
+
+typedef struct CUstream_st* cudaStream_t;
 
 namespace libintx::cuda {
 
@@ -212,6 +215,12 @@ namespace libintx::cuda {
     using vector = vector<T,device_memory_t>;
 
     bool synchronize();
+
+  }
+
+  namespace stream {
+
+    void synchronize(cudaStream_t = 0);
 
   }
 

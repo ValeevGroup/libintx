@@ -3,6 +3,7 @@
 
 namespace libintx::cuda {
 
+  template<typename T>
   __device__
   T ldg(const T *ptr) {
     static_assert(sizeof(T) == sizeof(uint32_t) || sizeof(T) == sizeof(uint64_t));

@@ -40,6 +40,15 @@ void libintx::cuda::device_memory_t::memset(void *dst, const int value, size_t b
   ::cuda::memory::device::async::set(dst, value, bytes, stream);
 }
 
+void libintx::cuda::stream::synchronize(cudaStream_t stream) {
+  auto status = ::cudaStreamSynchronize(stream);
+  ::cuda::throw_if_error(
+    status,
+    ::std::string("Failed synchronizing stream")
+  );
+  //return (::cuda::outstanding_error::get() == ::cuda::status::success);
+}
+
 bool libintx::cuda::device::synchronize() {
   ::cuda::device::current::get().synchronize();
   return (::cuda::outstanding_error::get() == ::cuda::status::success);
