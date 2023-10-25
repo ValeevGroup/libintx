@@ -95,10 +95,11 @@ int main() {
 
   ERI4_TEST_CASE(2,0,2,0, K);
   ERI4_TEST_CASE(2,2,2,0, K);
-  // ERI4_TEST_CASE(3,3,3,3, K);
-  // ERI4_TEST_CASE(4,4,4,4, K);
-  // ERI4_TEST_CASE(5,5,5,5, K);
-  // ERI4_TEST_CASE(6,6,6,6, K);
+  ERI4_TEST_CASE(2,2,2,2, K);
+  ERI4_TEST_CASE(3,3,3,3, K);
+  ERI4_TEST_CASE(4,4,4,4, K);
+  ERI4_TEST_CASE(5,5,5,5, K);
+  ERI4_TEST_CASE(6,6,6,6, K);
 
   //return 0;
 
