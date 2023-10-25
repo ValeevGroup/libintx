@@ -12,9 +12,19 @@ Until version 1.0 this will remain EXPERIMENTAL code development; expect things 
 - CUDA toolkit, version 11 or higher (optional)
 
 ## Building
-- configure: `cmake -S /path/to/libintx/top/source/dir -B /path/to/build/dir [-DLIBINTX_ENABLE_CUDA=ON]`
-- build: `cmake --build /path/to/build/dir`
-- test: `cd /path/to/build/dir && ctest`
+- configure: \
+    `cd libintx` \
+    `cmake -B ./build` \
+    `cd ./build` \
+  with cuda: \
+    `cmake -DLIBINTX_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=70 .` \
+  with libint2: \
+    `cmake -DLIBINTX_LIBINT2=ON .`
+- build: \
+    `cmake --build .`
+- benchmarks: \
+    `cmake --build . --target libintx.cuda.benchmarks` \
+    `./tests/libintx.cuda.benchmarks`
 
 # Using
 
