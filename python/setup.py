@@ -4,9 +4,9 @@ from distutils.core import setup, Extension
 module = Extension(
   'boys',
   language = 'c++',
-  sources = ['./boys.cc', '../src/libintx/boys/boys.cc'],
+  sources = ['./src/boys/boys.cc', '../src/libintx/boys/boys.cc'],
   extra_compile_args = [ '-std=c++14' ],
-  include_dirs = [ '../include', '../src/libintx', '../src' ],
+  include_dirs = [ '../include', './pybind11/include', '../src/libintx', '../src' ],
 )
 
 setup(

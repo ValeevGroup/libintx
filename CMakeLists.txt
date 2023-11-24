@@ -78,6 +78,8 @@ if (LIBINTX_LIBINT2)
   add_subdirectory(src/libintx/engine/libint2)
 endif()
 
+add_subdirectory(python)
+
 include(CTest)
 if (BUILD_TESTING)
   add_subdirectory(tests)
