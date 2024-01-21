@@ -1,3 +1,5 @@
+include_directories(${PROJECT_SOURCE_DIR}/include/eigen3)
+
 add_executable(interpolate.test EXCLUDE_FROM_ALL interpolate.test.cc)
 target_link_libraries(interpolate.test libboys)
 add_test(NAME interpolate COMMAND interpolate.test)

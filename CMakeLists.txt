@@ -33,7 +33,7 @@ option(CMAKE_POSITION_INDEPENDENT_CODE "" ON)
 
 configure_file(src/libintx/config.h.in ${PROJECT_BINARY_DIR}/libintx/config.h)
 
-include_directories(src include)
+include_directories(src include include/eigen3)
 include_directories(${PROJECT_BINARY_DIR})
 
 add_subdirectory(src/libintx/boys)
