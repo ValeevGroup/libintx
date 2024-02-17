@@ -21,7 +21,7 @@ namespace libintx::cuda::md::eri4 {
   constexpr const auto index2_lookup_table = make_array<int,4*LMAX+1>(&math::figurate<3,int>);
 
   LIBINTX_GPU_DEVICE
-  constexpr auto orbitals = hermitian::orbitals<2*LMAX>;
+  constexpr auto orbitals = hermite::orbitals<2*LMAX>;
 
   template<int ... Args>
   struct Basis2;

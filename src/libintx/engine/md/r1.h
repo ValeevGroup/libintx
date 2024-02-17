@@ -20,7 +20,7 @@ struct R {
     uint8_t(Z)
   };
   static constexpr int L = X+Y+Z;
-  static constexpr int index = hermitian::index2(orbital);
+  static constexpr int index = hermite::index2(orbital);
   T value;
 };
 

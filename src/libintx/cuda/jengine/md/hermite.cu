@@ -84,12 +84,12 @@ namespace {
 
   };
 
-  struct cartesian_to_hermitian {
+  struct cartesian_to_hermite {
 
     template<typename Hermitian>
     __device__
     static void apply(
-      const Hermitian &hermitian,
+      const Hermitian &hermite,
       int A, double a, int B, double b,
       const Center &AB,
       double C, const double *G, double *H,
@@ -97,8 +97,8 @@ namespace {
     {
       E2 E(shmem, A, B, a, b, AB);
       g.sync();
-      for (int k = g.thread_rank(); k < hermitian.nherm; k += g.size()) {
-        auto Pk = hermitian.orbitals()[k];
+      for (int k = g.thread_rank(); k < hermite.nherm; k += g.size()) {
+        auto Pk = hermite.orbitals()[k];
         double v = 0;
         for (int i = 0, ij = 0; i < ncart(A); ++i) {
           for (int j = 0; j < ncart(B); ++j, ++ij) {
@@ -115,12 +115,12 @@ namespace {
 
   };
 
-  struct hermitian_to_cartesian {
+  struct hermite_to_cartesian {
 
     template<typename Hermitian>
     __device__
     static void apply(
-      const Hermitian &hermitian,
+      const Hermitian &hermite,
       int A, double a, int B, double b,
       const Center &AB,
       double C, const double *H, double *G,
@@ -128,8 +128,8 @@ namespace {
     {
       E2 E(shmem, A, B, a, b, AB);
       g.sync();
-      for (int k = g.thread_rank(); k < hermitian.nherm; k += g.size()) {
-        auto Pk = hermitian.orbitals()[k];
+      for (int k = g.thread_rank(); k < hermite.nherm; k += g.size()) {
+        auto Pk = hermite.orbitals()[k];
         double Hk = H[k];
         for (int i = 0, ij = 0; i < ncart(A); ++i) {
           for (int j = 0; j < ncart(B); ++j, ++ij) {
@@ -179,7 +179,7 @@ namespace {
 
     __device__
     inline void transform(
-      hermitian_to_cartesian,
+      hermite_to_cartesian,
       const Index1 &idx,
       const Shell &A,
       const double *H,
@@ -192,7 +192,7 @@ namespace {
       for (int k = 0; k < A.K; ++k) {
         //memcpy(np, H+idx.kherm+k*np, shmem.H, thread_block);
         auto& [a,C] = A.prims[k];
-        hermitian_to_cartesian::apply(
+        hermite_to_cartesian::apply(
           *this,
           A.L, a, 0, 0.0, {0,0,0},
           C, H+idx.kherm+k*this->nherm, shmem.G,
@@ -217,7 +217,7 @@ namespace {
 
     __device__
     inline void transform(
-      cartesian_to_hermitian,
+      cartesian_to_hermite,
       const Index1 &idx,
       const Shell &A,
       const double *G,
@@ -233,7 +233,7 @@ namespace {
       thread_block.sync();
       for (int k = 0; k < A.K; ++k) {
         auto& [a,C] = A.prims[k];
-        cartesian_to_hermitian::apply(
+        cartesian_to_hermite::apply(
           *this,
           A.L, a, 0, 0.0, {0,0,0},
           C, shmem.G, H+idx.kherm+k*this->nherm,
@@ -281,7 +281,7 @@ namespace {
 
     __device__
     void transform(
-      hermitian_to_cartesian,
+      hermite_to_cartesian,
       const Index2 *index2,
       const Shell *basis,
       const double *H,
@@ -326,7 +326,7 @@ namespace {
 
           thread_block.sync();
 
-          hermitian_to_cartesian::apply(
+          hermite_to_cartesian::apply(
             *this,
             A.L, a, B.L, b, AB,
             C, H+kij*this->nherm, shmem_G,
@@ -349,7 +349,7 @@ namespace {
 
     __device__
     void transform(
-      cartesian_to_hermitian,
+      cartesian_to_hermite,
       const Index2 *ijs,
       const Shell *basis, Primitive2 *P,
       const double *G, double *H)
@@ -416,7 +416,7 @@ namespace {
           memcpy1(&p1, &P[kij], thread_block);
 
           if (!shmem_G) continue;
-          cartesian_to_hermitian::apply(
+          cartesian_to_hermite::apply(
             *this,
             A.L, a, B.L, b, AB,
             C, shmem_G, H+kij*this->nherm,
@@ -438,7 +438,7 @@ namespace {
   }
 
   // __device__
-  // void cartesian_to_hermitian_basis(
+  // void cartesian_to_hermite_basis(
   //   int p,
   //   const Shell &A, const Shell &B,
   //   float max,
@@ -474,7 +474,7 @@ namespace {
   // }
 
   // __global__
-  // void cartesian_to_hermitian_basis(
+  // void cartesian_to_hermite_basis(
   //   int p, const Index2 *ijs,
   //   const Shell *basis,
   //   Primitive2 *P)
@@ -494,7 +494,7 @@ namespace {
   //   double s = 1;
   //   s *= 2*std::pow(M_PI,2.5);
   //   s *= ((ij.first == ij.second ? 1 : 2));
-  //   cartesian_to_hermitian_basis(p, A, B, ij.norm, s, P+ij.kprim);
+  //   cartesian_to_hermite_basis(p, A, B, ij.norm, s, P+ij.kprim);
 
   // }
 
@@ -504,7 +504,7 @@ namespace {
 namespace libintx::cuda::jengine::md {
 
   //__global__
-  void cartesian_to_hermitian_2(
+  void cartesian_to_hermite_2(
     int P, int nij, const Index2 *ijs,
     const Shell *basis, Primitive2 *Ps,
     const double *G, double *H,
@@ -512,7 +512,7 @@ namespace libintx::cuda::jengine::md {
   {
     // if (!G) {
     //   int shmem = 0;
-    //   cartesian_to_hermitian_basis<<<nij,32,shmem>>>(P, ijs, basis, Ps);
+    //   cartesian_to_hermite_basis<<<nij,32,shmem>>>(P, ijs, basis, Ps);
     //   return;
     // }
     int A = (P+1)/2;
@@ -522,13 +522,13 @@ namespace libintx::cuda::jengine::md {
       ncart(A)*ncart(B)*8
     );
     //printf("shmem=%i\n", shmem);
-    transform<cartesian_to_hermitian><<<nij,32,shmem,stream>>>(
+    transform<cartesian_to_hermite><<<nij,32,shmem,stream>>>(
       Hermitian2{P},
       ijs, basis, Ps, G, H
     );
   }
 
-  void hermitian_to_cartesian_2(
+  void hermite_to_cartesian_2(
     int P, int N,
     const Index2 *index2,
     const Shell *basis,
@@ -543,31 +543,31 @@ namespace libintx::cuda::jengine::md {
       ncart(A)*ncart(B)*8
     );
     //printf("shmem=%i\n", shmem);
-    transform<hermitian_to_cartesian><<<N,32,shmem,stream>>>(
+    transform<hermite_to_cartesian><<<N,32,shmem,stream>>>(
       Hermitian2{P},
       index2, basis, H, G
     );
   }
 
-  void cartesian_to_hermitian_1(
+  void cartesian_to_hermite_1(
     int p, int n,
     const Index1 *index1,
     const Shell *basis,
     const double* G, double* H)
   {
-    transform<cartesian_to_hermitian><<<n,32>>>(
+    transform<cartesian_to_hermite><<<n,32>>>(
       Hermitian1{p},
       index1, basis, G, H
     );
   }
 
-  void hermitian_to_cartesian_1(
+  void hermite_to_cartesian_1(
     int p, int n,
     const Index1 *index1,
     const Shell *basis,
     const double* H, double* G)
   {
-    transform<hermitian_to_cartesian><<<n,32>>>(
+    transform<hermite_to_cartesian><<<n,32>>>(
       Hermitian1{p},
       index1, basis, H, G
     );

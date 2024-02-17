@@ -1,6 +1,6 @@
 #include "libintx/cuda/jengine/md/jengine.h"
 #include "libintx/cuda/jengine/md/forward.h"
-#include "libintx/engine/md/hermitian.h"
+#include "libintx/engine/md/hermite.h"
 
 #include "libintx/utility.h"
 #include "libintx/thread_pool.h"
@@ -378,7 +378,7 @@ namespace libintx::cuda::jengine::md {
       stream_data.ijs.assign(ijs.data(), ijs.size());
       stream_data.P.resize(kprim);
       stream_data.H2.resize(kprim*nherm2(p));
-      cartesian_to_hermitian_2(
+      cartesian_to_hermite_2(
         p,
         stream_data.ijs.size(),
         stream_data.ijs.data(),
@@ -415,7 +415,7 @@ namespace libintx::cuda::jengine::md {
     stream.synchronize();
 
     for (const auto &q : Q_.blocks) {
-      hermitian_to_cartesian_1(
+      hermite_to_cartesian_1(
         q.L, q.index.size(),
         cuda::host::device_pointer(q.index.data()),
         cuda::host::device_pointer(Q_.basis.data()),
@@ -476,7 +476,7 @@ namespace libintx::cuda::jengine::md {
 
     stream_data.Xh.resize(Q_.nherm);
     for (const auto &q : Q_.blocks) {
-      cartesian_to_hermitian_1(
+      cartesian_to_hermite_1(
         q.L, q.index.size(),
         cuda::host::device_pointer(q.index.data()),
         cuda::host::device_pointer(Q_.basis.data()),
@@ -552,7 +552,7 @@ namespace libintx::cuda::jengine::md {
       stream_data.P.resize(kprim);
       times.mem += time::since(t);
 
-      cartesian_to_hermitian_2(
+      cartesian_to_hermite_2(
         p,
         stream_data.ijs.size(),
         stream_data.ijs.data(),
@@ -581,7 +581,7 @@ namespace libintx::cuda::jengine::md {
       }
 
       G2.resize(kbf);
-      hermitian_to_cartesian_2(
+      hermite_to_cartesian_2(
         p,
         stream_data.ijs.size(),
         stream_data.ijs.data(),

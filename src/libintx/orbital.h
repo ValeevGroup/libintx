@@ -313,7 +313,7 @@ constexpr inline size_t index(const Orbital &o) {
 
 }
 
-namespace libintx::hermitian {
+namespace libintx::hermite {
 
 LIBINTX_GPU_ENABLED
 constexpr inline int nherm2(int L) {
@@ -355,8 +355,8 @@ namespace libintx {
   using libintx::cartesian::ncartsum;
   using libintx::cartesian::Orbital;
   using libintx::pure::npure;
-  using libintx::hermitian::nherm1;
-  using libintx::hermitian::nherm2;
+  using libintx::hermite::nherm1;
+  using libintx::hermite::nherm2;
 }
 
 #endif /* LIBINTX_SHELL_H */

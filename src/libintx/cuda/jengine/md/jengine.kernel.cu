@@ -183,8 +183,8 @@ namespace {
           compute1(
             boys, p.exp[0]+p.exp[1], q.exponent, PQ,
             [&](auto p, auto q, auto v) {
-              auto kp = hermitian::index2(p);
-              auto kq = hermitian::index1(q);
+              auto kp = hermite::index2(p);
+              auto kq = hermite::index1(q);
               shared_Xq[kq+threadIdx.x*nket] += v*shared_Dp[kp];
             }
           );
@@ -320,8 +320,8 @@ namespace {
           compute1(
             boys, p.exp[0]+p.exp[1], q.exponent, PQ,
             [&](auto p, auto q, auto v) {
-              auto kp = hermitian::index2(p);
-              auto kq = hermitian::index1(q);
+              auto kp = hermite::index2(p);
+              auto kq = hermite::index1(q);
               local_Jp[kp] += v*sh_Xq[kq+threadIdx.x*nket];
             }
           );

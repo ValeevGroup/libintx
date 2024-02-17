@@ -67,7 +67,6 @@ endif()
 add_executable(pure-harmonics-table EXCLUDE_FROM_ALL src/libintx/pure-harmonics-table.cc)
 
 add_subdirectory(src/libintx/engine/rysq/)
-add_subdirectory(src/libintx/engine/os)
 
 option(LIBINTX_LIBINT2 "" OFF)
 if (LIBINTX_LIBINT2)

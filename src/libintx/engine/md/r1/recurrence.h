@@ -31,7 +31,7 @@ namespace libintx::md::r1 {
     static constexpr auto make_table() {
       using cartesian::Orbital;
       using cartesian::index;
-      constexpr auto orbitals = hermitian::orbitals<L>;
+      constexpr auto orbitals = hermite::orbitals<L>;
       array<Index,ncartsum(L)> table = {};
       for (int i = 1; i < ncartsum(L); ++i) {
         auto p = orbitals[i];

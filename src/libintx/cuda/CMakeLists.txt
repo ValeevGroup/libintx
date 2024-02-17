@@ -47,7 +47,7 @@ add_library(
   libintx.cuda.jengine
   EXCLUDE_FROM_ALL
   jengine/md/jengine.cpp
-  jengine/md/hermitian.cu
+  jengine/md/hermite.cu
   ${libintx_cuda_jengine_sources}
   )
 set_target_properties(libintx.cuda.jengine PROPERTIES OUTPUT_NAME intx.cuda.jengine)

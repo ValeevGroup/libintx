@@ -85,7 +85,7 @@ namespace libintx::md {
     return v;
   }
 
-  inline void hermitian_to_cartesian(
+  inline void hermite_to_cartesian(
     int A, double a,
     double h, const double *H,
     double c, double *C)
@@ -110,11 +110,11 @@ namespace libintx::md {
     }
   }
 
-  inline void cartesian_to_hermitian(
+  inline void cartesian_to_hermite(
     int A, double a, const double (&R)[3],
     const double *C, double *H)
   {
-    //printf("cartesian_to_hermitian\n");
+    //printf("cartesian_to_hermite\n");
     //printf("R=%f,%f,%f\n", R[0], R[1], R[2]);
     for (int Ak = A%2; Ak <= A; Ak += 2) {
       for (int k = 0; k < ncart(Ak); ++k, ++H) {
@@ -131,14 +131,14 @@ namespace libintx::md {
     }
   }
 
-  inline void cartesian_to_hermitian(
+  inline void cartesian_to_hermite(
     int A, int B,
     double a, double b,
     const double *R,
     double c, const double *C,
     double *H)
   {
-    //printf("hermitian_to_cartesian\n");
+    //printf("hermite_to_cartesian\n");
     //printf("A=%i, B=%i\n", A, B);
     //std::fill(H, H+shell::cartsum(A+B), 0.0);
 

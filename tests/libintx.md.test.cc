@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/engine/md/hermitian.h"
+#include "libintx/engine/md/hermite.h"
 #include "libintx/engine/md/r1.h"
 #include "libintx/engine/md/reference.h"
 #include "libintx/boys/chebyshev.h"
@@ -10,7 +10,7 @@ using namespace libintx;
 using namespace libintx::md;
 using doctest::Approx;
 
-TEST_CASE("hermitian") {
+TEST_CASE("hermite") {
 
   double a = 3.14;
   double b = 2.74;

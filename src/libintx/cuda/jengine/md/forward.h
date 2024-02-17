@@ -56,21 +56,21 @@ namespace libintx::cuda::jengine::md {
   };
   static_assert(sizeof(Primitive2) == 3*32);
 
-  void hermitian_to_cartesian_1(
+  void hermite_to_cartesian_1(
     int p, int n,
     const Index1 *index1,
     const Shell *basis,
     const double* Xp, double* X
   );
 
-  void cartesian_to_hermitian_1(
+  void cartesian_to_hermite_1(
     int p, int n,
     const Index1 *index1,
     const Shell *basis,
     const double*, double*
   );
 
-  void hermitian_to_cartesian_2(
+  void hermite_to_cartesian_2(
     int p, int n,
     const Index2 *index2,
     const Shell *basis,
@@ -78,7 +78,7 @@ namespace libintx::cuda::jengine::md {
     Stream&
   );
 
-  void cartesian_to_hermitian_2(
+  void cartesian_to_hermite_2(
     int p, int n2,
     const Index2 *ijs,
     const Shell *basis,

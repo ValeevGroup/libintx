@@ -2,7 +2,7 @@
 #include "libintx/cuda/api/api.h"
 #include "libintx/cuda/api/stream.h"
 #include "libintx/cuda/api/thread_group.h"
-#include "libintx/engine/md/hermitian.h"
+#include "libintx/engine/md/hermite.h"
 #include "libintx/pure.transform.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"
@@ -14,7 +14,7 @@ namespace libintx::cuda::md {
   using Center = array<double,3>;
 
   __device__
-  constexpr auto orbitals = hermitian::orbitals<2*LMAX>;
+  constexpr auto orbitals = hermite::orbitals<2*LMAX>;
 
   template<int A, int B>
   struct E2 {
