@@ -30,9 +30,24 @@ namespace libintx {
   struct Shell;
   struct Gaussian;
 
-  struct Index2 {
-    int first, second;
+  template<typename First, typename Second>
+  struct pair {
+    First first;
+    Second second;
+    // constexpr operator std::pair<First,Second>() const {
+    //   return { first, second };
+    // }
   };
+
+  using Index1 = int;
+  using Index2 = pair<Index1,Index1>;
+
+  template<int Idx, typename First, typename Second>
+  auto get(pair<First,Second>&& idx) {
+    static_assert(Idx == 0 || Idx == 1);
+    if constexpr (Idx == 0) return idx.first;
+    if constexpr (Idx == 1) return idx.second;
+  }
 
   template<int Centers, int Electrons = 2>
   struct IntegralEngine;
