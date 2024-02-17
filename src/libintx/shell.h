@@ -68,8 +68,7 @@ struct alignas(32) Gaussian : Shell {
   Gaussian() = default;
 
   Gaussian(int L, std::vector<Primitive> ps, bool pure = true)
-    : Shell({L,(int)pure}),
-      K(ps.size())
+    : Shell({L,(int)pure}), K(ps.size())
   {
     if (ps.size() > KMAX) {
       throw std::domain_error("libintx::Gaussian: K > KMAX");
@@ -83,7 +82,7 @@ static_assert(sizeof(Gaussian) == 192);
 
 inline Gaussian::Primitive normalized(int L, Gaussian::Primitive p) {
   using math::factorial2_Kminus1;
-  using math::sqrt_Pi_cubed;
+  using math::sqrt_pi3;
   using math::pow;
   using math::sqrt;
   assert(L <= 15); // due to df_Kminus1[] a 64-bit integer type; kinda ridiculous restriction anyway
@@ -94,7 +93,7 @@ inline Gaussian::Primitive normalized(int L, Gaussian::Primitive p) {
   const auto two_alpha_to_am32 = pow(two_alpha,L+1) * sqrt(two_alpha);
   const auto f = sqrt(
     pow(2,L) * two_alpha_to_am32/
-    (sqrt_Pi_cubed * factorial2_Kminus1[2*L] )
+    (sqrt_pi3 * factorial2_Kminus1[2*L] )
   );
   double C = f*p.C;
   return Gaussian::Primitive{alpha, C };
@@ -110,7 +109,7 @@ inline Gaussian normalized(Gaussian s) {
 
 inline auto normalization_factor(const Gaussian &g) {
   using math::factorial2_Kminus1;
-  using math::sqrt_Pi_cubed;
+  using math::sqrt_pi3;
   using std::sqrt;
   using std::pow;
   double norm = 0;
@@ -124,7 +123,7 @@ inline auto normalization_factor(const Gaussian &g) {
       norm += C/pow(gamma,L+1.5);
     }
   }
-  norm *= sqrt_Pi_cubed;
+  norm *= sqrt_pi3;
   norm *= factorial2_Kminus1[2*L];
   norm /= pow(2.0,L);
   return 1/sqrt(norm);
@@ -160,6 +159,11 @@ constexpr auto& shell(const std::tuple< Shell,array<double,3> > &g) {
   return std::get<0>(g);
 }
 
+LIBINTX_GPU_ENABLED
+inline constexpr auto& exp(const std::tuple< Gaussian, array<double,3> > &g, int k) {
+  return shell(g).prims[k].a;
+}
+
 template<typename Shell>
 LIBINTX_GPU_ENABLED
 constexpr auto& center(const std::tuple< Shell,array<double,3> > &g) {
@@ -179,6 +183,39 @@ size_t nbf(Basis<Shell> &basis) {
   }
   return n;
 }
+
+
+template<typename S>
+struct Unit : libintx::Shell {
+  using Primitive = typename S::Primitive;
+  static constexpr array<Primitive,1> prims = {{ 0, 1 }};
+  static constexpr int K = 1;
+  constexpr Unit() : libintx::Shell({0,true}) {}
+};
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+constexpr inline auto shell(const Unit<Shell> &u) {
+  return u;
+}
+
+template<typename Shell>
+constexpr int nbf(const Unit<Shell> &u) {
+  return nbf(shell(u));
+}
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+inline constexpr auto exp(const Unit<Shell>&, int k) {
+  return std::integral_constant<int,0>{};
+}
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+constexpr inline auto center(const Unit<Shell> &u) {
+  return array<double,3>{ 0, 0, 0 };
+}
+
 
 }
 

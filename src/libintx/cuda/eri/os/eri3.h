@@ -146,7 +146,7 @@ struct ERI<3,_AB,_X,Boys,Derived> {
         double a = A.prims[i].a;
         double b = B.prims[j].a;
         double C = A.prims[i].C*B.prims[j].C;
-        C *= 2*pow(M_PI,2.5);
+        C *= 2*math::sqrt_4_pi5;
         AB.prims[ij] = { a, b, C };
       }
     }

@@ -116,7 +116,7 @@ struct ObaraSaika3::Kernel : ObaraSaika3 {
         AB.prims[k].a = A.prims[i].a;
         AB.prims[k].b = B.prims[j].a;
         double C = A.prims[i].C*B.prims[j].C;
-        AB.prims[k].C = C*2*pow(M_PI,2.5);
+        AB.prims[k].C = C*2*math::sqrt_4_pi5;
         //printf("AB[%i] = %f,%f,%f\n", k, AB.prims[k].a, AB.prims[k].b, AB.prims[k].C);
       }
     }
@@ -172,7 +172,7 @@ struct ObaraSaika3::Kernel : ObaraSaika3 {
       double Fm[N];
       boys.compute(alpha*norm(P,Q), X::L, Fm);
 
-      double Kab = exp(-(a*b)/(a+b)*norm(rA,rB));
+      double Kab = std::exp(-(a*b)/(a+b)*norm(rA,rB));
       double Kcd = 1;
       double pq = p*q;
       C *= Kab*Kcd;

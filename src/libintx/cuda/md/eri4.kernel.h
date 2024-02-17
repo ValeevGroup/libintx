@@ -119,7 +119,7 @@ namespace libintx::cuda::md::eri4 {
       double p = ab.exp;
       double q = cd.exp;
       double C = ab.C*cd.C;
-      //C *= 2*std::pow(M_PI,2.5);
+      //C *= math::sqrt_4_pi5;
 
       double alpha = (p*q)/(p+q);
       double T = alpha*norm(P,Q);

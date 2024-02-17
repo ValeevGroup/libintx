@@ -316,8 +316,8 @@ namespace {
           auto& [ai,Ci] = A.prims[ki];
           auto& [aj,Cj] = B.prims[kj];
             // P = (AB| overlap
-          double Kab = exp(-(ai*aj)/(ai+aj)*norm(AB));
-          Kab *= 2*std::pow(M_PI,2.5);
+          double Kab = std::exp(-(ai*aj)/(ai+aj)*norm(AB));
+          Kab *= math::sqrt_4_pi5;
           double sij = (idx.first == idx.second ? 1 : 2);
           // shmem values
           double a = ai;
@@ -398,8 +398,8 @@ namespace {
             auto& [ai,Ci] = A.prims[ki];
             auto& [aj,Cj] = B.prims[kj];
             // P = (AB| overlap
-            double Kab = exp(-(ai*aj)/(ai+aj)*norm(AB));
-            Kab *= 2*std::pow(M_PI,2.5);
+            double Kab = std::exp(-(ai*aj)/(ai+aj)*norm(AB));
+            Kab *= math::sqrt_4_pi5;
             double sij = (ij.first == ij.second ? 1 : 2);
             // shmem values
             a = ai;
@@ -492,7 +492,7 @@ namespace {
   //   __syncthreads();
 
   //   double s = 1;
-  //   s *= 2*std::pow(M_PI,2.5);
+  //   s *= math::sqrt_4_pi5;
   //   s *= ((ij.first == ij.second ? 1 : 2));
   //   cartesian_to_hermite_basis(p, A, B, ij.norm, s, P+ij.kprim);
 

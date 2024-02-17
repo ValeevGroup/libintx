@@ -8,6 +8,8 @@
 #include <cuda/api/memory.hpp>
 #include <cuda/api/device.hpp>
 
+#include <assert.h>
+
 namespace boys {
 namespace cuda {
 

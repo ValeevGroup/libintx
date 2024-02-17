@@ -124,7 +124,7 @@ namespace libintx::cuda::md {
             auto& [ai,Ci] = ab.first.prims[ki];
             auto& [aj,Cj] = ab.second.prims[kj];
             // P = (AB| overlap
-            double Kab = exp(-(ai*aj)/(ai+aj)*norm(AB));
+            double Kab = std::exp(-(ai*aj)/(ai+aj)*norm(AB));
             //double sij = (ij.first == ij.second ? 1 : 2);
             // shmem values
             a = ai;
