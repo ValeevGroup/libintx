@@ -18,17 +18,6 @@ set_target_properties(libintx.cuda PROPERTIES OUTPUT_NAME intx.cuda)
 target_link_libraries(libintx.cuda libintx.boys)
 target_link_libraries(libintx.cuda CUDA::cudart)
 
-add_library(
-  libintx.cuda.eri
-  EXCLUDE_FROM_ALL
-  eri/eri1.cu
-  eri/eri2.cu
-  eri/eri3.cu
-  eri/eri4.cu
-  )
-set_target_properties(libintx.cuda.eri PROPERTIES OUTPUT_NAME intx.cuda.eri)
-target_link_libraries(libintx.cuda.eri libintx.cuda)
-
 math(EXPR lmax2 "2*${LIBINTX_MAX_L}")
 foreach (L RANGE ${lmax2})
   foreach (X RANGE ${LIBINTX_MAX_X})

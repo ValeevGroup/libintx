@@ -26,10 +26,6 @@ if (NOT libintx_test_reference)
   set(libintx_test_reference libintx.rysq)
 endif()
 
-add_executable(libintx.test EXCLUDE_FROM_ALL libintx.test.cc)
-target_link_libraries(libintx.test libintx.os ${libintx_test_reference})
-add_test(NAME libintx COMMAND libintx.test)
-
 if (TARGET libintx.cuda)
   add_executable(libintx.cuda.test EXCLUDE_FROM_ALL libintx.cuda.test.cc)
   target_link_libraries(libintx.cuda.test libintx.cuda.eri ${libintx_test_reference})

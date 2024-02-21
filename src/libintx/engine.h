@@ -51,27 +51,6 @@ namespace libintx {
     virtual const double* buffer() = 0;
   };
 
-  template<int Order, class ... Args>
-  struct Engine;
-
-  template<>
-  struct Engine<3> {
-
-    using IntegralList = std::vector< std::tuple<Index<3>, double*> >;
-
-    Engine(
-      const std::vector< std::tuple<Gaussian,Double<3> > > &,
-      const std::vector< std::tuple<Gaussian,Double<3> > > &
-    );
-
-    void compute(const IntegralList &list);
-
-  protected:
-    std::vector< std::tuple<Gaussian,Double<3> > > basis_;
-    std::vector< std::tuple<Gaussian,Double<3> > > df_basis_;
-
-  };
-
   template<class Kernel, class F, size_t ... ABs, size_t ... Xs>
   static Kernel make_ab_x_kernel(
     F f, size_t AB, size_t X,
