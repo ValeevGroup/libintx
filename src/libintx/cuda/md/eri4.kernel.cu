@@ -41,7 +41,7 @@ namespace libintx::cuda::md {
     abq.resize((grid.x*grid.y)*(ab.nbf*cd.nherm));
     for (int kcd = 0; kcd < ket.K; ++kcd) {
       for (int kab = 0; kab < bra.K; ++kab) {
-        double C = 2*std::math::sqrt_4_pi5;
+        double C = math::sqrt_4_pi5;
         double Ck = (kab == 0 ? 0 : 1.0);
         eri4::eri4_pq<Block,2><<<grid,Block{},0,stream>>>(ab, cd, {kab,kcd}, cuda::boys(), pq.data());
         // cuda::stream::synchronize();

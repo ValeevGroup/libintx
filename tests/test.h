@@ -2,6 +2,7 @@
 #define LIBINTX_TEST_H
 
 #include "libintx/shell.h"
+#include "libintx/utility.h"
 
 #include <chrono>
 #include <random>
@@ -60,8 +61,8 @@ namespace libintx::test {
 
   struct enabled {
     const bool status;
-    enabled(int I, int J, int K) :
-      status(I <= LMAX && J <= LMAX && K <= XMAX)
+    enabled(int X, int C, int D) :
+      status(X <= XMAX && C <= LMAX && D <= LMAX)
     {
     }
     enabled(int I, int J, int K, int L) :
@@ -94,9 +95,13 @@ namespace libintx::test {
       return os;
     }
     friend
-    bool operator==(double lhs, const ReferenceValue &rhs) {
+    bool operator==(const ReferenceValue &rhs, double lhs) {
       if (lhs == double(rhs)) return true;
       return (std::abs(lhs-double(rhs)) <= rhs.tolerance_);
+    }
+    friend
+    bool operator==(double lhs, const ReferenceValue &rhs) {
+      return operator==(rhs,lhs);
     }
   private:
     double value_, tolerance_;
@@ -115,23 +120,33 @@ namespace libintx::test {
     );
   }
 
-  template<typename F>
-  void check4(
-    F Check,
-    int na, int nb, int nc, int nd,
-    const double *ref, double tolerance = 1e-6)
-  {
-    for (int kl = 0; kl < nc*nd; ++kl) {
-      for (int ij = 0; ij < na*nb; ++ij) {
-        //printf("idx=%i,%i,%i\n", ij, kl, (kl) + (ij)*ld);
-        test::ReferenceValue ab_cd_reference(
-          ref ? ref[kl+ij*nc*nd] : 0,
-          tolerance,
-          ij%nb, ij/nb,
-          kl%nd, kl/nd
-        );
-        Check(ij, kl, ab_cd_reference);
-        //CHECK(*ab++ == ab_x_reference);
+  auto basis2(std::pair<int,int> L, std::pair<int,int> K, size_t N) {
+    Basis<Gaussian> basis;
+    std::vector<Index2> idx;
+    bool pure = true;
+    for (int i = 0; i < (int)N; ++i) {
+      auto a = test::gaussian(L.first, K.first, pure);
+      auto b = test::gaussian(L.second, K.second, pure);
+      auto r0 = test::random<double,3>(-0.25,0.25);
+      auto r1 = test::random<double,3>(-0.25,0.25);
+      basis.push_back({a,r0});
+      basis.push_back({b,r1});
+      idx.push_back(Index2{i*2,i*2+1});
+    }
+    return std::tuple{basis,idx};
+  }
+
+  template<typename F, typename T>
+  void check4(F Check, T Ref, double tolerance = 1e-6) {
+    auto &dims = Ref.dimensions();
+    for (int l = 0; l < dims[3]; ++l) {
+      for (int k = 0; k < dims[2]; ++k) {
+        for (int j = 0; j < dims[1]; ++j) {
+          for (int i = 0; i < dims[0]; ++i) {
+            test::ReferenceValue ref(Ref(i,j,k,l), tolerance, i,j,k,l);
+            Check(ref,i,j,k,l);
+          }
+        }
       }
     }
   }
