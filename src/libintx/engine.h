@@ -39,6 +39,7 @@ namespace libintx {
       const Double<3>&
     ) = 0;
     virtual const double* buffer() = 0;
+    virtual void repeat(size_t n, const Double<3>&, const Double<3>&, const Double<3>&) = 0;
   };
 
   template<>
@@ -49,6 +50,7 @@ namespace libintx {
       const Double<3>&, const Double<3>&
     ) = 0;
     virtual const double* buffer() = 0;
+    virtual void repeat(size_t n, const Double<3>&, const Double<3>&, const Double<3>&, const Double<3>&) = 0;
   };
 
   template<class Kernel, class F, size_t ... ABs, size_t ... Xs>

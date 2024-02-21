@@ -36,30 +36,39 @@ namespace libint2 {
   }
 
   struct Kernel3 : Kernel<3> {
-    explicit Kernel3(const Gaussian& a, const Gaussian& b, const Gaussian& x)
-      : a_(cast(a)), b_(cast(b)), x_(cast(x))
+    explicit Kernel3(const Gaussian& x, const Gaussian& c, const Gaussian& d)
+      : x_(cast(x)), c_(cast(c)), d_(cast(d))
     {
       ::libint2::initialize();
       auto impl = new ::libint2::Engine(::libint2::Operator::coulomb, 10, LIBINT_MAX_AM);
-      impl->set(::libint2::BraKet::xx_xs);
+      impl->set(::libint2::BraKet::xs_xx);
       impl_.reset(impl);
     }
-    const double* compute(const Double<3> &a, const Double<3> &b, const Double<3> &x) override {
+    const double* compute(const Double<3> &x, const Double<3> &c, const Double<3> &d) override {
       assert(impl_);
       impl_->compute(
-        a_.move(cast(a)),
-        b_.move(cast(b)),
-        x_.move(cast(x))
-        //::libint2::Shell::unit()
+        x_.move(cast(x)),
+        //::libint2::Shell::unit(),
+        c_.move(cast(c)),
+        d_.move(cast(d))
       );
       return this->buffer();
     }
     const double* buffer() override {
       return this->impl_->results()[0];
     }
+    void repeat(size_t n, const Double<3> &x, const Double<3> &c, const Double<3> &d) override {
+      assert(impl_);
+      x_.move(cast(x));
+      c_.move(cast(c));
+      d_.move(cast(d));
+      for (size_t i = 0; i < n; ++i) {
+        impl_->compute(x_, c_, d_);
+      }
+    }
   private:
     std::unique_ptr<::libint2::Engine> impl_;
-    ::libint2::Shell a_, b_, x_;
+    ::libint2::Shell x_, c_, d_;
   };
 
   struct Kernel4 : Kernel<4> {
@@ -80,6 +89,17 @@ namespace libint2 {
         d_.move(cast(d))
       );
       return this->buffer();
+    }
+    void repeat(size_t n, const Double<3> &a, const Double<3> &b, const Double<3> &c, const Double<3> &d) override {
+      assert(impl_);
+      for (size_t i = 0; i < n; ++i) {
+        impl_->compute(
+          a_.move(cast(a)),
+          b_.move(cast(b)),
+          c_.move(cast(c)),
+          d_.move(cast(d))
+        );
+      }
     }
     const double* buffer() override {
       return this->impl_->results()[0];

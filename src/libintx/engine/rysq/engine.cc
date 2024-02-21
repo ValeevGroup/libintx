@@ -64,6 +64,15 @@ namespace rysq {
       transform_(eri, buffer_.get());
       return this->buffer_.get();
     }
+    void repeat(size_t n, const Double<3> &a, const Double<3> &b, const Double<3> &x) override {
+      assert(impl_);
+      auto a_ = cast(a);
+      auto b_ = cast(b);
+      auto x_ = cast(x);
+      for (size_t i = 0; i < n; ++i) {
+        impl_->compute(a_, b_, x_);
+      }
+    }
     const double* buffer() override {
       return this->buffer_.get();
     }
@@ -83,6 +92,20 @@ namespace rysq {
       assert(impl_);
       buffer_ = impl_->compute({ cast(a), cast(b), cast(c), cast(d) });
       return this->buffer();
+    }
+    void repeat(
+      size_t n,
+      const Double<3> &a, const Double<3> &b,
+      const Double<3> &c, const Double<3> &d) override
+    {
+      assert(impl_);
+      auto a_ = cast(a);
+      auto b_ = cast(b);
+      auto c_ = cast(c);
+      auto d_ = cast(d);
+      for (size_t i = 0; i < n; ++i) {
+        impl_->compute(a_, b_, c_, d_);
+      }
     }
     const double* buffer() override {
       return this->buffer_;
