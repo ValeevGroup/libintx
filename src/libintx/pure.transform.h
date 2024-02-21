@@ -11,8 +11,8 @@ namespace libintx::pure {
 
   template<int L, int M>
   struct tuple<L,M> {
-    std::integral_constant<int,L> l;
-    std::integral_constant<int,M> m;
+    std::integral_constant<int16_t,L> l;
+    std::integral_constant<int16_t,M> m;
     //std::tuple< std::integral_constant<int,Args> ... >
   };
 
@@ -190,6 +190,62 @@ namespace libintx::pure {
     //#pragma unroll
     for (int i = 0; i < npure(A); ++i) {
       v[i] = u[i];
+    }
+  }
+
+}
+namespace libintx::pure::reference {
+
+  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  void transform(int A, int B, const auto &Cart, auto &&Pure) {
+    for (int ib = 0; ib < npure(B); ++ib) {
+      for (int ia = 0; ia < npure(A); ++ia) {
+        auto a = pure::orbital(A,ia);
+        auto b = pure::orbital(B,ib);
+        double v = 0;
+        for (auto q : cartesian::shell(B)) {
+          for (auto p : cartesian::shell(A)) {
+            auto ap = coefficient(a,p);
+            auto bq = coefficient(b,q);
+            v += ap*bq*Cart(index(p), index(q));
+          }
+        }
+        //printf("c(%i,%i)=%f\n", index(a), index(b), Cart(index(a), index(b)));
+        Pure(index(a), index(b)) = v;
+      }
+    }
+  }
+
+  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  void transform(int A, int B, int C, int D, const auto &Cart, auto &&Pure) {
+    for (int id = 0; id < npure(D); ++id) {
+      for (int ic = 0; ic < npure(C); ++ic) {
+        for (int ib = 0; ib < npure(B); ++ib) {
+          for (int ia = 0; ia < npure(A); ++ia) {
+            auto a = pure::orbital(A,ia);
+            auto b = pure::orbital(B,ib);
+            auto c = pure::orbital(C,ic);
+            auto d = pure::orbital(D,id);
+            double v = 0;
+            for (auto s : cartesian::shell(D)) {
+              for (auto r : cartesian::shell(C)) {
+                auto cr = coefficient(c,r);
+                auto ds = coefficient(d,s);
+                for (auto q : cartesian::shell(B)) {
+                  for (auto p : cartesian::shell(A)) {
+                    auto ap = coefficient(a,p);
+                    auto bq = coefficient(b,q);
+                    v += ap*bq*cr*ds*Cart(index(p), index(q), index(r), index(s));
+                  }
+                }
+                //printf("c(%i,%i)=%f\n", index(a), index(b), Cart(index(a), index(b)));
+              }
+            }
+            //printf("v(%i,%i)=%f\n", i, j, v);
+            Pure(index(a), index(b), index(c), index(d)) = v;
+          }
+        }
+      }
     }
   }
 

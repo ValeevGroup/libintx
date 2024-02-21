@@ -79,6 +79,13 @@ constexpr inline double coefficient(int l, int m, int lx, int ly, int lz) {
 
 }
 
+LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+constexpr double coefficient(const pure::Orbital &p, const cartesian::Orbital &c) {
+  auto [l,m] = p;
+  auto [x,y,z] = c;
+  return coefficient(l, m, x, y, z);
+}
+
 template<int L, int M, int LX, int LY, int LZ>
 struct Coefficient {
   static constexpr double value = coefficient(L,M,LX,LY,LZ);
