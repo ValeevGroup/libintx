@@ -58,6 +58,40 @@ namespace libintx {
   };
 
 
+  template<size_t Bytes, typename T>
+  constexpr size_t nwords() {
+    static_assert(sizeof(T)%Bytes == 0);
+    return sizeof(T)/Bytes;
+  }
+
+  template<typename T>
+  constexpr auto nqwords = nwords<sizeof(double),T>();
+
+
+  template<typename F, typename T, T ... Is>
+  LIBINTX_GPU_FORCEINLINE
+  constexpr void foreach(const std::integer_sequence<T,Is...>&, F &&f) {
+    ( f(std::integral_constant<T,Is>{}), ... );
+}
+
+  template<typename F, typename T, T ... First, T ... Second>
+  LIBINTX_GPU_FORCEINLINE
+  constexpr void foreach2(
+    std::integer_sequence<T,First...> first,
+    std::integer_sequence<T,Second...> second,
+    F &&f)
+  {
+    foreach(
+      second,
+      [&](auto &&J) {
+        foreach(
+          first,
+          [&](auto &&I) { f(I,J); }
+        );
+      }
+    );
+  }
+
 }
 
 #define libintx_assert(EXPR)                            \
