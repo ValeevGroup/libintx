@@ -7,19 +7,19 @@
 
 namespace libintx::cuda::md {
 
-  struct alignas(8) Hermitian {
+  struct alignas(8) Hermite {
     Double<3> r;
     double exp;
     double C;
 
     LIBINTX_GPU_ENABLED
     static auto* hdata(double *p) {
-      return reinterpret_cast<Hermitian*>(p);
+      return reinterpret_cast<Hermite*>(p);
     }
 
     LIBINTX_GPU_ENABLED
     static auto* hdata(const double *p) {
-      return reinterpret_cast<const Hermitian*>(p);
+      return reinterpret_cast<const Hermite*>(p);
     }
 
     LIBINTX_GPU_ENABLED
@@ -34,14 +34,14 @@ namespace libintx::cuda::md {
 
     LIBINTX_GPU_ENABLED
     static constexpr size_t extent(const Shell &A, const Shell &B) {
-      return (sizeof(Hermitian)/sizeof(double) + nbf(A)*nbf(B)*nherm2(A.L+B.L));
+      return (sizeof(Hermite)/sizeof(double) + nbf(A)*nbf(B)*nherm2(A.L+B.L));
     }
 
   };
 
   struct Basis1 {
     const int L, K;
-    device::vector<Hermitian> H;
+    device::vector<Hermite> H;
   };
 
   inline size_t nbf(const Basis1 &v) {

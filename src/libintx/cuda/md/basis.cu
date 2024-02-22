@@ -118,7 +118,7 @@ namespace libintx::cuda::md {
         __shared__ double a, b;
 
         {
-          __shared__ Hermitian h;
+          __shared__ Hermite h;
           if (thread_block.thread_rank() == 0) {
             Hk = H + k*ldH + blockIdx.x*K*ldH;
             auto& [ai,Ci] = ab.first.prims[ki];
@@ -135,7 +135,7 @@ namespace libintx::cuda::md {
           }
           thread_block.sync();
           E.init(a, b, AB, thread_block);
-          memcpy1(&h, Hermitian::hdata(Hk), thread_block);
+          memcpy1(&h, Hermite::hdata(Hk), thread_block);
         }
         thread_block.sync();
 
@@ -184,12 +184,12 @@ namespace libintx::cuda::md {
             thread_block.sync();
 #undef h
 
-#define h(i,j,p) h[(j) + (i)*NB + (p)*NB*NA]
+#define h(i,j,p) h[(i) + (j)*NA + (p)*NB*NA]
             if (threadIdx.x < NB && ip < NP) {
               int j = threadIdx.x;
               pure::transform<A>(
                 [&](auto i, auto v) {
-                  //printf("%i,%i,%i %e\n", (int)index(i), (int)j, (int)threadIdx.y, v);
+                  //printf("%i,%i,%i %f\n", (int)index(i), (int)j, (int)threadIdx.y, v);
                   h(index(i),j,threadIdx.y) = v;
                 },
                 [&](auto i) { return v[index(i)]; }
@@ -198,7 +198,7 @@ namespace libintx::cuda::md {
             thread_block.sync();
 #undef h
 
-            memcpy(NA*NB*np, h, Hermitian::gdata(Hk)+batch*DimY*NA*NB, thread_block);
+            memcpy(NA*NB*np, h, Hermite::gdata(Hk)+batch*DimY*NA*NB, thread_block);
             thread_block.sync();
 
           }
@@ -217,7 +217,7 @@ namespace libintx::cuda::md {
               auto p = orbitals[ip];
               //printf("%i,%i,%i %f @%i\n", i, j, ip, E(p,a,b), H-h);
               double e = E(a,b,p);
-              Hermitian::gdata(Hk)[idx] = e;
+              Hermite::gdata(Hk)[idx] = e;
             }
           }
         }
@@ -242,7 +242,7 @@ namespace libintx::cuda::md {
     int N = ab.size();
 
     bool pure = (a.pure && b.pure);
-    int nh = Hermitian::extent(a,b);
+    int nh = Hermite::extent(a,b);
     H.resize(nh*K*N);
 
     dim3 grid = { (unsigned int)N };

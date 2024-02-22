@@ -1,5 +1,8 @@
-#ifndef LIBINTX_MD_HERMITIAN_H
-#define LIBINTX_MD_HERMITIAN_H
+#ifndef LIBINTX_MD_HERMITE_H
+#define LIBINTX_MD_HERMITE_H
+
+#include "libintx/orbital.h"
+#include "libintx/utility.h"
 
 namespace libintx::md {
 
@@ -161,4 +164,4 @@ namespace libintx::md {
 
 }
 
-#endif /* LIBINTX_MD_HERMITIAN_H */
+#endif /* LIBINTX_MD_HERMITE_H */

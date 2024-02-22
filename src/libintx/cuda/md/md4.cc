@@ -1,10 +1,15 @@
-#include "libintx/cuda/md/eri4.h"
+#include "libintx/cuda/md/md4.h"
+#include "libintx/cuda/md/basis.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"
-#include "libintx/tuple.h"
-#include <numeric>
 
 namespace libintx::cuda::md {
+
+  struct ERI4::Memory {
+    device::vector<double> p;
+    device::vector<double> q;
+    std::array<device::vector<double>,2> buffer;
+  };
 
   ERI4::ERI4(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, cudaStream_t stream) {
     libintx_assert(!bra.empty());
@@ -12,16 +17,20 @@ namespace libintx::cuda::md {
     bra_ = bra;
     ket_ = ket;
     stream_ = stream;
+    memory_.reset(new Memory);
   }
+
+  ERI4::~ERI4() {}
 
   void ERI4::compute(
     const std::vector<Index2> &bra,
     const std::vector<Index2> &ket,
-    double *V)
+    double *V,
+    std::array<size_t,2> dims)
   {
 
     using Kernel = std::function<void(
-      ERI4 &eri, const Basis2&, const Basis2&, double*, size_t, cudaStream_t
+      ERI4&, const Basis2&, const Basis2&, TensorRef<double,2>, cudaStream_t
     )>;
 
     static auto ab_cd_kernels = make_array<Kernel,2*LMAX+1,2*LMAX+1>(
@@ -31,12 +40,22 @@ namespace libintx::cuda::md {
     );
 
     auto stream = this->stream_;
-    Basis2 p = make_basis(bra_, bra_, bra, this->p_, stream);
-    Basis2 q = make_basis(ket_, ket_, ket, this->q_, stream);
+    auto p = make_basis(bra_, bra_, bra, this->memory_->p, stream);
+    auto q = make_basis(ket_, ket_, ket, this->memory_->q, stream);
     auto kernel = ab_cd_kernels[p.first.L+p.second.L][q.first.L+q.second.L];
-    kernel(*this, p, q, V, nbf(ket_), stream);
+    kernel(*this, p, q, TensorRef{V,dims}, stream);
 
   }
+
+  template<int Idx>
+  double* ERI4::buffer(size_t size) {
+    auto &v = std::get<Idx>(this->memory_->buffer);
+    v.resize(size);
+    return v.data();
+  }
+
+  template double* ERI4::buffer<0>(size_t size);
+  template double* ERI4::buffer<1>(size_t size);
 
   template<>
   std::unique_ptr< IntegralEngine<4,2> > eri<4>(

@@ -91,9 +91,10 @@ namespace libintx {
   struct IntegralEngine<4,2> {
     virtual ~IntegralEngine() = default;
     virtual void compute(
-      const std::vector<Index2>&,
-      const std::vector<Index2>&,
-      double*
+      const std::vector<Index2> &bra,
+      const std::vector<Index2> &ket,
+      double*,
+      std::array<size_t,2>
     ) = 0;
   };
 

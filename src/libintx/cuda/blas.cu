@@ -5,8 +5,47 @@
 
 namespace libintx::cuda {
 
+  template<int Tile>
+  __global__
+  void transpose(size_t M, size_t N, const double *A, size_t ldA, double *T, size_t ldT) {
+    assert(M <= ldA);
+    assert(N <= ldT);
+    __shared__ double t[Tile][Tile+1];
+    for (int y = threadIdx.y; y < Tile; y += blockDim.y) {
+      int i = threadIdx.x + blockIdx.x*Tile;
+      int j = y + blockIdx.y*Tile;
+      if (i >= M || j >= N) break;
+      t[threadIdx.x][y] = A[i + j*ldA];
+      //printf("A[%i,%i]=%f\n", i, j, t[threadIdx.x][y]);
+    }
+    __syncthreads();
+    for (int y = threadIdx.y; y < Tile; y += blockDim.y) {
+      int i = y + blockIdx.x*Tile;
+      int j = threadIdx.x + blockIdx.y*Tile;
+      //printf("A'[%i,%i]=%f\n", j, i, t[y][threadIdx.x]);
+      if (i >= M || j >= N) break;
+      T[j + i*ldT] = t[y][threadIdx.x];
+      //printf("t[%i,%i]=%f\n", y, threadIdx.x, t[y][threadIdx.x]);
+      //T[threadIdx.x + blockIdx.y*32 + (i+blockIdx.x*32)*N] = t[i][threadIdx.x];
+      //T[(i+blockIdx.x*32)*N] = t[i][threadIdx.x];
+    }
+  }
+
+  void transpose(
+    size_t M, size_t N,
+    const double *A, size_t ldA,
+    double *T, size_t ldT,
+    cudaStream_t stream)
+  {
+    constexpr int DimX = 16;
+    constexpr size_t batches = 1;
+    dim3 g = { (M+DimX-1)/DimX, (N+DimX-1)/DimX, batches };
+    dim3 b = { DimX, 4 };
+    transpose<DimX><<<g,b,0,stream>>>(M, N, A, ldA, T, ldT);
+  }
+
   template<typename LayoutA, typename LayoutB, typename LayoutC>
-  void GemmBatched(
+  void batch_gemm(
     int M, int N, int K,
     double alpha,
     const double *A, int64_t ldA, int64_t strideA,
@@ -38,8 +77,8 @@ namespace libintx::cuda {
       typename Gemm::Arguments{
         GemmCoord{M, N, K},
         //TensorRef<const double,RowMajor>{PX, K*bra.N}, K*N,
-        TensorRef<const double,RowMajor>{A, ldA}, strideA,
-        TensorRef<const double,RowMajor>{B, ldB}, strideB,
+        TensorRef<const double,LayoutA>{A, ldA}, strideA,
+        TensorRef<const double,LayoutB>{B, ldB}, strideB,
         TensorRef<const double,LayoutC>{C, ldC}, strideC,
         TensorRef<double, LayoutC>{C, ldC}, strideC,
         typename Gemm::EpilogueOutputOp::Params{alpha, beta},
@@ -55,7 +94,7 @@ namespace libintx::cuda {
   }
 
   template
-  void GemmBatched<RowMajor,RowMajor,RowMajor>(
+  void batch_gemm<ColumnMajor,ColumnMajor,ColumnMajor>(
     int M, int N, int K,
     double alpha,
     const double *A, int64_t ldA, int64_t strideA,
@@ -67,7 +106,7 @@ namespace libintx::cuda {
   );
 
   template
-  void GemmBatched<RowMajor,RowMajor,ColumnMajor>(
+  void batch_gemm<ColumnMajor,RowMajor,ColumnMajor>(
     int M, int N, int K,
     double alpha,
     const double *A, int64_t ldA, int64_t strideA,

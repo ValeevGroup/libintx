@@ -28,12 +28,12 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
   auto [bra,ijs] = test::basis2({A,B}, {K.first,1}, M);
   auto [ket,kls] = test::basis2({C,D}, {K.second,1}, N);
 
-  Eigen::Tensor<double,6> result(ND,NC,N,NB,NA,M);
+  Eigen::Tensor<double,6> result(M,NA,NB,NC,ND,N);
   cuda::host::register_pointer(result.data(), result.size());
 
   cudaStream_t stream = 0;
   auto md = cuda::md::eri<4>(bra, ket, stream);
-  md->compute(ijs, kls, result.data());
+  md->compute(ijs, kls, result.data(), {M*NA*NB, NC*ND*N});
   cuda::stream::synchronize(stream);
 
   for (size_t ij = 0; ij < ijs.size(); ++ij) {
@@ -47,7 +47,7 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
           ncart(A), ncart(B), ncart(C), ncart(D)
         );
         ab_cd_cartesian.setZero();
-        libintx::md::reference::compute_ab_cd(bra[i], bra[j], ket[k], ket[l], ab_cd_cartesian);
+        libintx::md::reference::compute(bra[i], bra[j], ket[k], ket[l], ab_cd_cartesian);
         libintx::pure::reference::transform(
           A, B, C, D,
           ab_cd_cartesian,
@@ -55,9 +55,9 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
         );
       }
       test::check4(
-        [&](const auto &ab_cd_ref, auto i, auto j, auto k, auto l) {
+        [&](const auto &ab_cd_ref, auto ... idx) {
           //printf("(%i,%i) %p\n", p, cd, &pCD(ij,p,cd,kl));
-          auto ab_cd = result(l,k,(int)kl,j,i,(int)ij);
+          auto ab_cd = result(ij,idx...,kl);
           CHECK(ab_cd == ab_cd_ref);
         },
         ab_cd_ref
@@ -70,8 +70,8 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
 }
 
 #define MD_ERI4_SUBCASE(A,B,C,D,Ks)                     \
-  SUBCASE("(AB|CD)=(" # A # B "|" # C # D ")") {        \
-    if (test::enabled(A,B,C,D)) {                       \
+  if (test::enabled(A,B,C,D)) {                         \
+    SUBCASE(str("(AB|CD)=(",A,B,"|",C,D,")").c_str()) { \
       for (auto K : Ks) {                               \
         md_eri4_subcase(A,B,C,D,K);                     \
       }                                                 \
@@ -80,10 +80,10 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
 
 TEST_CASE("cuda.md.eri4") {
   std::vector< std::pair<int,int> > Ks = {
-    {1,1},  {1,3}, {5,3}
+    {1,1}, {1,3}, {5,3}
   };
   MD_ERI4_SUBCASE(0,0,0,0,Ks);
-  MD_ERI4_SUBCASE(1,0,0,0,Ks);
+  MD_ERI4_SUBCASE(1,2,0,0,Ks);
   MD_ERI4_SUBCASE(2,0,0,0,Ks);
   MD_ERI4_SUBCASE(0,0,2,0,Ks);
   MD_ERI4_SUBCASE(1,1,0,0,Ks);

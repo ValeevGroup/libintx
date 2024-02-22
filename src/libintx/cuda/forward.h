@@ -6,6 +6,8 @@
 #include <memory>
 #include <vector>
 
+typedef struct CUstream_st* cudaStream_t;
+
 namespace boys::cuda {
 
   template<int Order, int M, int MaxT, int Segments>

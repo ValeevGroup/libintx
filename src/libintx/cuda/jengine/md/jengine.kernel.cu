@@ -79,7 +79,7 @@ namespace {
       }
 
       constexpr auto Order = r1::DepthFirst;
-      r1::visit<Order>(
+      r1::visit<M,Order>(
         [&](auto &r) constexpr {
           r1::visitor<Bra,Ket>::apply1(v,r);
         },

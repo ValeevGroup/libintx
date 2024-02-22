@@ -10,8 +10,15 @@ namespace libintx::cuda {
   using cutlass::layout::RowMajor;
   using cutlass::layout::ColumnMajor;
 
+  void transpose(
+    size_t M, size_t N,
+    const double *S, size_t ldS,
+    double *T, size_t ldT,
+    cudaStream_t stream
+  );
+
   template<typename LayoutA, typename LayoutB, typename LayoutC>
-  void GemmBatched(
+  void batch_gemm(
     int M, int N, int K,
     double alpha,
     const double *A, int64_t ldA, int64_t strideA,

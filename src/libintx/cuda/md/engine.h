@@ -1,8 +1,8 @@
 #ifndef LIBINTX_CUDA_MD_ENGINE_H
 #define LIBINTX_CUDA_MD_ENGINE_H
 
-#include "libintx/cuda/eri.h"
-#include "libintx/cuda/api/api.h"
+#include "libintx/cuda/forward.h"
+#include "libintx/shell.h"
 #include <memory>
 
 namespace libintx::cuda::md {

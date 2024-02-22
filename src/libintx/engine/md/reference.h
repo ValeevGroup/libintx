@@ -230,7 +230,6 @@ namespace libintx::md::reference {
                         }
                         double r = r1[hermite::index2(p+q)];
                         v += Ep*Eq*r*phase;
-                        //printf("ref: v=%f*%f*%f\n", Ep, Eq, r);
                       } // p
                     } // q
                     ABCD(index(a),index(b),index(c),index(d)) += sqrt_4_pi5*v;

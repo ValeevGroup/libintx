@@ -3,6 +3,7 @@
 
 #include "libintx/shell.h"
 #include "libintx/utility.h"
+#include "libintx/reference.h"
 
 #include <chrono>
 #include <random>
@@ -149,6 +150,18 @@ namespace libintx::test {
         }
       }
     }
+  }
+
+}
+
+namespace libintx::reference {
+
+  template<typename ... Args>
+  double time(int N, Args ... args) {
+    auto eri = libintx::reference::eri(std::get<0>(args)...);
+    auto t = time::now();
+    eri->repeat(N, std::get<1>(args)...);
+    return time::since(t);
   }
 
 }
