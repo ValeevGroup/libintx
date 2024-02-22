@@ -117,5 +117,17 @@ namespace libintx::cuda {
     cudaStream_t stream
   );
 
+  template
+  void batch_gemm<RowMajor,RowMajor,ColumnMajor>(
+    int M, int N, int K,
+    double alpha,
+    const double *A, int64_t ldA, int64_t strideA,
+    const double *B, int64_t ldB, int64_t strideB,
+    double beta,
+    double *C, int64_t ldC, int64_t strideC,
+    int batches,
+    cudaStream_t stream
+  );
+
 
 }

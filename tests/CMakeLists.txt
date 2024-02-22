@@ -26,6 +26,17 @@ if (NOT libintx_test_reference)
   set(libintx_test_reference libintx.rysq)
 endif()
 
+if (TARGET libintx.cuda.md.eri3)
+  # benchmarks
+  add_executable(libintx.cuda.md3.benchmarks EXCLUDE_FROM_ALL libintx.cuda.md3.benchmarks.cc)
+  target_link_libraries(libintx.cuda.md3.benchmarks libintx.cuda.md.eri3)
+  target_link_libraries(libintx.cuda.md3.benchmarks ${libintx_test_reference})
+  # tests
+  add_executable(libintx.cuda.md3.test EXCLUDE_FROM_ALL libintx.cuda.md3.test.cc)
+  target_link_libraries(libintx.cuda.md3.test libintx.cuda.md.eri3)
+  target_link_libraries(libintx.cuda.md3.test ${libintx_test_reference})
+endif()
+
 if (TARGET libintx.cuda.md.eri4)
   # benchmarks
   add_executable(libintx.cuda.md4.benchmarks EXCLUDE_FROM_ALL libintx.cuda.md4.benchmarks.cc)

@@ -132,6 +132,7 @@ namespace libintx::cuda::md {
             h.exp = (a+b);
             h.C = Ci*Cj*Kab;
             h.r = center_of_charge(a, ab.r.first, b, ab.r.second);
+            h.inv_2_exp = 1/math::pow<A+B>(2*(a+b));
           }
           thread_block.sync();
           E.init(a, b, AB, thread_block);
@@ -321,6 +322,42 @@ namespace libintx::cuda::md {
     cuda::host::unregister_pointer(ab.data());
 
     return basis;
+
+  }
+
+  Basis1 make_basis(
+    const Basis<Gaussian> &A,
+    const std::vector<Index1> &idx,
+    device::vector<Hermite> &H,
+    cudaStream_t stream)
+  {
+
+    libintx_assert(!A.empty());
+    libintx_assert(!idx.empty());
+
+    int L = shell(A[idx.front()]).L;
+    int K = shell(A[idx.front()]).K;
+    int N = idx.size();
+
+    for (auto i : idx) {
+      libintx_assert(shell(A[i]).K == K);
+      libintx_assert(shell(A[i]).L == L);
+    }
+
+    std::vector<Hermite> a;
+    a.reserve(K*idx.size());
+    for (int k = 0; k < K; ++k) {
+      for (auto i : idx) {
+        auto &r = center(A[i]);
+        auto &g = shell(A[i]).prims;
+        auto e = g[k].a;
+        auto C = g[k].C;
+        a.push_back( { e, C, r, 1.0/(2*e) } );
+      }
+    }
+    H.assign(a.data(), a.size());
+
+    return Basis1{L,K,N,H.data()};
 
   }
 

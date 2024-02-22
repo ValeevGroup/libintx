@@ -121,6 +121,19 @@ namespace libintx::test {
     );
   }
 
+  auto basis1(std::tuple<int> L, std::tuple<int> K, size_t N) {
+    Basis<Gaussian> basis;
+    std::vector<Index1> idx;
+    bool pure = true;
+    for (int i = 0; i < (int)N; ++i) {
+      auto a = test::gaussian(std::get<0>(L), std::get<0>(K), pure);
+      auto r0 = test::random<double,3>(-0.25,0.25);
+      basis.push_back({a,r0});
+      idx.push_back(Index1{i});
+    }
+    return std::tuple{basis,idx};
+  }
+
   auto basis2(std::pair<int,int> L, std::pair<int,int> K, size_t N) {
     Basis<Gaussian> basis;
     std::vector<Index2> idx;

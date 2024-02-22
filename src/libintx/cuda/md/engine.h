@@ -11,6 +11,13 @@ namespace libintx::cuda::md {
   std::unique_ptr< IntegralEngine<Order,2> > eri(const Args& ...) = delete;
 
   template<>
+  std::unique_ptr< IntegralEngine<3,2> > eri(
+    const Basis<Gaussian>&,
+    const Basis<Gaussian>&,
+    const cudaStream_t&
+  );
+
+  template<>
   std::unique_ptr< IntegralEngine<4,2> > eri(
     const Basis<Gaussian>&,
     const Basis<Gaussian>&,

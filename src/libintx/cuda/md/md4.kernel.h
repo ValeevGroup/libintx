@@ -1,49 +1,15 @@
 #include "libintx/cuda/forward.h"
 #include "libintx/cuda/md/basis.h"
-#include "libintx/engine/md/r1/recurrence.h"
-
+#include "libintx/cuda/md/md.kernel.h"
 #include "libintx/cuda/api/thread_group.h"
 
+#include "libintx/engine/md/r1/recurrence.h"
 #include "libintx/math.h"
 
 namespace libintx::cuda::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
-
-  LIBINTX_GPU_DEVICE
-  constexpr auto orbitals = hermite::orbitals<2*LMAX>;
-
-  template<int ... Args>
-  struct Basis2;
-
-  template<int AB>
-  struct Basis2<AB> {
-    static constexpr int L = AB;
-    static constexpr int nherm = nherm2(L);
-    const Shell first, second;
-    const int nbf;
-    const int K;
-    const int N;
-    const double *data;
-    const int stride;
-    Basis2(Shell a, Shell b, int K, int N, const double *H)
-      : first(a), second(b),
-        nbf(libintx::nbf(a)*libintx::nbf(b)),
-        K(K), N(N), data(H),
-        stride(sizeof(Hermite)/sizeof(double)+nherm*nbf)
-    {
-    }
-    LIBINTX_GPU_ENABLED
-    auto hdata(int p, int k) const {
-      return reinterpret_cast<const Hermite*>(data + k*stride + p*K*stride);
-    }
-    LIBINTX_GPU_ENABLED
-    auto gdata(int p, int k) const {
-      return reinterpret_cast<const double*>(hdata(p,k)+1);
-    }
-  };
-
 
   // compute [p,q,kl,ij]
   template<typename ThreadBlock, int MinBlocks, int Bra, int Ket, typename Boys>
@@ -63,7 +29,6 @@ namespace libintx::cuda::md::kernel {
     static constexpr int L = bra.L+ket.L;
     static constexpr int NP = bra.nherm;
     static constexpr int NQ = ket.nherm;
-    static constexpr int NPQ = NP*NQ;
 
     constexpr ThreadBlock thread_block;
     constexpr int num_threads = ThreadBlock::size();
@@ -116,10 +81,10 @@ namespace libintx::cuda::md::kernel {
     }
 
     for (int iq = threadIdx.y; iq < NQ; iq += thread_block.y) {
-      const auto q = kernel::orbitals[iq];
+      const auto q = orbitals2[iq];
       int phase = (q.L()%2 == 0 ? +1 : -1);
       for (int ip = threadIdx.x; ip < NP; ip += thread_block.x) {
-        const auto p = kernel::orbitals[ip];
+        const auto p = orbitals2[ip];
         auto ipq = herm::index2(p+q);
         H(ip,iq,blockIdx.y,blockIdx.x) = phase*R[ipq];
       }

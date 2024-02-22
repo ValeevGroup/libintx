@@ -8,9 +8,10 @@
 namespace libintx::cuda::md {
 
   struct alignas(8) Hermite {
-    Double<3> r;
     double exp;
     double C;
+    Double<3> r;
+    double inv_2_exp;
 
     LIBINTX_GPU_ENABLED
     static auto* hdata(double *p) {
@@ -40,19 +41,22 @@ namespace libintx::cuda::md {
   };
 
   struct Basis1 {
-    const int L, K;
-    device::vector<Hermite> H;
+    const int L, K, N;
+    const Hermite *data;
   };
-
-  inline size_t nbf(const Basis1 &v) {
-    return npure(v.L)*v.H.size();
-  }
 
   struct Basis2 {
     const Shell first, second;
     const int K, N;
     const double *data;
   };
+
+  Basis1 make_basis(
+    const Basis<Gaussian> &A,
+    const std::vector<Index1> &idx,
+    device::vector<Hermite> &H,
+    cudaStream_t
+  );
 
   Basis2 make_basis(
     const Basis<Gaussian> &A,
