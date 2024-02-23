@@ -162,6 +162,49 @@ namespace libintx::md {
     }
   }
 
+
+  template<int Ax, int Ay, int Az, int Px = 0, int Py = 0, int Pz = 0>
+  LIBINTX_GPU_ENABLED
+  double hermite_to_cartesian(auto &h, double inv_2p) {
+    constexpr int Dx = (Ax != 0);
+    constexpr int Dy = (Ay != 0 && !Dx);
+    constexpr int Dz = (Az != 0 && !Dx && !Dy);
+    if constexpr (Dx || Dy || Dz) {
+      constexpr int ip = (Dx ? Px : (Dy ? Py : (Dz ? Pz : 0)));
+      double t = 0;
+      t += inv_2p*hermite_to_cartesian<Ax-Dx,Ay-Dy,Az-Dz,Px+Dx,Py+Dy,Pz+Dz>(h, inv_2p);
+      if constexpr (ip) {
+        t += ip*hermite_to_cartesian<Ax-Dx,Ay-Dy,Az-Dz,Px-Dx,Py-Dy,Pz-Dz>(h, inv_2p);
+      }
+      return t;
+    }
+    else {
+      return h(
+        std::integral_constant<int,Px>(),
+        std::integral_constant<int,Py>(),
+        std::integral_constant<int,Pz>()
+      );
+    }
+  }
+
+  template<int X>
+  LIBINTX_GPU_ENABLED
+  void hermite_to_cartesian(double inv_2_p, auto &&P, auto &&V) {
+    using hermite::index1;
+    foreach(
+      std::make_index_sequence<ncart(X)>(),
+      [&](auto ix) {
+        constexpr auto x = std::get<ix.value>(cartesian::shell<X>());
+        auto h = [&](auto&& ... p) {
+          constexpr int idx = hermite::index1(p.value...);
+          return P(idx);
+        };
+        auto v = hermite_to_cartesian<x[0],x[1],x[2]>(h, inv_2_p);
+        V(cartesian::index(x)) = v;
+      }
+    );
+  }
+
 }
 
 #endif /* LIBINTX_MD_HERMITE_H */

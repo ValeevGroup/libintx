@@ -4,6 +4,7 @@
 #include "libintx/cuda/forward.h"
 #include "libintx/cuda/md/basis.h"
 #include "libintx/engine/md/r1.h"
+#include "libintx/engine/md/hermite.h"
 
 #include "libintx/cuda/api/thread_group.h"
 #include "libintx/pure.transform.h"
@@ -16,6 +17,7 @@ namespace libintx::cuda::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
+  using libintx::md::hermite_to_cartesian;
 
   template<int X>
   struct Basis1 {
@@ -74,7 +76,6 @@ namespace libintx::cuda::md::kernel {
     const int K;
     const int N;
     const double *data;
-    const double *pure_transform;
     Basis2(int K, int N, const double *H, const double *pure_transform)
       : K(K), N(N), data(H), pure_transform(pure_transform)
     {
@@ -112,6 +113,524 @@ namespace libintx::cuda::md::kernel {
   template<int X>
   constexpr auto& orbitals(const Basis1<X>&) {
     return std::get<X%2>(orbitals1);
+  }
+
+
+  template<
+    typename Bra, typename Ket,
+    int DimX, int DimY, int DimZ,
+    int MaxShmem, int MinBlocks = 2
+    >
+  struct md_v0_kernel;
+
+
+  template<
+    typename Bra, typename Ket,
+    int DimX, int DimZ,
+    int MaxShmem, int MinBlocks
+    >
+  struct md_v0_kernel<Bra,Ket,DimX,1,DimZ,MaxShmem,MinBlocks>  {
+
+    static_assert(DimX <= 32 || DimZ == 1);
+
+    static constexpr int L = (Bra::L+Ket::L);
+    static constexpr int NP = Bra::nherm;
+    static constexpr int NQ = nherm2(Ket::L-1);
+    static constexpr int NAB = Bra::nbf;
+    static constexpr int NCD = Ket::nbf;
+
+    using ThreadBlock = cuda::thread_block<DimX,1,DimZ>;
+    static constexpr int num_threads = ThreadBlock::size();
+    static constexpr int max_shmem = MaxShmem;
+    static constexpr int min_blocks = MinBlocks;
+
+    struct Registers {
+      double pCD[NP][NCD];
+      double r[L ? nherm2(L-1) : 1]; // excluded from reg count
+    };
+
+    union Shmem {
+      struct {
+        Hermite abs[DimX];
+        struct {
+          Hermite hdata;
+          double gdata[max(1,NQ*NCD)];
+        } cds[DimZ];
+      };
+    };
+
+    template<typename ... Args>
+    __device__
+    LIBINTX_GPU_FORCEINLINE
+    void operator()(
+      const Bra &bra,
+      const Ket &ket,
+      const auto &boys,
+      std::tuple<Args...> &args,
+      auto &BraKet) const
+    {
+
+      using hermite::index2;
+
+      auto &p_orbitals = orbitals(bra);
+      auto &q_orbitals = orbitals(ket);
+
+      static constexpr int C = ket.First;
+      static constexpr int D = ket.Second;
+
+      constexpr ThreadBlock thread_block;
+      const auto& thread_rank = thread_block.thread_rank();
+
+      auto gx = [&](){
+        if constexpr (DimX == thread_block.size()) {
+          return thread_block;
+        }
+        else {
+          return tiled_partition<DimX>(this_thread_block());
+        }
+      }();
+
+      // half-warp
+      auto hw = tiled_partition<16>(this_thread_block());
+
+      __shared__ Shmem shmem;
+
+      int ij = blockIdx.x*thread_block.x;
+      int kl = blockIdx.y*thread_block.z;
+
+      libintx::cuda::memset1(&shmem.cds[threadIdx.z].hdata, 0, gx);
+      memset1(&shmem.abs, 0, thread_block);
+      //static_assert(sizeof(shmem.abs) == sizeof(Hermite)*DimX);
+      // for (int ix = threadIdx.z; ix < DimX; ix += DimZ) {
+      //   //if (ix+ij < bra.N) continue;
+      // }
+
+      [[maybe_unused]]
+      double sscd[NCD] = {};
+
+      for (int kab = 0; kab < bra.K; ++kab) {
+
+        thread_block.sync();
+        for (int ix = thread_rank/hw.size(); ix < min(DimX,bra.N-ij); ix += thread_block.size()/hw.size()) {
+          memcpy1(bra.hdata(ix+ij,kab), &shmem.abs[ix], hw);
+        }
+        thread_block.sync();
+
+        decltype (Registers::pCD) pCD = {};
+        for (int kcd = 0; kcd < ket.K; ++kcd) {
+
+          thread_block.sync();
+          if (kl+threadIdx.z < ket.N) {
+            memcpy(
+              nwords<sizeof(double),Hermite>() + NQ*NCD,
+              reinterpret_cast<const double*>(ket.hdata(kl+threadIdx.z,kcd)),
+              reinterpret_cast<double*>(&shmem.cds[threadIdx.z].hdata),
+              gx
+            );
+          }
+          thread_block.sync();
+
+          const auto &ab = shmem.abs[threadIdx.x];
+          const auto &cd = shmem.cds[threadIdx.z].hdata;
+
+          auto &P = ab.r;
+          auto &Q = cd.r;
+          auto PQ = P-Q;
+
+          double Ck = ab.C*cd.C;
+          //if (!Ck) continue;
+
+          //C *= 2*std::pow(M_PI,2.5);
+          double s[L+1] = {};
+
+          double p = ab.exp;
+          double q = cd.exp;
+
+          double pq = p*q;
+          double alpha = pq/(p+q);
+          double T = alpha*norm(P,Q);
+          boys.template compute<L>(T, 0, s);
+          Ck *= rsqrt(pq*pq*(p+q));
+          //double Kab = exp(-(a*b)/p*norm(P));
+          //double Kcd = 1;//exp(-norm(Q));
+          //C *= Kcd;
+          for (int i = 0; i <= L; ++i) {
+            //printf("s[%i]=%f\n", i, s[i]);
+            s[i] *= Ck;
+            Ck *= -2*alpha;
+          }
+
+          namespace r1 = libintx::md::r1;
+          auto &Ecd = shmem.cds[threadIdx.z].gdata;
+
+          double r[nherm2(L)] = {};
+          r1::compute<L>(PQ, s, r);
+
+#pragma unroll
+          for (int ip = 0; ip < NP; ++ip) {
+            auto p = p_orbitals[ip];
+            pure::transform<C,D>(
+              [&](auto c, auto d, auto u) {
+                int phase = ((C+D)%2 == 0 ? +1 : -1);
+                pCD[ip][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
+              },
+              [&](auto c, auto d) {
+                return r[index2(p+c+d)];
+              }
+            );
+          }
+
+#pragma unroll
+          for (int ip = 0; ip < NP; ++ip) {
+            auto p = p_orbitals[ip];
+#pragma unroll
+            for (int iq = 0; iq < NQ; ++iq) {
+              auto q = q_orbitals[iq];
+              int phase = (q.L()%2 == 0 ? +1 : -1);
+              double pq = phase*r[index2(p+q)];
+#pragma unroll
+              for (int icd = 0; icd < NCD; ++icd) {
+                pCD[ip][icd] += pq*Ecd[icd + iq*NCD];
+              }
+            }
+
+          }
+
+        } // kcd
+
+        if (!(threadIdx.x+ij < bra.N && kl+threadIdx.z < ket.N)) continue;
+
+        if constexpr (Bra::L == 0) {
+          for (int icd = 0; icd < NCD; ++icd) {
+            sscd[icd] += pCD[0][icd];
+          }
+        }
+        else if constexpr (Bra::Centers == 1) {
+
+          static constexpr int X = bra.L;
+          double inv_2_p = shmem.abs[threadIdx.x].inv_2_exp;
+
+          for (int icd = 0; icd < NCD; ++icd) {
+
+            double xcd[npure(X)] = {};
+            if (kab) {
+              for (int i = 0; i < npure(X); ++i) {
+                xcd[i] = BraKet(
+                  threadIdx.x + ij + i*bra.N,
+                  icd + (threadIdx.z + kl)*NCD
+                );
+              }
+            }
+
+            hermite_to_cartesian<X>(
+              inv_2_p,
+              [&](auto p) -> const double& { return pCD[herm::index1(p)][icd]; },
+              [&](auto p) -> double& { return pCD[herm::index1(p)][icd]; }
+            );
+
+            pure::transform<X>(
+              [&](auto x, auto u) {
+                BraKet(
+                  threadIdx.x + ij + index(x)*bra.N,
+                  icd + (threadIdx.z + kl)*NCD
+                ) = math::sqrt_4_pi5*u + xcd[index(x)];
+              },
+              [&](auto x) {
+                return pCD[herm::index1(x)][icd];
+              }
+            );
+
+          }
+
+        }
+
+      } // kab
+
+      if constexpr (Bra::L == 0) {
+        if (!(threadIdx.x+ij < bra.N && kl+threadIdx.z < ket.N)) return;
+        assert(threadIdx.z+kl < ket.N);
+#pragma unroll
+        for (int icd = 0; icd < NCD; ++icd) {
+          BraKet(
+            (threadIdx.x+ij),
+            icd + (threadIdx.z+kl)*NCD
+          ) = math::sqrt_4_pi5*sscd[icd];
+        }
+      }
+
+    }
+
+  };
+
+
+  template<
+    typename Bra, typename Ket,
+    int DimX, int DimY, int DimZ,
+    int MaxShmem, int MinBlocks
+    >
+  struct md_v0_kernel { // <Bra,Ket,DimX,DimY,1,MaxShmem,MinBlocks> {
+
+    static constexpr int L = (Bra::L+Ket::L);
+    static constexpr int NP = Bra::nherm;
+    static constexpr int NQ = nherm2(Ket::L-1);
+    static constexpr int C = Ket::First;
+    static constexpr int D = Ket::Second;
+    static constexpr int NCD = Ket::nbf;
+
+    using ThreadBlock = cuda::thread_block<DimX,DimY,1>;
+    static constexpr int num_threads = ThreadBlock::size();
+    static constexpr int max_shmem = MaxShmem;
+    static constexpr int min_blocks = MinBlocks;
+
+    static constexpr int np_batch = (NP+DimY-1)/DimY;
+    static constexpr int ncd_batch = []() {
+      for (int i = 1; i < NCD; ++i) {
+        int n = (NCD+i-1)/i;
+        if (n*NP*DimX*sizeof(double) <= MaxShmem) return n;
+      }
+      return 1;
+    }();
+
+    union Registers {
+      struct {
+        double V[np_batch][NCD];
+        //double r[ncart(C+D)];
+      };
+    };
+
+    union Shmem {
+      struct {
+        Hermite Hx[DimX];
+        double R[nherm2(L)][DimX];
+        Hermite cd;
+        double Ecd[NCD*NQ];
+      };
+      struct {
+        double inv_2_p[DimX];
+        double P[NP][ncd_batch][DimX];
+        //double Eab[DimY][DimX];
+      };
+    };
+
+    __device__
+    LIBINTX_GPU_FORCEINLINE
+    void operator()(
+      const Bra &bra, const int &kab,
+      const Ket &ket,
+      const auto &boys,
+      auto &&args,
+      auto &&BraKet) const
+    {
+
+      auto &p_orbitals = orbitals(bra);
+      auto &q_orbitals = orbitals(ket);
+
+      __shared__ Shmem shmem;
+
+      constexpr ThreadBlock thread_block;
+      const int thread_rank = thread_block.thread_rank();
+      constexpr auto warp = this_warp();
+
+      int ij = blockIdx.x*DimX;
+      int kl = blockIdx.y;
+
+      for (int ix = thread_rank/warp.size(); ix < DimX; ix += num_threads/warp.size()) {
+        if (ix+ij < bra.N) {
+          memcpy1(bra.hdata(ix+ij,kab), &shmem.Hx[ix], warp);
+        }
+        else {
+          memset1(&shmem.Hx[ix], 0, warp);
+          if (warp.thread_rank() == 0) shmem.Hx[ix].exp = 1;
+        }
+      }
+
+      decltype(Registers::V) V = {};
+
+      for (int kcd = 0; kcd < ket.K; ++kcd) {
+
+        thread_block.sync();
+
+        memcpy(
+          nwords<sizeof(double),Hermite>(),
+          reinterpret_cast<const double*>(ket.hdata(kl,kcd)),
+          reinterpret_cast<double*>(&shmem.cd),
+          thread_block
+        );
+
+        thread_block.sync();
+
+        //if (!shmem.cd.C) continue;
+
+        const auto &ab = shmem.Hx[threadIdx.x];
+        const auto &cd = shmem.cd;
+
+        auto &P = ab.r;
+        auto &Q = cd.r;
+
+        auto &R = shmem.R;
+        auto& Ecd = shmem.Ecd;
+
+        if (thread_block.thread_rank() >= 32) {
+          int xy = thread_block.thread_rank() - 32;
+          for (int i = xy; i < NQ*NCD; i += num_threads-32) {
+            Ecd[i] = ket.gdata(kl,kcd)[i];
+          }
+        }
+
+        if (threadIdx.y == 0) {
+          double p = ab.exp;
+          double q = cd.exp;
+          double pq = p*q;
+          double alpha = pq/(p+q);
+          double Ck = ab.C*cd.C;
+          Ck *= rsqrt(pq*pq*(p+q));
+          double T = alpha*norm(P,Q);
+          double s[L+1];
+          boys.template compute<L>(T,0,s);
+          for (int i = 0; i <= L; ++i) {
+            s[i] = Ck*s[i];
+            Ck *= -2*alpha;
+          }
+          auto PQ = P-Q;
+          namespace r1 = libintx::md::r1;
+          r1::visit<L,r1::DepthFirst>(
+            [&](auto &&r) {
+              R[r.index][threadIdx.x] = r.value;
+            },
+            PQ, s
+          );
+        }
+        thread_block.sync();
+
+        if (threadIdx.x+ij >= bra.N) continue;
+
+        // for (int iy = 0; iy < NP; iy += DimY) {
+        auto f = [&](auto &&iy) {
+          int ip = iy*DimY+threadIdx.y;
+          if (ip >= NP) return;
+          auto p = p_orbitals[ip];
+#pragma unroll
+          for (int iq = 0; iq < NQ; ++iq) {
+            auto q = q_orbitals[iq];
+            int phase = (q.L()%2 == 0 ?  +1 : -1);
+            double pq = phase*R[herm::index2(p+q)][threadIdx.x];
+#pragma unroll
+            for (int icd = 0; icd < NCD; ++icd) {
+              V[iy][icd] += pq*Ecd[icd + iq*NCD];
+            }
+          }
+          double r[ncart(C+D)] = {};
+          //decltype(Registers::r) r = {};
+          for (int iq = 0; iq < ncart(C+D); ++iq) {
+            auto q = q_orbitals[iq+NQ];
+            int phase = ((C+D)%2 == 0 ?  +1 : -1);
+            r[iq] = phase*R[herm::index2(p+q)][threadIdx.x];
+          }
+          pure::transform<C,D>(
+            [&](auto &&c, auto &&d, auto u) {
+              V[iy][index(c) + index(d)*npure(C)] += u*cd.inv_2_exp;
+            },
+            [&](auto c, auto d) {
+              return r[cart::index(c+d)];
+            }
+          ) ;
+        };
+
+#pragma unroll
+        for (int ip = 0; ip < NP; ip += DimY) {
+          f(ip/DimY);
+        }
+
+      } // kcd
+
+      thread_block.sync();
+
+      double inv_2_p = shmem.Hx[threadIdx.x].inv_2_exp;
+      auto &P = shmem.P;
+
+#pragma unroll
+      for (int icd = 0; icd < NCD; icd += ncd_batch) {
+
+        thread_block.sync();
+#pragma unroll
+        for (int iy = 0; iy < NP; iy += DimY) {
+          int ip = iy+threadIdx.y;
+         if (ip >= NP) break;
+#pragma unroll
+          for (int i = 0; i < ncd_batch; ++i) {
+            if (icd+i >= NCD) break;
+            P[ip][i][threadIdx.x] = V[iy/DimY][icd+i];
+          }
+        }
+        thread_block.sync();
+
+        if (ij + threadIdx.x >= bra.N) continue;
+
+        if constexpr (Bra::Centers == 1) {
+          constexpr int X = Bra::L;
+          for (int iy = threadIdx.y; iy < ncd_batch; iy += DimY) {
+            if (icd+iy >= NCD) break;
+            double U[ncart(X)];
+            double V[npure(X)] = {};
+            if (kab) {
+              for (int ix = 0; ix < npure(X); ++ix) {
+                V[ix] = BraKet(threadIdx.x + ij + ix*bra.N, (icd+iy) + kl*NCD);
+              }
+            }
+            hermite_to_cartesian<X>(
+              inv_2_p,
+              [&](auto p) -> const double& {
+                return P[herm::index1(p)][iy][threadIdx.x];
+              },
+              [&](auto p) -> double& { return U[cart::index(p)]; }
+            );
+            pure::transform<X>(
+              [&](auto &&x, auto v) {
+                int ix = index(x);
+                BraKet(threadIdx.x + ij + ix*bra.N, (icd+iy) + kl*NCD) =
+                  math::sqrt_4_pi5*v + V[ix];
+              },
+              [&](auto x) {
+                return U[cart::index(x)];
+              }
+            );
+          }
+        } // (Bra::Centers == 1)
+
+      } // icd
+
+    }
+
+  };
+
+  template<typename T>
+  constexpr bool test(size_t MaxRegisters, size_t MaxShmem) {
+    return (
+      sizeof(typename T::Registers) <= MaxRegisters &&
+      sizeof(typename T::Shmem) <= MaxShmem
+    );
+  }
+
+  template<size_t MaxRegisters, size_t MaxShmem, typename ... Ts>
+  struct find_if {
+    static_assert(sizeof...(Ts) == 0);
+    using type = void;
+  };
+
+  template<size_t MaxRegisters, size_t MaxShmem, typename T, typename ... Ts>
+  struct find_if<MaxRegisters, MaxShmem, T, Ts...> {
+    using type = std::conditional_t<
+      test<T>(MaxRegisters,MaxShmem),
+      T,
+      typename find_if<MaxRegisters,MaxShmem,Ts...>::type
+      >;
+  };
+
+  template<typename Kernel, typename ... Args>
+  __global__
+  __launch_bounds__(Kernel::num_threads, Kernel::min_blocks)
+  void launch(Kernel kernel, Args ... args) {
+    kernel(args...);
   }
 
 }

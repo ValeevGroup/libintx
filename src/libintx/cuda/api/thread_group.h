@@ -78,6 +78,17 @@ namespace libintx::cuda {
     );
   }
 
+  template<typename T, typename V>
+  __device__ __forceinline__
+  void memset1(T *dst, V value, const auto &thread_group) {
+    static_assert(sizeof(T)%sizeof(V) == 0);
+    fill(
+      sizeof(T)/sizeof(V),
+      reinterpret_cast<V*>(dst),
+      value,
+      thread_group
+    );
+  }
 
 }
 

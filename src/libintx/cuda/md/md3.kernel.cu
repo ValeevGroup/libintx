@@ -19,6 +19,65 @@ namespace libintx::cuda::md {
 #endif
 
   template<int X, int C, int D>
+  auto ERI3::compute_v0(
+    const Basis1& bra,
+    const Basis2& ket,
+    TensorRef<double,2> XCD,
+    cudaStream_t stream)
+  {
+
+    constexpr int shmem = 0;
+
+    using kernel::Basis1;
+    using kernel::Basis2;
+
+    //printf("ERI4::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
+
+    Basis1<X> x{bra.K, bra.N, bra.data};
+    Basis2<C,D> cd(ket.K, ket.N, ket.data, nullptr);
+
+    using kernel_x = kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 128,1,1, MaxShmem>;
+
+    using kernel_xy = typename kernel::find_if<
+      800, MaxShmem,
+      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 32,4,1, MaxShmem>,
+      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 16,8,1, MaxShmem>,
+      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 8,16,1, MaxShmem>
+      >::type;
+
+    if constexpr (kernel::test<kernel_x>(900,MaxShmem)) {
+      typename kernel_x::ThreadBlock thread_block;
+      dim3 grid = {
+        (uint)(x.N+thread_block.x-1)/thread_block.x,
+        (uint)(cd.N+thread_block.z-1)/thread_block.z
+      };
+      launch<<<grid,thread_block,shmem,stream>>>(
+        kernel_x(), x, cd, cuda::boys(), XCD
+      );
+      //printf("v0:xz\n");
+      return std::true_type();
+    }
+    else if constexpr (!std::is_same_v<kernel_xy,void>) {
+      typename kernel_xy::ThreadBlock thread_block;
+      dim3 grid = {
+        (uint)(x.N+thread_block.x-1)/thread_block.x,
+        (uint)(cd.N)
+      };
+      for (int kx = 0; kx < bra.K; ++kx) {
+        launch<<<grid,thread_block,shmem,stream>>>(
+          kernel_xy(), x, kx, cd, cuda::boys(), std::tuple{}, XCD
+        );
+      }
+      //printf("v0:xz\n");
+      return std::true_type();
+    }
+    else {
+      return std::false_type();
+    }
+
+  }
+
+  template<int X, int C, int D>
   auto ERI3::compute_v2(
     const Basis1& bra,
     const Basis2& ket,
@@ -85,7 +144,19 @@ namespace libintx::cuda::md {
         constexpr int D = Ket-C;
         if constexpr (std::max<int>({C,D}) <= LMAX) {
           if (C != ket.first.L || D != ket.second.L) return;
-          this->compute_v2<X,C,D>(x, ket, XCD, stream);
+          constexpr auto v2 = (
+            (X == 3 && (npure(C)*npure(D) > 5*7)) ||
+            (X > 3 && (npure(C)*npure(D) > 5*5))
+          );
+          if constexpr (v2) {
+            this->compute_v2<X,C,D>(x, ket, XCD, stream);
+          }
+          else {
+            auto v0 = this->compute_v0<X,C,D>(x, ket, XCD, stream);
+            if constexpr (!v0) {
+              this->compute_v2<X,C,D>(x, ket, XCD, stream);
+            }
+          }
         }
       }
     );
