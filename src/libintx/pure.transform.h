@@ -26,8 +26,8 @@ namespace libintx::pure {
 
   template<int L, int M, int LX, int LY, int LZ>
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  constexpr double coefficient(tuple<L,M>, tuple<LX,LY,LZ>) {
-    return Coefficient<L,M,LX,LY,LZ>::value;
+  constexpr auto coefficient(tuple<L,M>, tuple<LX,LY,LZ>) {
+    return Coefficient<L,M,LX,LY,LZ>{};
   }
 
 #define Tuple(...) tuple<__VA_ARGS__>()
@@ -116,6 +116,32 @@ namespace libintx::pure {
     f(Tuple(6,6), Tuple(6,0,0), Tuple(4,2,0), Tuple(2,4,0), Tuple(0,6,0));
   }
 
+  template<size_t L, typename F>
+  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  void transform(std::index_sequence<L>, F &&f) {
+    constexpr auto C = cartesian::shell<L>();
+    constexpr auto P = pure::shell<L>();
+    auto ijk = std::apply(
+      [](auto ... idx) {
+        return std::tuple{
+          Tuple(C[idx][0], C[idx][1], C[idx][2])...
+        };
+      },
+      integer_sequence_tuple(std::make_index_sequence<C.size()>())
+    );
+    foreach(
+      std::make_index_sequence<P.size()>(),
+      [&](auto idx) {
+        std::apply(
+          [&](auto ... ijk) {
+            f(Tuple(P[idx.value].l,P[idx.value].m), ijk...);
+          },
+          ijk
+        );
+      }
+    );
+  }
+
 #undef Tuple
 
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
@@ -161,15 +187,20 @@ namespace libintx::pure {
     );
   }
 
-  template<int A, typename F, typename C>
+  template<int A, typename F>
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(F &&f, C &&c) {
+  void transform(F &&f, auto &&C) {
     using Pure = pure::Orbital;
+    auto g = [&](auto &&lm, auto &&r) {
+      auto c = coefficient(lm,r);
+      if constexpr (c.value) return c.value*eval(C,r);
+      else return 0;
+    };
     transform(
       std::index_sequence<A>{},
       [&](auto &&lm, auto&& ... r) {
         auto [l,m] = lm;
-        f(Pure{l,m}, ((coefficient(lm,r)*eval(c,r)) + ...));
+        f(Pure{l,m}, (g(lm,r) + ...));
       }
     );
   }

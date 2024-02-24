@@ -325,6 +325,15 @@ constexpr inline int index(const Orbital &o) {
   return index(o.l,o.m);
 }
 
+template<int L>
+constexpr auto shell() {
+  array<Orbital,npure(L)> s = {};
+  for (int i = 0; i < s.size(); ++i) {
+    s[i] = orbital(L,i);
+  }
+  return s;
+}
+
 }
 
 namespace libintx::hermite {

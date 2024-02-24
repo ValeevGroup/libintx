@@ -67,6 +67,10 @@ namespace libintx {
   template<typename T>
   constexpr auto nqwords = nwords<sizeof(double),T>();
 
+  template<typename T, T ... Is>
+  constexpr auto integer_sequence_tuple(std::integer_sequence<T,Is...>) {
+    return std::tuple{ std::integral_constant<T,Is>{}... };
+  }
 
   template<typename F, typename T, T ... Is>
   LIBINTX_GPU_FORCEINLINE

@@ -89,6 +89,7 @@ constexpr double coefficient(const pure::Orbital &p, const cartesian::Orbital &c
 template<int L, int M, int LX, int LY, int LZ>
 struct Coefficient {
   static constexpr double value = coefficient(L,M,LX,LY,LZ);
+  constexpr operator double() const { return value; }
 };
 
 template<typename Orbitals>
@@ -115,7 +116,7 @@ struct OrbitalTransform {
 
   struct Index {
     uint16_t offset = 0;
-    array<uint8_t,14> orbital = {};
+    array<uint8_t,LMAX < 8 ? 12 : 22> orbital = {};
   };
 
   constexpr static auto cart() {
