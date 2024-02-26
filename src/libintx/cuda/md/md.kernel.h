@@ -47,20 +47,22 @@ namespace libintx::cuda::md::kernel {
     const int N;
     const double *data;
     const int stride;
-    Basis2(Shell a, Shell b, int K, int N, const double *H)
+    const size_t k_stride;
+    Basis2(Shell a, Shell b, int K, int N, const double *H, size_t k_stride)
       : first(a), second(b),
         nbf(libintx::nbf(a)*libintx::nbf(b)),
         K(K), N(N), data(H),
-        stride(sizeof(Hermite)/sizeof(double)+nherm*nbf)
+        stride(sizeof(Hermite)/sizeof(double)+nherm*nbf),
+        k_stride(k_stride)
     {
     }
     LIBINTX_GPU_ENABLED
-    auto hdata(int p, int k) const {
-      return reinterpret_cast<const Hermite*>(data + k*stride + p*K*stride);
+    auto hdata(int ij, int k) const {
+      return reinterpret_cast<const Hermite*>(data + ij*stride + k*k_stride);
     }
     LIBINTX_GPU_ENABLED
-    auto gdata(int p, int k) const {
-      return reinterpret_cast<const double*>(hdata(p,k)+1);
+    auto gdata(int ij, int k) const {
+      return reinterpret_cast<const double*>(hdata(ij,k)+1);
     }
   };
 
@@ -76,21 +78,24 @@ namespace libintx::cuda::md::kernel {
     const int K;
     const int N;
     const double *data;
-    Basis2(int K, int N, const double *H, const double *pure_transform)
-      : K(K), N(N), data(H), pure_transform(pure_transform)
+    const size_t k_stride;
+    const double *pure_transform;
+    Basis2(int K, int N, const double *H, size_t k_stride, const double *pure_transform)
+      : K(K), N(N), data(H), k_stride(k_stride),
+        pure_transform(pure_transform)
     {
     }
     explicit Basis2(const Basis2<L> &basis)
-      : K(basis.K), N(basis.N), data(basis.data)
+      : K(basis.K), N(basis.N), data(basis.data), k_stride(basis.k_stride)
     {
     }
     LIBINTX_GPU_ENABLED
-    auto hdata(int p, int k = 0) const {
-      return reinterpret_cast<const Hermite*>(data + k*stride + p*K*stride);
+    auto hdata(int ij, int k = 0) const {
+      return reinterpret_cast<const Hermite*>(data + ij*stride + k*k_stride);
     }
     LIBINTX_GPU_ENABLED
-    auto gdata(int p, int k = 0) const {
-      return reinterpret_cast<const double*>(hdata(p,k)+1);
+    auto gdata(int ij, int k = 0) const {
+      return reinterpret_cast<const double*>(hdata(ij,k)+1);
     }
   };
 
@@ -238,17 +243,15 @@ namespace libintx::cuda::md::kernel {
           auto PQ = P-Q;
 
           double Ck = ab.C*cd.C;
-          //if (!Ck) continue;
-
-          //C *= 2*std::pow(M_PI,2.5);
-          double s[L+1] = {};
+          if (!Ck) continue;
 
           double p = ab.exp;
           double q = cd.exp;
-
           double pq = p*q;
           double alpha = pq/(p+q);
           double T = alpha*norm(P,Q);
+
+          double s[L+1] = {};
           boys.template compute<L>(T, 0, s);
           Ck *= rsqrt(pq*pq*(p+q));
           //double Kab = exp(-(a*b)/p*norm(P));
@@ -256,7 +259,7 @@ namespace libintx::cuda::md::kernel {
           //C *= Kcd;
           for (int i = 0; i <= L; ++i) {
             //printf("s[%i]=%f\n", i, s[i]);
-            s[i] *= Ck;
+            s[i] *= math::sqrt_4_pi5*Ck;
             Ck *= -2*alpha;
           }
 
@@ -333,13 +336,64 @@ namespace libintx::cuda::md::kernel {
                 BraKet(
                   threadIdx.x + ij + index(x)*bra.N,
                   icd + (threadIdx.z + kl)*NCD
-                ) = math::sqrt_4_pi5*u + xcd[index(x)];
+                ) = u + xcd[index(x)];
               },
               [&](auto x) {
                 return pCD[herm::index1(x)][icd];
               }
             );
 
+          }
+
+        }
+        else if constexpr (Bra::Centers == 2) {
+
+          static constexpr int A = bra.First;
+          static constexpr int B = bra.Second;
+
+          auto&& [Eab] = args;
+
+          double inv_2_p = shmem.abs[threadIdx.x].inv_2_exp;
+
+          for (int iab = 0; iab < npure(A)*npure(B); ++iab) {
+
+            double abcd[NCD] = {};
+
+            if (kab) {
+#pragma unroll
+              for (int icd = 0; icd < NCD; ++icd) {
+                abcd[icd] = BraKet(
+                  (threadIdx.x+ij) + iab*bra.N,
+                  icd + (threadIdx.z+kl)*NCD
+                );
+              }
+            }
+
+#pragma unroll
+            for (int ip = 0; ip < nherm2(A+B-1); ++ip) {
+              double E = Eab(threadIdx.x, iab, ip, blockIdx.x, kab);
+#pragma unroll
+              for (int icd = 0; icd < NCD; ++icd) {
+                abcd[icd] += pCD[ip][icd]*E;
+              }
+            }
+
+#pragma unroll
+            for (int ip = 0; ip < ncart(A+B); ++ip) {
+              double Eab = inv_2_p*bra.pure_transform[iab+ip*NAB];
+#pragma unroll
+              for (int icd = 0; icd < NCD; ++icd) {
+                abcd[icd] += pCD[ip+nherm2(A+B-1)][icd]*Eab;
+              }
+            }
+
+#pragma unroll
+            for (int icd = 0; icd < NCD; ++icd) {
+              BraKet(
+                (threadIdx.x+ij) + iab*bra.N,
+                icd + (threadIdx.z+kl)*NCD
+              ) = abcd[icd];
+            }
           }
 
         }
@@ -354,7 +408,7 @@ namespace libintx::cuda::md::kernel {
           BraKet(
             (threadIdx.x+ij),
             icd + (threadIdx.z+kl)*NCD
-          ) = math::sqrt_4_pi5*sscd[icd];
+          ) = sscd[icd];
         }
       }
 
@@ -488,7 +542,7 @@ namespace libintx::cuda::md::kernel {
           double s[L+1];
           boys.template compute<L>(T,0,s);
           for (int i = 0; i <= L; ++i) {
-            s[i] = Ck*s[i];
+            s[i] = math::sqrt_4_pi5*Ck*s[i];
             Ck *= -2*alpha;
           }
           auto PQ = P-Q;
@@ -597,6 +651,51 @@ namespace libintx::cuda::md::kernel {
           }
         } // (Bra::Centers == 1)
 
+        if constexpr (Bra::Centers == 2) {
+
+          static constexpr int A = Bra::First;
+          static constexpr int B = Bra::Second;
+          constexpr int NAB = bra.nbf;
+
+          auto& [Eab] = args;
+
+          for (int iab = threadIdx.y; iab < NAB; iab += DimY) {
+
+#pragma unroll
+            for (int i = 0; i < ncd_batch; ++i) {
+              if (icd+i >= NCD) break;
+              double u = 0;
+              if (kab) u = BraKet(threadIdx.x + ij + iab*bra.N, (icd+i) + kl*NCD);
+              V[0][i] = u;
+            }
+
+            //#pragma unroll
+            for (int ip = 0; ip < nherm2(A+B-1); ++ip) {
+              double E = Eab(threadIdx.x, iab, ip, blockIdx.x);
+#pragma unroll
+              for (int i = 0; i < ncd_batch; ++i) {
+                V[0][i] += E*P[ip][i][threadIdx.x];
+              }
+            }
+            for (int ip = 0; ip < ncart(A+B); ++ip) {
+              double Eab = inv_2_p*bra.pure_transform[iab + ip*NAB];
+#pragma unroll
+              for (int i = 0; i < ncd_batch; ++i) {
+                V[0][i] += Eab*P[ip+nherm2(A+B-1)][i][threadIdx.x];
+              }
+            }
+
+#pragma unroll
+            for (int i = 0; i < ncd_batch; ++i) {
+              if (icd+i >= NCD) break;
+              BraKet(threadIdx.x + ij + iab*bra.N, (icd+i) + kl*NCD) = V[0][i];
+            }
+
+          }
+
+        } // (Bra::Centers == 2)
+
+
       } // icd
 
     }
@@ -635,4 +734,4 @@ namespace libintx::cuda::md::kernel {
 
 }
 
-#endif /* LIBINTX_CUDA_MD_MD_KERNEL_H */
+#endif // LIBINTX_CUDA_MD_MD_KERNEL_H

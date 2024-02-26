@@ -46,9 +46,12 @@ namespace libintx::cuda::md {
   };
 
   struct Basis2 {
+    static constexpr size_t alignment = 16;
     const Shell first, second;
-    const int K, N;
+    const int N, K;
     const double *data;
+    const size_t k_stride;
+    const double *pure_transform;
   };
 
   Basis1 make_basis(

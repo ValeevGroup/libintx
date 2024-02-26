@@ -68,7 +68,7 @@ namespace libintx::cuda::md::kernel {
         if (i == rank) break;
         C *= -2*alpha;
       }
-      R[rank] = C*Fm;
+      R[rank] = math::sqrt_4_pi5*C*Fm;
       //printf("ip=%i vc=%f\n", rank, R[rank]);
       //printf("T=%f (0)=%f\n", T, R[rank]);
     }

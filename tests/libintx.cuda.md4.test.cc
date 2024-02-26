@@ -80,13 +80,30 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
 
 TEST_CASE("cuda.md.eri4") {
   std::vector< std::pair<int,int> > Ks = {
-    {1,1}, {1,3}, {5,3}
+    {1,1}, {1,5}, {3,5}
   };
-  MD_ERI4_SUBCASE(0,0,0,0,Ks);
-  MD_ERI4_SUBCASE(1,2,0,0,Ks);
-  MD_ERI4_SUBCASE(2,0,0,0,Ks);
-  MD_ERI4_SUBCASE(0,0,2,0,Ks);
-  MD_ERI4_SUBCASE(1,1,0,0,Ks);
-  MD_ERI4_SUBCASE(1,1,2,0,Ks);
-  MD_ERI4_SUBCASE(2,1,2,2,Ks);
+
+  for (int ic = 0; ic <= LMAX; ++ic) {
+    for (int id = 0; id <= ic; ++id) {
+      for (int ia = 0; ia <= LMAX; ++ia) {
+        for (int ib = 0; ib <= ia; ++ib) {
+          MD_ERI4_SUBCASE(ia,ib,ic,id,Ks);
+        }
+      }
+    }
+  }
+
+  // MD_ERI4_SUBCASE(1,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(0,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(1,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(1,2,0,0,Ks);
+  // MD_ERI4_SUBCASE(2,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(0,0,2,0,Ks);
+  // MD_ERI4_SUBCASE(1,1,0,0,Ks);
+  // MD_ERI4_SUBCASE(1,1,1,0,Ks);
+  // MD_ERI4_SUBCASE(1,1,2,0,Ks);
+  //MD_ERI4_SUBCASE(2,1,2,2,Ks);
+
+
+
 }

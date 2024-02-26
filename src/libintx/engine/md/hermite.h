@@ -196,11 +196,10 @@ namespace libintx::md {
       [&](auto ix) {
         constexpr auto x = std::get<ix.value>(cartesian::shell<X>());
         auto h = [&](auto&& ... p) {
-          constexpr int idx = hermite::index1(p.value...);
-          return P(idx);
+          return P(Orbital{(uint8_t)p.value...});
         };
         auto v = hermite_to_cartesian<x[0],x[1],x[2]>(h, inv_2_p);
-        V(cartesian::index(x)) = v;
+        V(x) = v;
       }
     );
   }

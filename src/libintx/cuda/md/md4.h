@@ -31,6 +31,14 @@ namespace libintx::cuda::md {
     void compute(const Basis2&, const Basis2&, TensorRef<double,2>, cudaStream_t);
 
     template<int,int,int,int>
+    auto compute_v0(
+      const Basis2& bra,
+      const Basis2& ket,
+      TensorRef<double,2> ABCD,
+      cudaStream_t stream
+    );
+
+    template<int,int,int,int>
     auto compute_v2(
       const Basis2& bra,
       const Basis2& ket,

@@ -11,10 +11,54 @@
 
 namespace libintx::cuda::md {
 
-  using Center = array<double,3>;
+  namespace cart = cartesian;
+  namespace herm = hermite;
 
   __device__
   constexpr auto orbitals = hermite::orbitals<2*LMAX>;
+
+
+  template<int A, int B>
+  struct pure_transform_term {
+    constexpr pure_transform_term() {
+      pure_transform_term<A,0> pure_transform_a;
+      pure_transform_term<B,0> pure_transform_b;
+      for (int jcart = 0; jcart < ncart(B); ++jcart) {
+        for (int icart = 0; icart < ncart(A); ++icart) {
+          int ip = cart::index(
+            cart::orbital<A>(icart) +
+            cart::orbital<B>(jcart)
+          );
+          for (int jpure = 0; jpure < npure(B); ++jpure) {
+            for (int ipure = 0; ipure < npure(A); ++ipure) {
+              auto C = (
+                pure_transform_a.data[icart][ipure]*
+                pure_transform_b.data[jcart][jpure]
+              );
+              this->data[ip][jpure][ipure] += C;
+            }
+          }
+        }
+      }
+    }
+    double data[ncart(A+B)][npure(B)][npure(A)] = {};
+  };
+
+  template<int L>
+  struct pure_transform_term<L,0> {
+    constexpr pure_transform_term() {
+      for (int ipure = 0; ipure < npure(L); ++ipure) {
+        for (int icart = 0; icart < ncart(L); ++icart) {
+          this->data[icart][ipure] = pure::coefficient(
+            pure::orbital(L,ipure),
+            cart::orbital(L,icart)
+          );
+        }
+      }
+    }
+    double data[ncart(L)][npure(L)] = {};
+  };
+
 
   template<int A, int B>
   struct E2 {
@@ -91,7 +135,7 @@ namespace libintx::cuda::md {
 
   template<typename ThreadBlock, int A, int B, bool Pure>
   __global__ __launch_bounds__(ThreadBlock::size())
-  void make_basis(const Gaussian2 *gbasis, int K, double *H, int ldH) {
+  void make_basis(const Gaussian2 *gbasis, double *H, size_t stride, size_t k_stride) {
 
     namespace cart = cartesian;
 
@@ -105,7 +149,7 @@ namespace libintx::cuda::md {
     memcpy1(&gbasis[blockIdx.x], &ab, thread_block);
     thread_block.sync();
 
-    __shared__ Center AB;
+    __shared__ array<double,3> AB;
     if (thread_block.thread_rank() == 0) {
       AB = ab.r.first - ab.r.second;
     }
@@ -120,7 +164,7 @@ namespace libintx::cuda::md {
         {
           __shared__ Hermite h;
           if (thread_block.thread_rank() == 0) {
-            Hk = H + k*ldH + blockIdx.x*K*ldH;
+            Hk = H + blockIdx.x*stride + k*k_stride;
             auto& [ai,Ci] = ab.first.prims[ki];
             auto& [aj,Cj] = ab.second.prims[kj];
             // P = (AB| overlap
@@ -133,6 +177,7 @@ namespace libintx::cuda::md {
             h.C = Ci*Cj*Kab;
             h.r = center_of_charge(a, ab.r.first, b, ab.r.second);
             h.inv_2_exp = 1/math::pow<A+B>(2*(a+b));
+            //printf("%i: %f \n", blockIdx.x, h.exp);
           }
           thread_block.sync();
           E.init(a, b, AB, thread_block);
@@ -231,20 +276,28 @@ namespace libintx::cuda::md {
   template<int A, int B>
   Basis2 make_basis(
     const std::vector<Gaussian2> &ab,
-    device::vector<double> &H)
+    device::vector<double> &H, // Hermite data buffer
+    cudaStream_t stream)
   {
 
     constexpr uint NP = nherm2(A+B);
+    constexpr int align = Basis2::alignment;
 
     // auto idx = pairs.at(0);
     auto a = ab[0].first;
     auto b = ab[0].second;
     int K = a.K*b.K;
     int N = ab.size();
+    int n_aligned = (N+(align-N%align));
+    size_t extent = Hermite::extent(a,b);
+    size_t k_stride = extent*n_aligned;
 
     bool pure = (a.pure && b.pure);
-    int nh = Hermite::extent(a,b);
-    H.resize(nh*K*N);
+    H.resize(
+      k_stride*K +
+      npure(A)*npure(B)*ncart(A+B) // pure_transform data
+    );
+    double *pure_transform_ptr = H.data() + K*k_stride;
 
     dim3 grid = { (unsigned int)N };
 
@@ -254,7 +307,13 @@ namespace libintx::cuda::md {
       using Block = thread_block<NX, std::min(NP,128/NX)>;
       //ssert(false);
       //printf("BLOCK<%i,%i,%i>\n", Block::x, Block::y, Block::z);
-      make_basis<Block,A,B,Pure><<<grid,Block()>>>(ab.data(), K, H.data(), nh);
+      make_basis<Block,A,B,Pure><<<grid,Block(),0,stream>>>(ab.data(), H.data(), extent, k_stride);
+      constexpr pure_transform_term<A,B> pure_transform;
+      cuda::memcpy(
+        pure_transform_ptr,
+        pure_transform.data,
+        sizeof(pure_transform.data)
+      );
     }
     else {
       constexpr bool Pure = false;
@@ -268,15 +327,18 @@ namespace libintx::cuda::md {
       static_assert(NY == ncart(A) || NZ == 1);
       //printf("BLOCK<%i,%i,%i>\n", NX, NY, NZ);
       using Block = thread_block<NX,NY,NZ>;
-      make_basis<Block,A,B,Pure><<<grid,Block()>>>(ab.data(), K, H.data(), nh);
+      make_basis<Block,A,B,Pure><<<grid,Block()>>>(ab.data(), H.data(), extent, k_stride);
+      pure_transform_ptr = nullptr;
     }
 
     return Basis2 {
       .first = a,
       .second = b,
-      .K = K,
       .N = N,
-      .data = H.data()
+      .K = K,
+      .data = H.data(),
+      .k_stride = k_stride,
+      .pure_transform = pure_transform_ptr
     };
 
   }
@@ -307,7 +369,8 @@ namespace libintx::cuda::md {
     using F = std::function<
       Basis2(
         const std::vector<Gaussian2> &ab,
-        device::vector<double> &H
+        device::vector<double> &H,
+        cudaStream_t stream
       )>;
 
     static auto make_basis = make_array<F,LMAX+1,LMAX+1>(
@@ -316,7 +379,7 @@ namespace libintx::cuda::md {
       }
     );
 
-    auto basis = make_basis[a.L][b.L](ab, H);
+    auto basis = make_basis[a.L][b.L](ab, H, stream);
 
     cuda::stream::synchronize(stream);
     cuda::host::unregister_pointer(ab.data());

@@ -34,7 +34,7 @@ namespace libintx::cuda::md {
     //printf("ERI4::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
 
     Basis1<X> x{bra.K, bra.N, bra.data};
-    Basis2<C,D> cd(ket.K, ket.N, ket.data, nullptr);
+    Basis2<C,D> cd(ket.K, ket.N, ket.data, ket.k_stride, nullptr);
 
     using kernel_x = kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 128,1,1, MaxShmem>;
 
@@ -52,7 +52,7 @@ namespace libintx::cuda::md {
         (uint)(cd.N+thread_block.z-1)/thread_block.z
       };
       launch<<<grid,thread_block,shmem,stream>>>(
-        kernel_x(), x, cd, cuda::boys(), XCD
+        kernel_x(), x, cd, cuda::boys(), std::tuple{}, XCD
       );
       //printf("v0:xz\n");
       return std::true_type();
@@ -87,7 +87,7 @@ namespace libintx::cuda::md {
     //printf("ERI3::compute_v2<%i,%i,%i>\n", X,C,D);
 
     kernel::Basis1<X> x{bra.K, bra.N, bra.data};
-    kernel::Basis2<C+D> cd(ket.first, ket.second, ket.K, ket.N, ket.data);
+    kernel::Basis2<C+D> cd(ket.first, ket.second, ket.K, ket.N, ket.data, ket.k_stride);
 
     constexpr int L = x.L+cd.L;
     constexpr int NP = x.nherm;
@@ -105,8 +105,6 @@ namespace libintx::cuda::md {
 
     for (int kcd = 0; kcd < ket.K; ++kcd) {
       for (int kx = 0; kx < bra.K; ++kx) {
-        //double C = 2*std::pow(M_PI,2.5);
-        //double Ck = (kx == 0 ? 0 : 1.0);
         // [q,i,x,kl]
         kernel::compute_q_x<Block,2><<<grid,Block{},0,stream>>>(
           x, cd, {kx,kcd},
@@ -119,7 +117,7 @@ namespace libintx::cuda::md {
         NX*x.N, NCD, cd.nherm,
         math::sqrt_4_pi5, // alpha
         qx.data(), NQ, NQ*NX*x.N,
-        cd.gdata(0,kcd), NCD, cd.stride*cd.K,
+        cd.gdata(0,kcd), NCD, cd.stride,
         (kcd == 0 ? 0.0 : 1.0), // beta
         XCD.data(), NX*x.N, NX*x.N*NCD,
         cd.N, // batches
@@ -136,8 +134,6 @@ namespace libintx::cuda::md {
     TensorRef<double,2> XCD,
     cudaStream_t stream)
   {
-
-
     foreach(
       std::make_index_sequence<Ket+1>{},
       [&](auto C) {
