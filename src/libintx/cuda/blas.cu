@@ -37,12 +37,59 @@ namespace libintx::cuda {
     double *T, size_t ldT,
     cudaStream_t stream)
   {
+    if (!M || !N) return;
     constexpr int DimX = 16;
     constexpr size_t batches = 1;
     dim3 g = { (M+DimX-1)/DimX, (N+DimX-1)/DimX, batches };
     dim3 b = { DimX, 4 };
     transpose<DimX><<<g,b,0,stream>>>(M, N, A, ldA, T, ldT);
   }
+
+  template<int Tile>
+  __global__
+  void batch_transpose(
+    size_t M, size_t N,
+    const double *A, size_t ldA,
+    double *T, size_t ldT)
+  {
+    assert(M <= ldA);
+    assert(N <= ldT);
+    __shared__ double t[Tile][Tile+1];
+    for (int y = threadIdx.y; y < Tile; y += blockDim.y) {
+      int i = threadIdx.x + blockIdx.x*Tile;
+      int j = y + blockIdx.y*Tile;
+      if (i >= M || j >= N) break;
+      t[threadIdx.x][y] = A[i + j*ldA + blockIdx.z*ldA*N];
+      //printf("A[%i,%i]=%f\n", i, j, t[threadIdx.x][y]);
+    }
+    __syncthreads();
+    for (int y = threadIdx.y; y < Tile; y += blockDim.y) {
+      int i = y + blockIdx.x*Tile;
+      int j = threadIdx.x + blockIdx.y*Tile;
+      //printf("A'[%i,%i]=%f\n", j, i, t[y][threadIdx.x]);
+      if (i >= M || j >= N) break;
+      T[j + i*ldT + blockIdx.z*ldT*M] = t[y][threadIdx.x];
+      //printf("t[%i,%i]=%f\n", y, threadIdx.x, t[y][threadIdx.x]);
+      //T[threadIdx.x + blockIdx.y*32 + (i+blockIdx.x*32)*N] = t[i][threadIdx.x];
+      //T[(i+blockIdx.x*32)*N] = t[i][threadIdx.x];
+    }
+  }
+
+  // S[M,N,batches] -> T[N,M,batches]
+  void batch_transpose(
+    size_t M, size_t N,
+    const double *A, size_t ldA,
+    double *T, size_t ldT,
+    size_t batches,
+    cudaStream_t stream)
+  {
+    if (!M || !N) return;
+    constexpr int Tile = 16;
+    dim3 g = { (M+Tile-1)/Tile, (N+Tile-1)/Tile, batches };
+    dim3 b = { Tile, 4 };
+    batch_transpose<Tile><<<g,b,0,stream>>>(M, N, A, ldA, T, ldT);
+  }
+
 
   template<typename LayoutA, typename LayoutB, typename LayoutC>
   void batch_gemm(

@@ -17,6 +17,15 @@ namespace libintx::cuda {
     cudaStream_t stream
   );
 
+  // S[M,N,batches] -> T[N,M,batches]
+  void batch_transpose(
+    size_t M, size_t N,
+    const double *S, size_t ldS,
+    double *T, size_t ldT,
+    size_t batches,
+    cudaStream_t stream
+  );
+
   template<typename LayoutA, typename LayoutB, typename LayoutC>
   void batch_gemm(
     int M, int N, int K,
