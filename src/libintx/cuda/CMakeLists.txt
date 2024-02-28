@@ -42,4 +42,7 @@ add_library(
 set_target_properties(libintx.cuda.jengine PROPERTIES OUTPUT_NAME intx.cuda.jengine)
 target_link_libraries(libintx.cuda.jengine libintx.cuda)
 
+install(TARGETS libintx.cuda)
+install(FILES forward.h DESTINATION libintx/cuda)
+
 add_subdirectory(md)

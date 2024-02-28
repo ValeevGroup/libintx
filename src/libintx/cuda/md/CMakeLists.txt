@@ -34,6 +34,7 @@ add_library(
   EXCLUDE_FROM_ALL
   basis.cu
   )
+set_target_properties(libintx.cuda.md.basis PROPERTIES OUTPUT_NAME intx.cuda.md.basis)	
 
 add_library(
   libintx.cuda.md.eri3
@@ -56,3 +57,8 @@ set_target_properties(libintx.cuda.md.eri4 PROPERTIES OUTPUT_NAME intx.cuda.md.e
 target_link_libraries(libintx.cuda.md.eri4 libintx.cuda)
 target_link_libraries(libintx.cuda.md.eri4 libintx.cuda.md.basis)
 #target_link_libraries(libintx.cuda.md CUDA::cublas)
+
+install(TARGETS libintx.cuda.md.basis)
+install(TARGETS libintx.cuda.md.eri3)
+install(TARGETS libintx.cuda.md.eri4)
+install(FILES engine.h DESTINATION libintx/cuda/md)

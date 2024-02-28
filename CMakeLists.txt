@@ -28,10 +28,12 @@ option(CMAKE_POSITION_INDEPENDENT_CODE "" ON)
 #set(EIGEN3_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/eigen)
 
 configure_file(src/libintx/config.h.in ${PROJECT_BINARY_DIR}/libintx/config.h)
+install(FILES ${PROJECT_BINARY_DIR}/libintx/config.h DESTINATION libintx)
 
 include_directories(src include include/eigen3)
 include_directories(${PROJECT_BINARY_DIR})
 
+add_subdirectory(src/libintx)
 add_subdirectory(src/libintx/boys)
 
 option(LIBINTX_ENABLE_CUDA "" OFF)
