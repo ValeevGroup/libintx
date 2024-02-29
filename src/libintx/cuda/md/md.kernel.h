@@ -7,7 +7,6 @@
 #include "libintx/engine/md/hermite.h"
 
 #include "libintx/cuda/api/thread_group.h"
-#include "libintx/pure.transform.h"
 
 #include "libintx/config.h"
 #include "libintx/math.h"
@@ -17,7 +16,10 @@ namespace libintx::cuda::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
+
   using libintx::md::hermite_to_cartesian;
+  using libintx::md::hermite_to_pure;
+  using libintx::pure::cartesian_to_pure;
 
   template<int X>
   struct Basis1 {
@@ -272,13 +274,13 @@ namespace libintx::cuda::md::kernel {
 #pragma unroll
           for (int ip = 0; ip < NP; ++ip) {
             auto p = p_orbitals[ip];
-            pure::transform<C,D>(
+            hermite_to_pure<C,D>(
               [&](auto c, auto d, auto u) {
                 int phase = ((C+D)%2 == 0 ? +1 : -1);
                 pCD[ip][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
               },
-              [&](auto c, auto d) {
-                return r[index2(p+c+d)];
+              [&](auto &&q) {
+                return r[index2(p+q)];
               }
             );
           }
@@ -331,7 +333,7 @@ namespace libintx::cuda::md::kernel {
               [&](auto p) -> double& { return pCD[herm::index1(p)][icd]; }
             );
 
-            pure::transform<X>(
+            cartesian_to_pure<X>(
               [&](auto x, auto u) {
                 BraKet(
                   threadIdx.x + ij + index(x)*bra.N,
@@ -573,19 +575,13 @@ namespace libintx::cuda::md::kernel {
               V[iy][icd] += pq*Ecd[icd + iq*NCD];
             }
           }
-          double r[ncart(C+D)] = {};
-          //decltype(Registers::r) r = {};
-          for (int iq = 0; iq < ncart(C+D); ++iq) {
-            auto q = q_orbitals[iq+NQ];
-            int phase = ((C+D)%2 == 0 ?  +1 : -1);
-            r[iq] = phase*R[herm::index2(p+q)][threadIdx.x];
-          }
-          pure::transform<C,D>(
+          hermite_to_pure<C,D>(
             [&](auto &&c, auto &&d, auto u) {
-              V[iy][index(c) + index(d)*npure(C)] += u*cd.inv_2_exp;
+              constexpr int phase = ((C+D)%2 == 0 ?  +1 : -1);
+              V[iy][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
             },
-            [&](auto c, auto d) {
-              return r[cart::index(c+d)];
+            [&](auto &&q) {
+              return R[herm::index2(p+q)][threadIdx.x];
             }
           ) ;
         };
@@ -638,11 +634,10 @@ namespace libintx::cuda::md::kernel {
               },
               [&](auto p) -> double& { return U[cart::index(p)]; }
             );
-            pure::transform<X>(
+            cartesian_to_pure<X>(
               [&](auto &&x, auto v) {
                 int ix = index(x);
-                BraKet(threadIdx.x + ij + ix*bra.N, (icd+iy) + kl*NCD) =
-                  math::sqrt_4_pi5*v + V[ix];
+                BraKet(threadIdx.x + ij + ix*bra.N, (icd+iy) + kl*NCD) = v + V[ix];
               },
               [&](auto x) {
                 return U[cart::index(x)];

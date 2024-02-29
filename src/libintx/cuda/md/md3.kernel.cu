@@ -41,8 +41,8 @@ namespace libintx::cuda::md {
     using kernel_xy = typename kernel::find_if<
       800, MaxShmem,
       kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 32,4,1, MaxShmem>,
-      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 16,8,1, MaxShmem>,
-      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 8,16,1, MaxShmem>
+      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 16,8,1, MaxShmem>
+      //kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 8,16,1, MaxShmem>
       >::type;
 
     if constexpr (kernel::test<kernel_x>(900,MaxShmem)) {

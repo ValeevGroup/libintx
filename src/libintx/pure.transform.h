@@ -224,7 +224,51 @@ namespace libintx::pure {
     }
   }
 
+  template<int ...>
+  struct Transform;
+
+  template<int L>
+  struct Transform<L> {
+    constexpr Transform() {
+      for (int ipure = 0; ipure < npure(L); ++ipure) {
+        for (int icart = 0; icart < ncart(L); ++icart) {
+          this->data[icart][ipure] = pure::coefficient(
+            pure::orbital(L,ipure),
+            cartesian::orbital(L,icart)
+          );
+        }
+      }
+    }
+    double data[ncart(L)][npure(L)] = {};
+  };
+
+
+  template<int L>
+  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  void cartesian_to_pure(auto &&P, auto &&C) {
+    constexpr auto a = pure::shell<L>();
+    constexpr auto c = cartesian::shell<L>();
+    constexpr auto a_c = Transform<L>();
+    foreach(
+      std::make_index_sequence<a.size()>(),
+      [&](auto ia) {
+        double v = 0;
+        foreach(
+          std::make_index_sequence<c.size()>(),
+          [&](auto ic) {
+            constexpr double coeff = a_c.data[ic.value][ia.value];
+            if constexpr (coeff) {
+              v += coeff*C(c[ic]);
+            }
+          }
+        );
+        P(a[ia],v);
+      }
+    );
+  }
+
 }
+
 namespace libintx::pure::reference {
 
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE

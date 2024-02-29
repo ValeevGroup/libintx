@@ -3,11 +3,11 @@
 #include "libintx/cuda/md/md.kernel.h"
 #include "libintx/engine/md/r1.h"
 #include "libintx/engine/md/r1/recurrence.h"
+#include "libintx/engine/md/hermite.h"
 #include "libintx/cuda/blas.h"
 
 #include "libintx/cuda/api/thread_group.h"
 #include "libintx/boys/cuda/chebyshev.h"
-#include "libintx/pure.transform.h"
 
 #include "libintx/config.h"
 #include "libintx/math.h"
@@ -17,6 +17,8 @@ namespace libintx::cuda::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
+
+  using libintx::pure::cartesian_to_pure;
 
   // compute [q,ij,x,kl]
   template<typename ThreadBlock, int MinBlocks, int X, int Ket, typename Boys>
@@ -127,7 +129,7 @@ namespace libintx::cuda::md::kernel {
         }
       );
 
-      pure::transform<X>(
+      cartesian_to_pure<X>(
         [&](auto x, auto u) {
           QX(iq, ij, index(x), kl) = phase*u + v[index(x)];
         },

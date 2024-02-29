@@ -3,6 +3,7 @@
 
 #include "libintx/orbital.h"
 #include "libintx/utility.h"
+#include "libintx/pure.transform.h"
 
 namespace libintx::md {
 
@@ -200,6 +201,58 @@ namespace libintx::md {
         };
         auto v = hermite_to_cartesian<x[0],x[1],x[2]>(h, inv_2_p);
         V(x) = v;
+      }
+    );
+  }
+
+  template<int A, int B>
+  struct pure_transform {
+    constexpr pure_transform() {
+      constexpr pure::Transform<A> pure_transform_a;
+      constexpr pure::Transform<B> pure_transform_b;
+      constexpr auto a = cartesian::shell<A>();
+      constexpr auto b = cartesian::shell<B>();
+      for (int jcart = 0; jcart < b.size(); ++jcart) {
+        for (int icart = 0; icart < a.size(); ++icart) {
+          int ip = cartesian::index(a[icart]+b[jcart]);
+          for (int jpure = 0; jpure < npure(B); ++jpure) {
+            for (int ipure = 0; ipure < npure(A); ++ipure) {
+              auto C = (
+                pure_transform_a.data[icart][ipure]*
+                pure_transform_b.data[jcart][jpure]
+              );
+              this->data[ip][jpure][ipure] += C;
+            }
+          }
+        }
+      }
+    }
+    double data[ncart(A+B)][npure(B)][npure(A)] = {};
+  };
+
+  template<int A, int B>
+  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  void hermite_to_pure(auto &&P, auto &&C) {
+    constexpr auto a = pure::shell<A>();
+    constexpr auto b = pure::shell<B>();
+    constexpr auto p = cartesian::shell<A+B>();
+    constexpr auto ab_p = pure_transform<A,B>();
+    constexpr auto ip = std::make_index_sequence<p.size()>();
+    foreach2(
+      std::make_index_sequence<a.size()>(),
+      std::make_index_sequence<b.size()>(),
+      [&](auto &&i, auto &&j) {
+        double v = 0;
+        foreach(
+          ip,
+          [&](auto &&ip) {
+            constexpr double c = ab_p.data[ip.value][j.value][i.value];
+            if constexpr (c) {
+              v += c*C(p[ip]);
+            }
+          }
+        );
+        P(a[i],b[j],v);
       }
     );
   }
