@@ -15,7 +15,7 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
 
   namespace cuda = libintx::cuda;
 
-  //printf("(%i|%i%i) K={%i,%i}\n", X, C, D, K.first, K.second);
+  printf("(%i|%i%i) K={%i,%i}\n", X, C, D, K.first, K.second);
 
   int M = 16+3;
   int N = 16+1;
