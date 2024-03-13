@@ -50,12 +50,15 @@ namespace libintx::cuda::md::kernel {
     const double *data;
     const int stride;
     const size_t k_stride;
-    Basis2(Shell a, Shell b, int K, int N, const double *H, size_t k_stride)
-      : first(a), second(b),
-        nbf(libintx::nbf(a)*libintx::nbf(b)),
-        K(K), N(N), data(H),
-        stride(sizeof(Hermite)/sizeof(double)+nherm*nbf),
-        k_stride(k_stride)
+    const double *pure_transform;
+    explicit Basis2(const md::Basis2 &basis)
+      : first(basis.first), second(basis.second),
+        nbf(libintx::nbf(first)*libintx::nbf(second)),
+        K(basis.K), N(basis.N),
+        data(basis.data),
+        stride(sizeof(Hermite)/sizeof(double) + nherm*nbf),
+        k_stride(basis.k_stride),
+        pure_transform(basis.pure_transform)
     {
     }
     LIBINTX_GPU_ENABLED
@@ -122,6 +125,12 @@ namespace libintx::cuda::md::kernel {
     return std::get<X%2>(orbitals1);
   }
 
+  // use unrolled hermite to pure code or matrix one
+  inline
+  constexpr bool hermite_to_pure_too_complicated(int A, int B) {
+    // [ab| > [gd|
+    return (std::max(A,B) >= 4 && std::min(A,B) >= 2);
+  }
 
 
   template<
@@ -269,7 +278,7 @@ namespace libintx::cuda::md::kernel {
             auto p = p_orbitals[ip];
             hermite_to_pure<C,D>(
               [&](auto c, auto d, auto u) {
-                int phase = ((C+D)%2 == 0 ? +1 : -1);
+                constexpr int phase = ((C+D)%2 == 0 ? +1 : -1);
                 pCD[ip][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
               },
               [&](auto &&q) {
@@ -557,11 +566,12 @@ namespace libintx::cuda::md::kernel {
 
         if (threadIdx.x+ij >= bra.N) continue;
 
-        // for (int iy = 0; iy < NP; iy += DimY) {
         auto f = [&](auto &&iy) {
+
           int ip = iy*DimY+threadIdx.y;
           if (ip >= NP) return;
           auto p = p_orbitals[ip];
+
 #pragma unroll
           for (int iq = 0; iq < NQ; ++iq) {
             auto q = q_orbitals[iq];
@@ -572,15 +582,30 @@ namespace libintx::cuda::md::kernel {
               V[iy][icd] += pq*Ecd[icd + iq*NCD];
             }
           }
-          hermite_to_pure<C,D>(
-            [&](auto &&c, auto &&d, auto u) {
-              constexpr int phase = ((C+D)%2 == 0 ?  +1 : -1);
-              V[iy][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
-            },
-            [&](auto &&q) {
-              return R[herm::index2(p+q)][threadIdx.x];
+
+          constexpr int phase = ((C+D)%2 == 0 ?  +1 : -1);
+          if constexpr (!hermite_to_pure_too_complicated(C,D)) {
+            hermite_to_pure<C,D>(
+              [&](auto &&c, auto &&d, auto u) {
+                V[iy][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
+              },
+              [&](auto &&q) {
+                return R[herm::index2(p+q)][threadIdx.x];
+              }
+            ) ;
+          }
+          else {
+#pragma unroll
+            for (int iq = 0; iq < ncart(C+D); ++iq) {
+              auto q = q_orbitals[NQ+iq];
+              auto pq = phase*cd.inv_2_exp*R[herm::index2(p+q)][threadIdx.x];
+#pragma unroll
+            for (int icd = 0; icd < NCD; ++icd) {
+                V[iy][icd] += pq*ket.pure_transform[icd+iq*NCD];
+              }
             }
-          ) ;
+          } // hermite_to_pure_unroll(C,D)
+
         };
 
 #pragma unroll
@@ -684,6 +709,7 @@ namespace libintx::cuda::md::kernel {
                 V[0][i] += E*P[ip][i][threadIdx.x];
               }
             }
+
             for (int ip = 0; ip < ncart(A+B); ++ip) {
               double Eab = inv_2_p*bra.pure_transform[iab + ip*NAB];
 #pragma unroll

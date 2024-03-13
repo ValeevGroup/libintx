@@ -366,15 +366,7 @@ namespace libintx::cuda::md::kernel {
 
       if (ij < Nij && kl < Nkl) {
         double C = ABp(threadIdx.x,0,blockIdx.x);
-        if constexpr (std::max(Bra::First,Bra::Second) >= 4 && Bra::L >= 6) {
-          for (int ip = 0; ip < ncart(Bra::L); ++ip) {
-            auto p = C*pX(threadIdx.x,ip+NP,kl,blockIdx.x);
-            for (int iab = 0; iab < NAB; ++iab) {
-              V[iab] += p*hermite_to_pure_transform[iab + ip*NAB];
-            }
-          }
-        }
-        else {
+        if constexpr (!hermite_to_pure_too_complicated(Bra::First,Bra::Second)) {
           //decltype (Registers::p) p = {};
           double r[ncart(Bra::L)] = {}; // exclude from regs for now
           for (int ip = 0; ip < ncart(Bra::L); ip += 1) {
@@ -391,6 +383,15 @@ namespace libintx::cuda::md::kernel {
             }
           );
         }
+        else {
+          for (int ip = 0; ip < ncart(Bra::L); ++ip) {
+            auto p = C*pX(threadIdx.x,ip+NP,kl,blockIdx.x);
+            for (int iab = 0; iab < NAB; ++iab) {
+              V[iab] += p*hermite_to_pure_transform[iab + ip*NAB];
+            }
+          }
+        } // !hermite_to_pure_too_complicated
+
       }
 
       __shared__ Shmem shmem;
@@ -451,12 +452,12 @@ namespace libintx::cuda::md::kernel {
       struct Static {
         Hermite ab;
         array<double,3> PQ;
-      };
+      } static_;
       struct Dynamic {
         Hermite cd;
         double Ecd[NQ][NCD];
         double R[nherm2(L)];
-      };
+      } dynamic_;
     };
 
     // compute [p,q,kl,ij]
@@ -551,19 +552,36 @@ namespace libintx::cuda::md::kernel {
             }
           }
 
-          for (int k = 0; k < nk; ++k) {
+          if constexpr (!hermite_to_pure_too_complicated(Ket::First,Ket::Second)) {
             constexpr int phase = (Ket::L%2 == 0 ? +1 : -1);
-            double inv_2_q = phase*shmem[k].cd.inv_2_exp;
-            hermite_to_pure<Ket::First,Ket::Second>(
-              [&](auto &&c, auto &&d, auto &&v) {
-                int icd = index(c) + index(d)*npure(Ket::First);
-                V[icd] += inv_2_q*v;
-              },
-              [&](auto &&q) {
-                return shmem[k].R[herm::index2(p+q)];
-              }
-            );
+            for (int k = 0; k < nk; ++k) {
+              double inv_2_q = phase*shmem[k].cd.inv_2_exp;
+              hermite_to_pure<Ket::First,Ket::Second>(
+                [&](auto &&c, auto &&d, auto &&v) {
+                  int icd = index(c) + index(d)*npure(Ket::First);
+                  V[icd] += inv_2_q*v;
+                },
+                [&](auto &&q) {
+                  return shmem[k].R[herm::index2(p+q)];
+                }
+              );
+            }
           }
+          else {
+            constexpr int phase = (Ket::L%2 == 0 ? +1 : -1);
+            for (int iq = 0; iq < ncart(Ket::L); ++iq) {
+              const auto q = orbitals2[NQ+iq];
+              int ipq = herm::index2(p+q);
+              for (int k = 0; k < nk; ++k) {
+                double inv_2_q = phase*shmem[k].cd.inv_2_exp;
+                double r = inv_2_q*shmem[k].R[ipq];
+                for (int icd = 0; icd < NCD; ++icd) {
+                  auto C = bra.pure_transform[icd + iq*NCD];
+                  V[icd] += r*C;
+                }
+              }
+            }
+          } // hermite_to_pure_too_complicated
 
           for (int iq = 0; iq < NQ; ++iq) {
             const auto q = orbitals2[iq];

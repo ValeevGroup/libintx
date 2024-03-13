@@ -56,6 +56,7 @@ namespace libintx::cuda::md {
 
   template double* ERI4::allocate<0>(size_t size);
   template double* ERI4::allocate<1>(size_t size);
+  template double* ERI4::allocate<2>(size_t size);
 
   template<>
   std::unique_ptr< IntegralEngine<4,2> > eri<4>(

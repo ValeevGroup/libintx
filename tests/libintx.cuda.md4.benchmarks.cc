@@ -29,13 +29,15 @@ auto run(
   auto buffer = device::vector<double>(dims[0]*dims[1]);
 
   printf("# (%i%i|%i%i) ", A, B, C, D);
-  printf("dims: %ix%i, memory=%f GB\n", Nij, Nkl, 8*buffer.size()/1e9);
+  printf("dims=%ix%i, memory=%fGB\n", Nij, Nkl, 8*buffer.size()/1e9);
 
   struct {
     std::unique_ptr< libintx::IntegralEngine<4> > engine;
     double time = 0;
     std::vector<double> ratio;
   } md;
+
+  std::vector<double> csv[2];
 
   for (auto K : Ks) {
 
@@ -64,7 +66,23 @@ auto run(
     printf("T(Ref/MD)=%f ", tref*md.time);
     printf("\n");
 
+    csv[0].push_back((Nij*Nkl)*md.time);
+    csv[1].push_back(tref*md.time);
+
   } // Ks
+
+  printf("(%i%i|%i%i),Int/s,", A, B, C, D);
+  for (auto e : csv[0]) {
+    printf("%4.2e,", e);
+  }
+  printf("\n");
+
+  printf("(%i%i|%i%i),T(Ref/MD),", A, B, C, D);
+  for (auto e : csv[1]) {
+    printf("%i,", int(e));
+  }
+  printf("\n");
+
 
 }
 
@@ -94,21 +112,21 @@ int main(int argc, char **argv) {
   //   }
   // }
 
-  std::vector<int> loadv = { load*32, load*16, load*8, load*4, load*2, load*1, load*1 };
-
-  // (x,x,x,x)
-  for (int l = 0; l <= LMAX; ++l) {
-    RUN(l,l,l,l, Ks, loadv.at(l), loadv.at(l));
-  }
+  std::vector<int> loadv = { load*128, load*16, load*8, load*4, load*2, load*1, load*1 };
 
   // (x,x,s,s)
   for (int l = 1; l <= LMAX; ++l) {
-    RUN(0,0,l,l, Ks, 2*loadv.at(0), loadv.at(l));
+    RUN(l,l,0,0, Ks, 8*loadv.at(l), loadv.at(0));
   }
 
   // (x,s,x,s)
   for (int l = 1; l <= LMAX; ++l) {
-    RUN(l,0,l,0, Ks, 2*loadv.at(l), 2*loadv.at(l));
+    RUN(l,0,l,0, Ks, 4*loadv.at(l), 4*loadv.at(l));
+  }
+
+  // (x,x,x,x)
+  for (int l = 0; l <= LMAX; ++l) {
+    RUN(l,l,l,l, Ks, loadv.at(l), loadv.at(l));
   }
 
 }

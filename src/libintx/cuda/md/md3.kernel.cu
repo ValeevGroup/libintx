@@ -87,7 +87,7 @@ namespace libintx::cuda::md {
     //printf("ERI3::compute_v2<%i,%i,%i>\n", X,C,D);
 
     kernel::Basis1<X> x{bra.K, bra.N, bra.data};
-    kernel::Basis2<C+D> cd(ket.first, ket.second, ket.K, ket.N, ket.data, ket.k_stride);
+    kernel::Basis2<C+D> cd(ket);
 
     constexpr int L = x.L+cd.L;
     constexpr int NP = x.nherm;

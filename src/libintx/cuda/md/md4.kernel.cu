@@ -46,7 +46,7 @@ namespace libintx::cuda::md {
     Ket cd(ket.K, ket.N, ket.data, ket.k_stride, ket.pure_transform);
 
     using kernel_xy = typename kernel::find_if<
-      800,MaxShmem,
+      (Bra::L+Ket::L <= 4 ? 900 : 800), MaxShmem, // 900 catches (pp|pp), (ds|pp)
       kernel::md_v0_kernel<Bra,Ket,16,4,MaxShmem/2>,
       kernel::md_v0_kernel<Bra,Ket,128,1,MaxShmem>
       >::type;
@@ -137,8 +137,8 @@ namespace libintx::cuda::md {
     constexpr size_t NCD = npure(C,D);
 
     //printf("ERI4::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
-    Basis2<Bra> ab(bra.first, bra.second, bra.K, bra.N, bra.data, bra.k_stride);
-    Basis2<Ket> cd(ket.first, ket.second, ket.K, ket.N, ket.data, ket.k_stride);
+    Basis2<Bra> ab(bra);
+    Basis2<Ket> cd(ket);
 
     constexpr int DimX = 16;
     constexpr int DimY = 128/DimX;
@@ -174,7 +174,7 @@ namespace libintx::cuda::md {
       size_t p_cd_size = DimX*NP*NCD*nkl_aligned*grid0.x;
 
       int k_batch = ket.K;
-      int r1_size = (grid0.x*grid0.y)*(DimX*nherm2(Bra+Ket));
+      size_t r1_size = (grid0.x*grid0.y)*(DimX*nherm2(Bra+Ket));
 
       // printf(
       //   "ERI4::compute_v1<%i,%i,%i,%i>: K=%i, maxk=%i mem=%fGB\n",
@@ -308,8 +308,8 @@ namespace libintx::cuda::md {
     //printf("ERI4::compute_v2<%i,%i,%i,%i>\n", A,B,C,D);
     using kernel::Basis2;
 
-    Basis2<A+B> ab(bra.first, bra.second, bra.K, bra.N, bra.data, bra.k_stride);
-    Basis2<C+D> cd(ket.first, ket.second, ket.K, ket.N, ket.data, ket.k_stride);
+    Basis2<A+B> ab(bra);
+    Basis2<C+D> cd(ket);
 
     constexpr uint NP = ab.nherm;
     constexpr uint NQ = cd.nherm;
@@ -334,6 +334,7 @@ namespace libintx::cuda::md {
         while (static_shmem + kcd_batch*dynamic_shmem > MaxShmem) {
           --kcd_batch;
         }
+        assert(kcd_batch);
         // [p,cd,kl,ij]
         typename md_v2_p_cd_kernel::ThreadBlock thread_block;
         kernel::launch<<<grid,thread_block,kcd_batch*dynamic_shmem,stream>>>(
@@ -379,6 +380,7 @@ namespace libintx::cuda::md {
       auto *ab_cd_transpose = this->allocate<2>((grid.x*grid.y)*(NAB*NCD));
 
       for (int kab = 0; kab < bra.K; ++kab) {
+
         for (int kcd = 0; kcd < ket.K; ++kcd) {
           // [p,ij,q,kl]
           kernel::compute_p_q<Block,2><<<grid,Block{},0,stream>>>(
@@ -398,6 +400,7 @@ namespace libintx::cuda::md {
             stream
           );
         }
+
         // [p,ij,cd,kl] -> [cd,kl,p,ij]
         cuda::transpose(
           NP*ab.N, NCD*cd.N,
@@ -416,6 +419,7 @@ namespace libintx::cuda::md {
           ab.N, // batches
           stream
         );
+
       } // kcd
 
       // [ab,cd,kl,ij] -> [ij,ab,cd,kl]
