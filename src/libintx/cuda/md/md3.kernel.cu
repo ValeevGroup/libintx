@@ -36,36 +36,36 @@ namespace libintx::cuda::md {
     Basis1<X> x{bra.K, bra.N, bra.data};
     Basis2<C,D> cd(ket.K, ket.N, ket.data, ket.k_stride, nullptr);
 
-    using kernel_x = kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 128,1,1, MaxShmem>;
+    using kernel0 = kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 128,1,1, MaxShmem>;
 
-    using kernel_xy = typename kernel::find_if<
+    using x_cd_kernel = typename kernel::find_if<
       800, MaxShmem,
-      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 32,4,1, MaxShmem>,
-      kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 16,8,1, MaxShmem>
+      kernel::md_x_cd_kernel<1, Basis1<X>, Basis2<C,D>, 32,4,1, MaxShmem>,
+      kernel::md_x_cd_kernel<1, Basis1<X>, Basis2<C,D>, 16,8,1, MaxShmem>
       //kernel::md_v0_kernel<Basis1<X>, Basis2<C,D>, 8,16,1, MaxShmem>
       >::type;
 
-    if constexpr (kernel::test<kernel_x>(900,MaxShmem)) {
-      typename kernel_x::ThreadBlock thread_block;
+    if constexpr (kernel::test<kernel0>(900,MaxShmem)) {
+      typename kernel0::ThreadBlock thread_block;
       dim3 grid = {
         (uint)(x.N+thread_block.x-1)/thread_block.x,
         (uint)(cd.N+thread_block.z-1)/thread_block.z
       };
       launch<<<grid,thread_block,shmem,stream>>>(
-        kernel_x(), x, cd, cuda::boys(), std::tuple{}, XCD
+        kernel0(), x, cd, cuda::boys(), std::tuple{}, XCD
       );
       //printf("v0:xz\n");
       return std::true_type();
     }
-    else if constexpr (!std::is_same_v<kernel_xy,void>) {
-      typename kernel_xy::ThreadBlock thread_block;
+    else if constexpr (!std::is_same_v<x_cd_kernel,void>) {
+      typename x_cd_kernel::ThreadBlock thread_block;
       dim3 grid = {
         (uint)(x.N+thread_block.x-1)/thread_block.x,
         (uint)(cd.N)
       };
       for (int kx = 0; kx < bra.K; ++kx) {
         launch<<<grid,thread_block,shmem,stream>>>(
-          kernel_xy(), x, kx, cd, cuda::boys(), std::tuple{}, XCD
+          x_cd_kernel(), x, kx, cd, cuda::boys(), std::tuple{}, XCD
         );
       }
       //printf("v0:xz\n");

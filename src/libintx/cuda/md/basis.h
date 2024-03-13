@@ -46,7 +46,7 @@ namespace libintx::cuda::md {
   };
 
   struct Basis2 {
-    static constexpr size_t alignment = 16;
+    static constexpr size_t alignment = 128;
     const Shell first, second;
     const int N, K;
     const double *data;

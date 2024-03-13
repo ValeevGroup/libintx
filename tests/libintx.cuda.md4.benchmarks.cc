@@ -46,6 +46,7 @@ auto run(
 
     cudaStream_t stream = 0;
     md.engine = libintx::cuda::md::eri<4>(bra, ket, stream);
+    md.engine->max_memory = 2ul*1024*1024*1024;
     md.engine->compute(ijs, kls, buffer.data(), dims);
     libintx::cuda::stream::synchronize(stream);
     {

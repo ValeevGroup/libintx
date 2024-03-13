@@ -123,22 +123,15 @@ namespace libintx::cuda::md::kernel {
   }
 
 
+
   template<
     typename Bra, typename Ket,
-    int DimX, int DimY, int DimZ,
+    int DimX, int DimY,
     int MaxShmem, int MinBlocks = 2
     >
-  struct md_v0_kernel;
+  struct md_v0_kernel  {
 
-
-  template<
-    typename Bra, typename Ket,
-    int DimX, int DimZ,
-    int MaxShmem, int MinBlocks
-    >
-  struct md_v0_kernel<Bra,Ket,DimX,1,DimZ,MaxShmem,MinBlocks>  {
-
-    static_assert(DimX <= 32 || DimZ == 1);
+    static_assert(DimX <= 32 || DimY == 1);
 
     static constexpr int L = (Bra::L+Ket::L);
     static constexpr int NP = Bra::nherm;
@@ -146,14 +139,14 @@ namespace libintx::cuda::md::kernel {
     static constexpr int NAB = Bra::nbf;
     static constexpr int NCD = Ket::nbf;
 
-    using ThreadBlock = cuda::thread_block<DimX,1,DimZ>;
+    using ThreadBlock = cuda::thread_block<DimX,DimY>;
     static constexpr int num_threads = ThreadBlock::size();
     static constexpr int max_shmem = MaxShmem;
     static constexpr int min_blocks = MinBlocks;
 
     struct Registers {
       double pCD[NP][NCD];
-      double r[L ? nherm2(L-1) : 1]; // excluded from reg count
+      double r[Ket::L ? nherm2(L-1) : 1]; // excluded from reg count
     };
 
     union Shmem {
@@ -162,7 +155,7 @@ namespace libintx::cuda::md::kernel {
         struct {
           Hermite hdata;
           double gdata[max(1,NQ*NCD)];
-        } cds[DimZ];
+        } cds[DimY];
       };
     };
 
@@ -203,12 +196,12 @@ namespace libintx::cuda::md::kernel {
       __shared__ Shmem shmem;
 
       int ij = blockIdx.x*thread_block.x;
-      int kl = blockIdx.y*thread_block.z;
+      int kl = blockIdx.y*thread_block.y;
 
-      libintx::cuda::memset1(&shmem.cds[threadIdx.z].hdata, 0, gx);
+      libintx::cuda::memset1(&shmem.cds[threadIdx.y].hdata, 0, gx);
       memset1(&shmem.abs, 0, thread_block);
       //static_assert(sizeof(shmem.abs) == sizeof(Hermite)*DimX);
-      // for (int ix = threadIdx.z; ix < DimX; ix += DimZ) {
+      // for (int ix = threadIdx.y; ix < DimX; ix += DimY) {
       //   //if (ix+ij < bra.N) continue;
       // }
 
@@ -227,18 +220,18 @@ namespace libintx::cuda::md::kernel {
         for (int kcd = 0; kcd < ket.K; ++kcd) {
 
           thread_block.sync();
-          if (kl+threadIdx.z < ket.N) {
+          if (kl+threadIdx.y < ket.N) {
             memcpy(
               nwords<sizeof(double),Hermite>() + NQ*NCD,
-              reinterpret_cast<const double*>(ket.hdata(kl+threadIdx.z,kcd)),
-              reinterpret_cast<double*>(&shmem.cds[threadIdx.z].hdata),
+              reinterpret_cast<const double*>(ket.hdata(kl+threadIdx.y,kcd)),
+              reinterpret_cast<double*>(&shmem.cds[threadIdx.y].hdata),
               gx
             );
           }
           thread_block.sync();
 
           const auto &ab = shmem.abs[threadIdx.x];
-          const auto &cd = shmem.cds[threadIdx.z].hdata;
+          const auto &cd = shmem.cds[threadIdx.y].hdata;
 
           auto &P = ab.r;
           auto &Q = cd.r;
@@ -266,7 +259,7 @@ namespace libintx::cuda::md::kernel {
           }
 
           namespace r1 = libintx::md::r1;
-          auto &Ecd = shmem.cds[threadIdx.z].gdata;
+          auto &Ecd = shmem.cds[threadIdx.y].gdata;
 
           double r[nherm2(L)] = {};
           r1::compute<L>(PQ, s, r);
@@ -303,7 +296,7 @@ namespace libintx::cuda::md::kernel {
 
         } // kcd
 
-        if (!(threadIdx.x+ij < bra.N && kl+threadIdx.z < ket.N)) continue;
+        if (!(threadIdx.x+ij < bra.N && kl+threadIdx.y < ket.N)) continue;
 
         if constexpr (Bra::L == 0) {
           for (int icd = 0; icd < NCD; ++icd) {
@@ -322,7 +315,7 @@ namespace libintx::cuda::md::kernel {
               for (int i = 0; i < npure(X); ++i) {
                 xcd[i] = BraKet(
                   threadIdx.x + ij + i*bra.N,
-                  icd + (threadIdx.z + kl)*NCD
+                  icd + (threadIdx.y + kl)*NCD
                 );
               }
             }
@@ -337,7 +330,7 @@ namespace libintx::cuda::md::kernel {
               [&](auto x, auto u) {
                 BraKet(
                   threadIdx.x + ij + index(x)*bra.N,
-                  icd + (threadIdx.z + kl)*NCD
+                  icd + (threadIdx.y + kl)*NCD
                 ) = u + xcd[index(x)];
               },
               [&](auto x) {
@@ -366,7 +359,7 @@ namespace libintx::cuda::md::kernel {
               for (int icd = 0; icd < NCD; ++icd) {
                 abcd[icd] = BraKet(
                   (threadIdx.x+ij) + iab*bra.N,
-                  icd + (threadIdx.z+kl)*NCD
+                  icd + (threadIdx.y+kl)*NCD
                 );
               }
             }
@@ -393,7 +386,7 @@ namespace libintx::cuda::md::kernel {
             for (int icd = 0; icd < NCD; ++icd) {
               BraKet(
                 (threadIdx.x+ij) + iab*bra.N,
-                icd + (threadIdx.z+kl)*NCD
+                icd + (threadIdx.y+kl)*NCD
               ) = abcd[icd];
             }
           }
@@ -403,13 +396,13 @@ namespace libintx::cuda::md::kernel {
       } // kab
 
       if constexpr (Bra::L == 0) {
-        if (!(threadIdx.x+ij < bra.N && kl+threadIdx.z < ket.N)) return;
-        assert(threadIdx.z+kl < ket.N);
+        if (!(threadIdx.x+ij < bra.N && kl+threadIdx.y < ket.N)) return;
+        assert(threadIdx.y+kl < ket.N);
 #pragma unroll
         for (int icd = 0; icd < NCD; ++icd) {
           BraKet(
             (threadIdx.x+ij),
-            icd + (threadIdx.z+kl)*NCD
+            icd + (threadIdx.y+kl)*NCD
           ) = sscd[icd];
         }
       }
@@ -420,11 +413,13 @@ namespace libintx::cuda::md::kernel {
 
 
   template<
+    bool Transform,
     typename Bra, typename Ket,
-    int DimX, int DimY, int DimZ,
-    int MaxShmem, int MinBlocks
+    int DimX, int DimY,
+    int MaxShmem,
+    int MinBlocks = 2
     >
-  struct md_v0_kernel { // <Bra,Ket,DimX,DimY,1,MaxShmem,MinBlocks> {
+  struct md_x_cd_kernel {
 
     static constexpr int L = (Bra::L+Ket::L);
     static constexpr int NP = Bra::nherm;
@@ -461,9 +456,11 @@ namespace libintx::cuda::md::kernel {
         Hermite cd;
         double Ecd[NCD*NQ];
       };
+      // if Transform == 0 this member isn't needed;
+      // then P[NP][1][DimX] =< R[nherm2(L)][DimX];
       struct {
         double inv_2_p[DimX];
-        double P[NP][ncd_batch][DimX];
+        double P[NP][Transform ? ncd_batch : 1][DimX];
         //double Eab[DimY][DimX];
       };
     };
@@ -593,6 +590,21 @@ namespace libintx::cuda::md::kernel {
 
       } // kcd
 
+      if constexpr (!Transform) {
+
+#pragma unroll
+        for (int ip = 0; ip < NP; ip += DimY) {
+          if (ip+threadIdx.y >= NP) break;
+          for (int icd = 0; icd < NCD; ++icd) {
+            //printf("
+            BraKet(threadIdx.x, ip+threadIdx.y, icd, kl, blockIdx.x) = V[ip/DimY][icd];
+          }
+        }
+
+      }
+
+      else {
+
       thread_block.sync();
 
       double inv_2_p = shmem.Hx[threadIdx.x].inv_2_exp;
@@ -693,12 +705,14 @@ namespace libintx::cuda::md::kernel {
 
       } // icd
 
+      } // Mode
+
     }
 
   };
 
   template<typename T>
-  constexpr bool test(size_t MaxRegisters, size_t MaxShmem) {
+  constexpr bool test(size_t MaxRegisters, size_t MaxShmem = 0) {
     return (
       sizeof(typename T::Registers) <= MaxRegisters &&
       sizeof(typename T::Shmem) <= MaxShmem

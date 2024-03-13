@@ -107,6 +107,7 @@ namespace libintx {
       double*,
       std::array<size_t,2>
     ) = 0;
+    size_t max_memory = 0;
   };
 
 }

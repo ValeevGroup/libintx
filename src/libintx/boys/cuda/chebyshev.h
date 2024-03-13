@@ -30,6 +30,8 @@ namespace cuda {
     __device__
     double compute(double x, int m) const {
 
+      assert(x >= 0);
+
       if (x >= MaxT) {
         return asymptotic(x,m);
       }
