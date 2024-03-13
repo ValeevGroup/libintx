@@ -57,6 +57,7 @@ auto run(
     }
 
     printf("T(MD)=%f ", 1/md.time);
+    printf("Int/s=%4.2e ", (Nij*Nkl)*md.time);
     double tref = reference::time(Nij*Nkl, bra[0], bra[1], ket[0], ket[1]);
     printf("T(Ref)=%f ", tref);
     printf("T(Ref/MD)=%f ", tref*md.time);
@@ -69,18 +70,21 @@ auto run(
 #define RUN(A,B,C,D,...)             \
   if (test::enabled(A,B,C,D)) run(A,B,C,D,__VA_ARGS__);
 
-int main() {
+int main(int argc, char **argv) {
+
+  int load = 128;
+  if (argc > 1) load = std::atoi(argv[1]);
 
   std::vector<Index2> Ks = {
     {1,1}, {1,5}, {5,5}
   };
 
-  auto N = [](int L) {
+  auto N = [&](int L) {
     int p = 1;
     for (int l = 1; l <= L; ++l) {
       p *= (l%2 ? 1 : 2);
     }
-    return (2*1024)/p;
+    return (8*load)/p;
   };
 
   // for (int a = 0; a <= LMAX; ++a) {
@@ -89,12 +93,21 @@ int main() {
   //   }
   // }
 
-  RUN(2,0,2,0, Ks, 1000, 1000);
-  RUN(2,2,2,0, Ks, 512, 512);
-  RUN(2,2,2,2, Ks, 512/2, 512/2);
-  RUN(3,3,3,3, Ks, 512/2, 512/2);
-  RUN(4,4,4,4, Ks, 512/4, 512/4);
-  RUN(5,5,5,5, Ks, 512/4, 512/4);
-  RUN(6,6,6,6, Ks, 512/4, 512/4);
+  std::vector<int> loadv = { load*32, load*16, load*8, load*4, load*2, load*1, load*1 };
+
+  // (x,x,x,x)
+  for (int l = 0; l <= LMAX; ++l) {
+    RUN(l,l,l,l, Ks, loadv.at(l), loadv.at(l));
+  }
+
+  // (x,x,s,s)
+  for (int l = 1; l <= LMAX; ++l) {
+    RUN(0,0,l,l, Ks, 2*loadv.at(0), loadv.at(l));
+  }
+
+  // (x,s,x,s)
+  for (int l = 1; l <= LMAX; ++l) {
+    RUN(l,0,l,0, Ks, 2*loadv.at(l), 2*loadv.at(l));
+  }
 
 }

@@ -8,7 +8,7 @@ namespace libintx::cuda::md {
   struct ERI4::Memory {
     device::vector<double> p;
     device::vector<double> q;
-    std::array<device::vector<double>,2> buffer;
+    std::array<device::vector<double>,3> buffer;
   };
 
   ERI4::ERI4(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, cudaStream_t stream) {
@@ -48,14 +48,14 @@ namespace libintx::cuda::md {
   }
 
   template<int Idx>
-  double* ERI4::buffer(size_t size) {
+  double* ERI4::allocate(size_t size) {
     auto &v = std::get<Idx>(this->memory_->buffer);
     v.resize(size);
     return v.data();
   }
 
-  template double* ERI4::buffer<0>(size_t size);
-  template double* ERI4::buffer<1>(size_t size);
+  template double* ERI4::allocate<0>(size_t size);
+  template double* ERI4::allocate<1>(size_t size);
 
   template<>
   std::unique_ptr< IntegralEngine<4,2> > eri<4>(

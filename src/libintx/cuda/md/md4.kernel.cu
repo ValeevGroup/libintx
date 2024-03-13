@@ -1,3 +1,5 @@
+// -*-c++-*-
+
 #include "libintx/cuda/forward.h"
 #include "libintx/cuda/md/md4.h"
 #include "libintx/cuda/md/md4.kernel.h"
@@ -45,6 +47,7 @@ namespace libintx::cuda::md {
 
     using kernel_xy = typename kernel::find_if<
       800,MaxShmem,
+      kernel::md_v0_kernel<Bra,Ket,32,4,1,MaxShmem>,
       kernel::md_v0_kernel<Bra,Ket,16,8,1,MaxShmem>,
       kernel::md_v0_kernel<Bra,Ket,8,16,1,MaxShmem>
       >::type;
@@ -57,7 +60,7 @@ namespace libintx::cuda::md {
         (uint)(cd.N+thread_block.z-1)/thread_block.z
       };
       TensorRef<double,5> ab_p(
-        this->buffer<0>(thread_block.x*NAB*nherm2(A+B-1)*grid.x*bra.K),
+        this->allocate<0>(thread_block.x*NAB*nherm2(A+B-1)*grid.x*bra.K),
         { thread_block.x, NAB, nherm2(A+B-1), grid.x, (size_t)bra.K }
       );
       for (int kab = 0; kab < bra.K; ++kab) {
@@ -83,7 +86,7 @@ namespace libintx::cuda::md {
         (uint)cd.N
       };
       TensorRef<double,4> ab_p(
-        this->buffer<0>(thread_block.x*NAB*nherm2(A+B-1)*grid.x),
+        this->allocate<0>(thread_block.x*NAB*nherm2(A+B-1)*grid.x),
         { thread_block.x, NAB, nherm2(A+B-1), grid.x }
       );
       for (int kab = 0; kab < ab.K; ++kab) {
@@ -107,6 +110,8 @@ namespace libintx::cuda::md {
 
   }
 
+
+
   template<int A, int B, int C, int D>
   auto ERI4::compute_v2(
     const Basis2& bra,
@@ -115,74 +120,128 @@ namespace libintx::cuda::md {
     cudaStream_t stream)
   {
     //printf("ERI4::compute_v2<%i,%i,%i,%i>\n", A,B,C,D);
+    using kernel::Basis2;
 
-    kernel::Basis2<A+B> ab(bra.first, bra.second, bra.K, bra.N, bra.data, bra.k_stride);
-    kernel::Basis2<C+D> cd(ket.first, ket.second, ket.K, ket.N, ket.data, ket.k_stride);
+    Basis2<A+B> ab(bra.first, bra.second, bra.K, bra.N, bra.data, bra.k_stride);
+    Basis2<C+D> cd(ket.first, ket.second, ket.K, ket.N, ket.data, ket.k_stride);
 
-    constexpr int NP = ab.nherm;
-    constexpr int NQ = cd.nherm;
-    const int NAB = ab.nbf;
-    const int NCD = cd.nbf;
+    constexpr uint NP = ab.nherm;
+    constexpr uint NQ = cd.nherm;
+    const uint NAB = ab.nbf;
+    const uint NCD = cd.nbf;
 
     //assert(cd.nbf*cd.N <= ldV);
     dim3 grid = { (uint)ab.N, (uint)cd.N };
-    using Block = cuda::thread_block<32,4>;
 
-    auto *pq = this->buffer<0>(
-      std::max(
-        (grid.x*grid.y)*(ab.nherm*cd.nherm),
-        (grid.x*grid.y)*(ab.nbf*cd.nherm)
-      )
-    );
-    auto *abq = this->buffer<1>((grid.x*grid.y)*(ab.nbf*cd.nherm));
-    auto *abq_transpose = pq;
+    using md_v2_p_cd_kernel = kernel::md_v2_p_cd_kernel<
+      Basis2<A+B>, Basis2<C,D>, 128, MaxShmem>;
 
-    for (int kcd = 0; kcd < ket.K; ++kcd) {
+    if constexpr (kernel::test<md_v2_p_cd_kernel>(800,MaxShmem)) {
+
+      auto *buffer0 = this->allocate<0>(NP*NCD*(grid.x*grid.y));
+      auto *buffer1 = this->allocate<1>(NAB*NCD*(grid.x*grid.y));
+
       for (int kab = 0; kab < bra.K; ++kab) {
-        //double C = 2*std::pow(M_PI,2.5);
-        //double Ck = (kab == 0 ? 0 : 1.0);
-        // [p,q,kl,ij]
-        kernel::compute_p_q<Block,2><<<grid,Block{},0,stream>>>(
-          ab, cd, {kab,kcd},
-          cuda::boys(),
-          TensorRef<double,4>{pq, { NP, NQ, grid.y, grid.x}}
+        int kcd_batch = ket.K;
+        size_t dynamic_shmem = sizeof(typename md_v2_p_cd_kernel::Shmem::Dynamic);
+        size_t static_shmem = sizeof(typename md_v2_p_cd_kernel::Shmem::Static);
+        while (static_shmem + kcd_batch*dynamic_shmem > MaxShmem) {
+          --kcd_batch;
+        }
+        // [p,cd,kl,ij]
+        typename md_v2_p_cd_kernel::ThreadBlock thread_block;
+        kernel::launch<<<grid,thread_block,kcd_batch*dynamic_shmem,stream>>>(
+          md_v2_p_cd_kernel(),
+          ab, kab, Basis2<C,D>(cd), kcd_batch, cuda::boys(),
+          TensorRef<double,4>{ buffer0, { NP, NCD, grid.y, grid.x } }
         );
-        // [ab,q,kl,ij] = H(ab,p,ij)*[p,q,kl,ij]
+        // H(ab,p,ij)*[p,cd,kl,ij] -> [ab,cd,kl,ij]
         batch_gemm<ColumnMajor, ColumnMajor, ColumnMajor>(
-          NAB, cd.N*cd.nherm, NP,
+          NAB, NCD*cd.N, NP,
           1.0,
           ab.gdata(0,kab), NAB, ab.stride,
-          pq, NP, NP*NQ*cd.N,
+          buffer0, NP, NP*NCD*cd.N,
           (kab == 0 ? 0.0 : 1.0), // beta
-          abq, NAB, NAB*NQ*cd.N,
+          buffer1, NAB, NAB*NCD*cd.N,
           ab.N, // batches
           stream
         );
-        // cuda::stream::synchronize(stream);
-        // for (size_t i = 0; i < NAB; ++i) {
-        //   printf("%f\n", ABCD(i,0));
-        // }
-        // return;
-      } // kab
-      // [ij,ab,q,kl] = [ab,q,kl,ij]
+
+      }
+
+      // [ij,ab,cd,kl] = [ab,cd,kl,ij]
       cuda::transpose(
-        ab.nbf*cd.nherm*cd.N, ab.N,
-        abq, ab.nbf*cd.nherm*cd.N,
-        abq_transpose, ab.N,
+        NAB*NCD*cd.N, ab.N,
+        buffer1, NAB*NCD*cd.N,
+        ABCD.data(), ab.N,
         stream
       );
-      // [ij,ab|cd,kl] = [ij,ab|q,kl]*H(cd,q,kl)'
-      batch_gemm<ColumnMajor, RowMajor, ColumnMajor>(
-        NAB*ab.N, NCD, cd.nherm,
-        1.0, // alpha
-        abq_transpose, NAB*ab.N, NAB*ab.N*NQ,
-        cd.gdata(0,kcd), NCD, cd.stride,
-        (kcd == 0 ? 0.0 : 1.0), // beta
-        ABCD.data(), NAB*ab.N, NAB*ab.N*NCD,
-        cd.N, // batches
+    }
+
+    else {
+
+      using Block = cuda::thread_block<32,4>;
+
+      auto *pq = this->allocate<0>(
+        std::max(
+          (grid.x*grid.y)*(NQ*NP),
+          (grid.x*grid.y)*(NQ*NAB)
+        )
+      );
+      auto *p_cd = this->allocate<1>((grid.x*grid.y)*(NP*NCD));
+      auto *p_cd_transpose = pq;
+      auto *ab_cd_transpose = this->allocate<2>((grid.x*grid.y)*(NAB*NCD));
+
+      for (int kab = 0; kab < bra.K; ++kab) {
+        for (int kcd = 0; kcd < ket.K; ++kcd) {
+          // [p,ij,q,kl]
+          kernel::compute_p_q<Block,2><<<grid,Block{},0,stream>>>(
+            ab, cd, {kab,kcd},
+            cuda::boys(),
+            TensorRef<double,4>{pq, { NP, grid.x, NQ, grid.y}}
+          );
+          // [p,ij,q,kl]*H(cd,q,ij)' -> [p,ij,cd,kl]
+          batch_gemm<ColumnMajor, RowMajor, ColumnMajor>(
+            NP*ab.N, NCD, NQ,
+            1.0, // alpha
+            pq, NP*ab.N, NP*ab.N*NQ,
+            cd.gdata(0,kcd), NCD, cd.stride,
+            (kcd == 0 ? 0.0 : 1.0), // beta
+            p_cd, NP*ab.N, NP*ab.N*NCD,
+            cd.N, // batches
+            stream
+          );
+        }
+        // [p,ij,cd,kl] -> [cd,kl,p,ij]
+        cuda::transpose(
+          NP*ab.N, NCD*cd.N,
+          p_cd, NP*ab.N,
+          p_cd_transpose, NCD*cd.N,
+          stream
+        );
+        // H(ab,p,ij)*[cd,kl,p,ij]' -> [ab,cd,kl,ij]
+        batch_gemm<ColumnMajor, RowMajor, ColumnMajor>(
+          NAB, NCD*cd.N, NP,
+          1.0,
+          ab.gdata(0,kab), NAB, ab.stride,
+          p_cd_transpose, NCD*cd.N, NCD*cd.N*NP,
+          (kab == 0 ? 0.0 : 1.0), // beta
+          ab_cd_transpose, NAB, NAB*NCD*cd.N,
+          ab.N, // batches
+          stream
+        );
+      } // kcd
+
+      // [ab,cd,kl,ij] -> [ij,ab,cd,kl]
+      cuda::transpose(
+        NAB*NCD*cd.N, ab.N,
+        ab_cd_transpose, NAB*NCD*cd.N,
+        ABCD.data(), ab.N,
         stream
       );
-    } // kcd
+
+    }
+
   }
 
   template<int Bra, int Ket>

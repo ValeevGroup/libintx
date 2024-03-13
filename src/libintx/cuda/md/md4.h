@@ -47,7 +47,7 @@ namespace libintx::cuda::md {
     );
 
     template<int>
-    double* buffer(size_t);
+    double* allocate(size_t);
 
   private:
     Basis<Gaussian> bra_, ket_;
