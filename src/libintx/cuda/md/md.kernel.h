@@ -422,13 +422,17 @@ namespace libintx::cuda::md::kernel {
 
 
   template<
-    bool Transform,
+    int Transform,
     typename Bra, typename Ket,
-    int DimX, int DimY,
+    int DimX, int DimY, int DimZ,
     int MaxShmem,
     int MinBlocks = 2
     >
   struct md_x_cd_kernel {
+
+    static_assert(!Transform || Transform == Bra::Centers);
+    static_assert(DimY != 1);
+    static_assert(DimZ == 1);
 
     static constexpr int L = (Bra::L+Ket::L);
     static constexpr int NP = Bra::nherm;
@@ -532,13 +536,6 @@ namespace libintx::cuda::md::kernel {
         auto &R = shmem.R;
         auto& Ecd = shmem.Ecd;
 
-        if (thread_block.thread_rank() >= 32) {
-          int xy = thread_block.thread_rank() - 32;
-          for (int i = xy; i < NQ*NCD; i += num_threads-32) {
-            Ecd[i] = ket.gdata(kl,kcd)[i];
-          }
-        }
-
         if (threadIdx.y == 0) {
           double p = ab.exp;
           double q = cd.exp;
@@ -561,6 +558,12 @@ namespace libintx::cuda::md::kernel {
             },
             PQ, s
           );
+        }
+        else { // (threadIdx.y == 0)
+          int xy = thread_block.thread_rank() - DimX;
+          for (int i = xy; i < NQ*NCD; i += num_threads-DimX) {
+            Ecd[i] = ket.gdata(kl,kcd)[i];
+          }
         }
         thread_block.sync();
 
@@ -736,6 +739,8 @@ namespace libintx::cuda::md::kernel {
     }
 
   };
+
+
 
   template<typename T>
   constexpr bool test(size_t MaxRegisters, size_t MaxShmem = 0) {

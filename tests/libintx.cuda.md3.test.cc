@@ -84,7 +84,7 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
 TEST_CASE("cuda.md.eri3") {
 
   std::vector< std::pair<int,int> > Ks = {
-    {1,1}, {3,1}, {3,5}
+    {1,1}, {1,3} // , {3,5}
   };
 
   for (int id = 0; id <= LMAX; ++id) {

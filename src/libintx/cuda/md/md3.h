@@ -30,7 +30,7 @@ namespace libintx::cuda::md {
   private:
 
     template<int>
-    double* buffer(size_t);
+    double* allocate(size_t);
 
     template<int Bra, int Ket>
     void compute(const Basis1&, const Basis2&, TensorRef<double,2>, cudaStream_t);

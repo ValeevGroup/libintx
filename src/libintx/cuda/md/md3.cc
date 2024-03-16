@@ -9,7 +9,7 @@ namespace libintx::cuda::md {
   struct ERI3::Memory {
     device::vector<Hermite> p;
     device::vector<double> q;
-    std::array<device::vector<double>,2> buffer;
+    std::array<device::vector<double>,1> buffer;
   };
 
   ERI3::ERI3(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, cudaStream_t stream) {
@@ -49,14 +49,13 @@ namespace libintx::cuda::md {
   }
 
   template<int Idx>
-  double* ERI3::buffer(size_t size) {
+  double* ERI3::allocate(size_t size) {
     auto &v = std::get<Idx>(this->memory_->buffer);
     v.resize(size);
     return v.data();
   }
 
-  template double* ERI3::buffer<0>(size_t size);
-  template double* ERI3::buffer<1>(size_t size);
+  template double* ERI3::allocate<0>(size_t size);
 
   template<>
   std::unique_ptr< IntegralEngine<3,2> > eri<3>(

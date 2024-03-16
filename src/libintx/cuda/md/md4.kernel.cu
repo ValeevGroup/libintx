@@ -53,9 +53,9 @@ namespace libintx::cuda::md {
 
     using kernel_x = typename kernel::find_if<
       800,MaxShmem,
-      kernel::md_x_cd_kernel<1,Bra,Ket,32,4,MaxShmem>,
-      kernel::md_x_cd_kernel<1,Bra,Ket,16,8,MaxShmem>,
-      kernel::md_x_cd_kernel<1,Bra,Ket,8,16,MaxShmem>
+      kernel::md_x_cd_kernel<2,Bra,Ket,32,4,1,MaxShmem>,
+      kernel::md_x_cd_kernel<2,Bra,Ket,16,8,1,MaxShmem>,
+      kernel::md_x_cd_kernel<2,Bra,Ket,8,16,1,MaxShmem>
       >::type;
 
     if constexpr (!std::is_same_v<kernel_xy,void>) {
@@ -69,6 +69,7 @@ namespace libintx::cuda::md {
         this->allocate<0>(thread_block.x*NAB*nherm2(A+B-1)*grid.x*bra.K),
         { thread_block.x, NAB, nherm2(A+B-1), grid.x, (size_t)bra.K }
       );
+      // E(ab,p,ij) -> (ij,ab,p)
       for (int kab = 0; kab < bra.K; ++kab) {
         cuda::batch_transpose(
           NAB*nherm2(A+B-1), thread_block.x,
@@ -388,7 +389,7 @@ namespace libintx::cuda::md {
             cuda::boys(),
             TensorRef<double,4>{pq, { NP, grid.x, NQ, grid.y}}
           );
-          // [p,ij,q,kl]*H(cd,q,ij)' -> [p,ij,cd,kl]
+          // [p,ij,q,kl]*H(cd,q,kl)' -> [p,ij,cd,kl]
           batch_gemm<ColumnMajor, RowMajor, ColumnMajor>(
             NP*ab.N, NCD, NQ,
             1.0, // alpha

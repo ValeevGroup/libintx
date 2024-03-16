@@ -8,6 +8,8 @@
 
 using namespace libintx;
 
+static bool csv = 1;
+
 auto run(
   int X, int C, int D,
   std::vector<Index2> Ks,
@@ -27,6 +29,8 @@ auto run(
     double time = 0;
     std::vector<double> ratio;
   } md;
+
+  std::vector<double> stats[2];
 
   for (auto K : Ks) {
 
@@ -54,7 +58,23 @@ auto run(
     printf("T(Ref/MD)=%f ", tref*md.time);
     printf("\n");
 
+    stats[0].push_back((Nij*Nkl)*md.time);
+    stats[1].push_back(tref*md.time);
+
   } // Ks
+
+  if (csv) {
+    printf("(%i|%i%i),Int/s,", X, C, D);
+    for (auto e : stats[0]) {
+      printf("%4.2e,", e);
+    }
+    printf("\n");
+    printf("(%i|%i%i),T(Ref/MD),", X, C, D);
+    for (auto e : stats[1]) {
+      printf("%i,", int(e));
+    }
+    printf("\n");
+  }
 
 }
 
@@ -62,6 +82,9 @@ auto run(
   if (test::enabled(X,C,D)) run(X,C,D,__VA_ARGS__);
 
 int main() {
+
+  int m = 3*3*5*7*16;
+  int n = 4096;
 
   std::vector<Index2> Ks = {
     {1,1}, {1,5}, {5,5}
@@ -75,12 +98,24 @@ int main() {
     return (2*1024)/p;
   };
 
-  for (int x = 0; x <= XMAX; ++x) {
-    for (int c = 0; c <= LMAX; ++c) {
-      for (int d = 0; d <= c; ++d) {
-        RUN(x,c,d,Ks, 2*N(x), N(c));
-      }
-    }
+  for (int x = 1; x <= LMAX; ++x) {
+    RUN(x,0,0,Ks, m/npure(x), n);
   }
+
+  for (int l = 1; l <= LMAX; ++l) {
+    RUN(0,l,l,Ks, n, m/npure(l,l));
+  }
+
+  for (int l = 0; l <= LMAX; l) {
+    RUN(l,l,l,Ks, m/npure(l), n/npure(l,l));
+  }
+
+  // for (int x = 0; x <= XMAX; ++x) {
+  //   for (int c = 0; c <= LMAX; ++c) {
+  //     for (int d = 0; d <= c; ++d) {
+  //       RUN(x,c,d,Ks, 2*N(x), N(c));
+  //     }
+  //   }
+  // }
 
 }
