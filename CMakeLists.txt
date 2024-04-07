@@ -78,7 +78,10 @@ if (LIBINTX_LIBINT2)
   add_subdirectory(src/libintx/engine/libint2)
 endif()
 
-add_subdirectory(python)
+option(LIBINTX_PYTHON "Python bindings" OFF)
+if (LIBINTX_PYTHON)
+   add_subdirectory(python)
+endif()
 
 include(CTest)
 if (BUILD_TESTING)
