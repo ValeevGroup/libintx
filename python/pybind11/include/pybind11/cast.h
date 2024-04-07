@@ -623,9 +623,9 @@ public:
 };
 
 // Base implementation for std::tuple and std::pair
-template <template <typename...> class Tuple, typename... Ts>
+template <class Tuple, typename... Ts>
 class tuple_caster {
-    using type = Tuple<Ts...>;
+    using type = Tuple;
     static constexpr auto size = sizeof...(Ts);
     using indices = make_index_sequence<size>;
 
@@ -672,11 +672,11 @@ public:
 protected:
     template <size_t... Is>
     type implicit_cast(index_sequence<Is...>) & {
-        return type(cast_op<Ts>(std::get<Is>(subcasters))...);
+        return type{ cast_op<Ts>(std::get<Is>(subcasters))... };
     }
     template <size_t... Is>
     type implicit_cast(index_sequence<Is...>) && {
-        return type(cast_op<Ts>(std::move(std::get<Is>(subcasters)))...);
+        return type{ cast_op<Ts>(std::move(std::get<Is>(subcasters)))... };
     }
 
     static constexpr bool load_impl(const sequence &, bool, index_sequence<>) { return true; }
@@ -703,8 +703,9 @@ protected:
     cast_impl(T &&src, return_value_policy policy, handle parent, index_sequence<Is...>) {
         PYBIND11_WORKAROUND_INCORRECT_MSVC_C4100(src, policy, parent);
         PYBIND11_WORKAROUND_INCORRECT_GCC_UNUSED_BUT_SET_PARAMETER(policy, parent);
+        using std::get;
         std::array<object, size> entries{{reinterpret_steal<object>(
-            make_caster<Ts>::cast(std::get<Is>(std::forward<T>(src)), policy, parent))...}};
+            make_caster<Ts>::cast(get<Is>(std::forward<T>(src)), policy, parent))...}};
         for (const auto &entry : entries) {
             if (!entry) {
                 return handle();
@@ -718,14 +719,14 @@ protected:
         return result.release();
     }
 
-    Tuple<make_caster<Ts>...> subcasters;
+    std::tuple<make_caster<Ts>...> subcasters;
 };
 
 template <typename T1, typename T2>
-class type_caster<std::pair<T1, T2>> : public tuple_caster<std::pair, T1, T2> {};
+class type_caster<std::pair<T1, T2>> : public tuple_caster<std::pair<T1,T2>, T1, T2> {};
 
 template <typename... Ts>
-class type_caster<std::tuple<Ts...>> : public tuple_caster<std::tuple, Ts...> {};
+class type_caster<std::tuple<Ts...>> : public tuple_caster<std::tuple<Ts...>, Ts...> {};
 
 /// Helper class which abstracts away certain actions. Users can provide specializations for
 /// custom holders, but it's only necessary if the type has a non-standard interface.
