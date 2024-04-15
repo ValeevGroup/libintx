@@ -8,7 +8,7 @@ namespace libintx::cuda::md {
 
   struct Basis2;
 
-  struct ERI4 : IntegralEngine<4,2> {
+  struct ERI4 : IntegralEngine<2,2> {
 
     ERI4(
       const Basis<Gaussian> &bra,

@@ -9,22 +9,33 @@
 
 namespace libintx::cuda::md {
 
+  template<int Bra, int Ket>
+  std::unique_ptr< IntegralEngine<Bra,Ket> > integral_engine(
+    const Basis<Gaussian>& bra,
+    const Basis<Gaussian>& ket,
+    const cudaStream_t& stream
+  ) = delete;
+
+  template<>
+  std::unique_ptr< IntegralEngine<1,2> > integral_engine(
+    const Basis<Gaussian>& bra,
+    const Basis<Gaussian>& ket,
+    const cudaStream_t& stream
+  );
+
+  template<>
+  std::unique_ptr< IntegralEngine<2,2> > integral_engine(
+    const Basis<Gaussian>& bra,
+    const Basis<Gaussian>& ket,
+    const cudaStream_t& stream
+  );
+
   template<int Order, typename ... Args>
-  std::unique_ptr< IntegralEngine<Order,2> > eri(const Args& ...) = delete;
-
-  template<>
-  std::unique_ptr< IntegralEngine<3,2> > eri(
-    const Basis<Gaussian>&,
-    const Basis<Gaussian>&,
-    const cudaStream_t&
-  );
-
-  template<>
-  std::unique_ptr< IntegralEngine<4,2> > eri(
-    const Basis<Gaussian>&,
-    const Basis<Gaussian>&,
-    const cudaStream_t&
-  );
+  auto eri(const Args& ... args) {
+    constexpr int Bra = Order/2;
+    constexpr int Ket = (Order+1)/2;
+    return integral_engine<Bra,Ket>(args...);
+  }
 
 }
 

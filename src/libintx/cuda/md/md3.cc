@@ -58,7 +58,7 @@ namespace libintx::cuda::md {
   template double* ERI3::allocate<0>(size_t size);
 
   template<>
-  std::unique_ptr< IntegralEngine<3,2> > eri<3>(
+  std::unique_ptr< IntegralEngine<1,2> > integral_engine<1,2>(
     const Basis<Gaussian> &bra,
     const Basis<Gaussian> &ket,
     const cudaStream_t &stream)

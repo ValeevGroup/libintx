@@ -10,7 +10,7 @@ namespace libintx::cuda::md {
   struct Basis1;
   struct Basis2;
 
-  struct ERI3 : IntegralEngine<3,2> {
+  struct ERI3 : IntegralEngine<1,2> {
 
     ERI3(
       const Basis<Gaussian> &bra,
@@ -21,7 +21,7 @@ namespace libintx::cuda::md {
     ~ERI3();
 
     void compute(
-      const std::vector<int> &bra,
+      const std::vector<Index1> &bra,
       const std::vector<Index2> &ket,
       double*,
       std::array<size_t,2>

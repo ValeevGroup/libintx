@@ -99,7 +99,7 @@ inline Gaussian::Primitive normalized(int L, Gaussian::Primitive p) {
   return Gaussian::Primitive{alpha, C };
 }
 
-inline Gaussian normalized(Gaussian s) {
+inline Gaussian normalized(const Gaussian &s) {
   std::vector<Gaussian::Primitive> prims(s.K);
   for (int i = 0; i < s.K; ++i) {
     prims[i] = normalized(s.L, s.prims[i]);

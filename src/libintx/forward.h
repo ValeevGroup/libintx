@@ -49,8 +49,14 @@ namespace libintx {
     if constexpr (Idx == 1) return idx.second;
   }
 
-  template<int Centers, int Electrons = 2>
+  template<int ... Args>
   struct IntegralEngine;
+
+  // base class
+  template<>
+  struct IntegralEngine<> {
+    virtual ~IntegralEngine() = default;
+  };
 
   struct JEngine;
 

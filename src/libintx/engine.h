@@ -88,7 +88,7 @@ namespace libintx {
   }
 
   template<>
-  struct IntegralEngine<3,2> {
+  struct IntegralEngine<1,2> : IntegralEngine<> {
     virtual ~IntegralEngine() = default;
     virtual void compute(
       const std::vector<Index1> &bra,
@@ -99,7 +99,7 @@ namespace libintx {
   };
 
   template<>
-  struct IntegralEngine<4,2> {
+  struct IntegralEngine<2,2> : IntegralEngine<> {
     virtual ~IntegralEngine() = default;
     virtual void compute(
       const std::vector<Index2> &bra,

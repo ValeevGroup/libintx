@@ -25,7 +25,7 @@ auto run(
   printf("dims: %ix%i, memory=%f GB\n", Nij, Nkl, 8*buffer.size()/1e9);
 
   struct {
-    std::unique_ptr< libintx::IntegralEngine<3> > engine;
+    std::unique_ptr< libintx::IntegralEngine<1,2> > engine;
     double time = 0;
     std::vector<double> ratio;
   } md;
