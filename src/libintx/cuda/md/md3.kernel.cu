@@ -1,3 +1,5 @@
+// -*-c++-*-
+
 #include "libintx/cuda/md/md3.h"
 #include "libintx/cuda/md/md3.kernel.h"
 #include "libintx/boys/cuda/chebyshev.h"
@@ -7,7 +9,9 @@
 
 namespace libintx::cuda::md {
 
-#ifdef LIBINTX_CUDA_MD_MD3_KERNEL_X_KET
+#ifndef LIBINTX_CUDA_MD_MD3_KERNEL_X_KET
+#error LIBINTX_CUDA_MD_MD3_KERNEL_X_KET undefined
+#endif
 
   template
   void ERI3::compute<LIBINTX_CUDA_MD_MD3_KERNEL_X_KET>(
@@ -16,8 +20,6 @@ namespace libintx::cuda::md {
     TensorRef<double,2>,
     cudaStream_t stream
   );
-
-#endif
 
   template<int X, int C, int D>
   auto ERI3::compute_v0(
@@ -120,7 +122,7 @@ namespace libintx::cuda::md {
     for (int kcd = 0; kcd < ket.K; ++kcd) {
       for (int kx = 0; kx < bra.K; ++kx) {
         // [q,i,x,kl]
-        kernel::compute_q_x<Block,2><<<grid,Block{},0,stream>>>(
+        kernel::compute_q_x_kernel<Block::x,2><<<grid,Block{},0,stream>>>(
           x, cd, {kx,kcd},
           cuda::boys(),
           qx

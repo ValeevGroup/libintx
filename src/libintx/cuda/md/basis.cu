@@ -1,3 +1,5 @@
+// -*-c++-*-
+
 #include "libintx/cuda/md/basis.h"
 #include "libintx/cuda/api/api.h"
 #include "libintx/cuda/api/stream.h"

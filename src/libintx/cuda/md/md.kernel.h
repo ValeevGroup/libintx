@@ -132,13 +132,13 @@ namespace libintx::cuda::md::kernel {
     return (std::max(A,B) >= 4 && std::min(A,B) >= 2);
   }
 
-
+  // (ij,ab,cd,kl) kernel base {ij->DimX,kl->DimY}
   template<
     typename Bra, typename Ket,
     int DimX, int DimY,
     int MaxShmem, int MinBlocks = 2
     >
-  struct md_v0_kernel  {
+  struct md_v0_kernel_base  {
 
     static_assert(DimX <= 32 || DimY == 1);
 
@@ -421,14 +421,16 @@ namespace libintx::cuda::md::kernel {
   };
 
 
+  // [ij,x,cd,kl) kernel base {ij->DimX,p->DimY}
+  // Transform (=0,1,2) computes p,x, or ab
   template<
     int Transform,
     typename Bra, typename Ket,
     int DimX, int DimY, int DimZ,
     int MaxShmem,
-    int MinBlocks = 2
+    int MinBlocks
     >
-  struct md_x_cd_kernel {
+  struct md_x_cd_kernel_base {
 
     static_assert(!Transform || Transform == Bra::Centers);
     static_assert(DimY != 1);

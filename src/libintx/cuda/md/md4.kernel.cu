@@ -15,7 +15,9 @@
 
 namespace libintx::cuda::md {
 
-#ifdef LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET
+#ifndef LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET
+#error LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET undefined
+#endif
 
   template
   void ERI4::compute<LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET>(
@@ -24,8 +26,6 @@ namespace libintx::cuda::md {
     TensorRef<double,2>,
     cudaStream_t stream
   );
-
-#endif
 
   template<int A, int B, int C, int D>
   auto ERI4::compute_v0(
@@ -47,15 +47,15 @@ namespace libintx::cuda::md {
 
     using kernel_xy = typename kernel::find_if<
       (Bra::L+Ket::L <= 4 ? 900 : 800), MaxShmem, // 900 catches (pp|pp), (ds|pp)
-      kernel::md_v0_kernel<Bra,Ket,16,4,MaxShmem/2>,
-      kernel::md_v0_kernel<Bra,Ket,128,1,MaxShmem>
+      kernel::md4_ab_cd_kernel<Bra,Ket,16,4,1,MaxShmem/2>,
+      kernel::md4_ab_cd_kernel<Bra,Ket,128,1,1,MaxShmem>
       >::type;
 
-    using kernel_x = typename kernel::find_if<
+    using kernel_xz = typename kernel::find_if<
       800,MaxShmem,
-      kernel::md_x_cd_kernel<2,Bra,Ket,32,4,1,MaxShmem>,
-      kernel::md_x_cd_kernel<2,Bra,Ket,16,8,1,MaxShmem>,
-      kernel::md_x_cd_kernel<2,Bra,Ket,8,16,1,MaxShmem>
+      kernel::md4_ab_cd_kernel<Bra,Ket,32,1,4,MaxShmem>,
+      kernel::md4_ab_cd_kernel<Bra,Ket,16,1,8,MaxShmem>,
+      kernel::md4_ab_cd_kernel<Bra,Ket,8,1,16,MaxShmem>
       >::type;
 
     if constexpr (!std::is_same_v<kernel_xy,void>) {
@@ -85,8 +85,8 @@ namespace libintx::cuda::md {
       return std::true_type();
     }
     // performs poorly when Bra > 6
-    else if constexpr (!std::is_same_v<kernel_x,void> && Bra::L <= 6) {
-      typename kernel_x::ThreadBlock thread_block;
+    else if constexpr (!std::is_same_v<kernel_xz,void> && Bra::L <= 6) {
+      typename kernel_xz::ThreadBlock thread_block;
       dim3 grid = {
         (uint)(ab.N+thread_block.x-1)/thread_block.x,
         (uint)cd.N
@@ -104,7 +104,7 @@ namespace libintx::cuda::md {
           stream
         );
         launch<<<grid,thread_block,shmem,stream>>>(
-          kernel_x(), ab, kab, cd, cuda::boys(), std::tuple{ab_p}, ABCD
+          kernel_xz(), ab, kab, cd, cuda::boys(), std::tuple{ab_p}, ABCD
         );
       }
       return std::true_type();
@@ -145,8 +145,8 @@ namespace libintx::cuda::md {
     constexpr int DimY = 128/DimX;
     auto thread_block = cuda::thread_block<DimX,DimY>();
 
-    using kernel0 = kernel::md_v1_kernel0<Basis2<A+B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
-    using kernel1 = kernel::md_v1_kernel1<Basis2<A,B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
+    using kernel0 = kernel::md4_v1_r1_p_cd_kernel<Basis2<A+B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
+    using kernel1 = kernel::md4_v1_ab_cd_kernel<Basis2<A,B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
 
     constexpr bool viable = {
       kernel::test<kernel0>(800,MaxShmem) &&
@@ -184,9 +184,9 @@ namespace libintx::cuda::md {
       //   (r1_size*maxk + p_cd_buffer.size())*(sizeof(double)/1e9)
       // );
 
-      using x_cd_kernel = kernel::md_x_cd_kernel<0,Basis2<A+B>,Basis2<C,D>,DimX,DimY,1,MaxShmem>;
+      using p_cd_kernel = kernel::md4_v1_p_cd_kernel<Basis2<A+B>,Basis2<C,D>,DimX,DimY,1,MaxShmem>;
 
-      if (kernel::test<x_cd_kernel>(800,MaxShmem)) {
+      if (kernel::test<p_cd_kernel>(800,MaxShmem)) {
         k_batch = 0;
       }
       else {
@@ -231,9 +231,9 @@ namespace libintx::cuda::md {
 
       for (int kp = 0; kp < bra.K; ++kp) {
 
-        if constexpr (kernel::test<x_cd_kernel>(800,MaxShmem)) {
+        if constexpr (kernel::test<p_cd_kernel>(800,MaxShmem)) {
           launch<<<grid0,thread_block,0,stream>>>(
-            x_cd_kernel(), ab, kp, Basis2<C,D>(cd), cuda::boys(), std::tuple{}, pCD
+            p_cd_kernel(), ab, kp, Basis2<C,D>(cd), cuda::boys(), std::tuple{}, pCD
           );
         }
         else {
@@ -241,7 +241,7 @@ namespace libintx::cuda::md {
             int nk = std::min(ket.K-kq, k_batch);
             for (int k = 0; k < nk; ++k) {
               int ldR = (grid0.x*grid0.y)*(DimX*nherm2(Bra+Ket));
-              kernel::compute_r1<DimX,DimY,0><<<grid0,thread_block,0,stream>>>(
+              kernel::compute_r1_kernel<DimX,DimY,0><<<grid0,thread_block,0,stream>>>(
                 ab, cd, {kp,kq+k},
                 cuda::boys(),
                 TensorRef<double,4>{
@@ -320,7 +320,7 @@ namespace libintx::cuda::md {
     //assert(cd.nbf*cd.N <= ldV);
     dim3 grid = { (uint)ab.N, (uint)cd.N };
 
-    using md_v2_p_cd_kernel = kernel::md_v2_p_cd_kernel<
+    using md_v2_p_cd_kernel = kernel::md4_v2_p_cd_kernel<
       Basis2<A+B>, Basis2<C,D>, 128, MaxShmem>;
 
     if constexpr (kernel::test<md_v2_p_cd_kernel>(800,MaxShmem)) {
@@ -368,6 +368,7 @@ namespace libintx::cuda::md {
 
     else {
 
+
       using Block = cuda::thread_block<32,4>;
 
       auto *pq = this->allocate<0>(
@@ -384,7 +385,7 @@ namespace libintx::cuda::md {
 
         for (int kcd = 0; kcd < ket.K; ++kcd) {
           // [p,ij,q,kl]
-          kernel::compute_p_q<Block,2><<<grid,Block{},0,stream>>>(
+          kernel::compute_p_q_kernel<Block::x,Block::y,2><<<grid,Block{},0,stream>>>(
             ab, cd, {kab,kcd},
             cuda::boys(),
             TensorRef<double,4>{pq, { NP, grid.x, NQ, grid.y}}

@@ -26,6 +26,7 @@ namespace libintx::cuda::md::kernel {
     >
   struct md3_x_cd_kernel;
 
+  // (ij,x,cd,kl) kernel {ij->DimX}
   template<
     typename Bra, typename Ket,
     int DimX,
@@ -33,10 +34,12 @@ namespace libintx::cuda::md::kernel {
     int MinBlocks
     >
   struct md3_x_cd_kernel<Bra,Ket,DimX,1,1,MaxShmem,MinBlocks>
-    : md_v0_kernel<Bra,Ket,DimX,1,MaxShmem,MinBlocks>
+    : md_v0_kernel_base<Bra,Ket,DimX,1,MaxShmem,MinBlocks>
   {
+    static_assert(Bra::Centers == 1);
   };
 
+  // [ij,x,cd,kl) kernel {ij->DimX,p->DimY}
   template<
     typename Bra, typename Ket,
     int DimX, int DimY,
@@ -44,10 +47,12 @@ namespace libintx::cuda::md::kernel {
     int MinBlocks
     >
   struct md3_x_cd_kernel<Bra,Ket,DimX,DimY,1,MaxShmem,MinBlocks>
-    : md_x_cd_kernel<1,Bra,Ket,DimX,DimY,1,MaxShmem,MinBlocks>
+    : md_x_cd_kernel_base<1,Bra,Ket,DimX,DimY,1,MaxShmem,MinBlocks>
   {
+    static_assert(Bra::Centers == 1);
   };
 
+  // [ij,x,cd,kl) kernel {ij->DimX,cd->DimZ}
   template<
     typename Bra, typename Ket,
     int DimX, int DimZ,
@@ -248,11 +253,11 @@ namespace libintx::cuda::md::kernel {
   };
 
 
-  // compute [q,ij,x,kl]
-  template<typename ThreadBlock, int MinBlocks, int X, int Ket, typename Boys>
+  // [q,ij,x,kl] kernel {DimX->q}
+  template<int DimX, int MinBlocks, int X, int Ket, typename Boys>
   __global__
-  __launch_bounds__(ThreadBlock::size(),MinBlocks)
-  static void compute_q_x(
+  __launch_bounds__(DimX,MinBlocks)
+  static void compute_q_x_kernel(
     const Basis1<X> bra,
     const Basis2<Ket> ket,
     const std::pair<int,int> K,
@@ -264,8 +269,8 @@ namespace libintx::cuda::md::kernel {
     static constexpr int NP = bra.nherm;
     static constexpr int NQ = ket.nherm;
 
-    constexpr ThreadBlock thread_block;
-    constexpr int num_threads = ThreadBlock::size();
+    constexpr thread_block<DimX> thread_block;
+    constexpr int num_threads = thread_block.size();
     int rank = thread_block.thread_rank();
 
     struct Shmem {
