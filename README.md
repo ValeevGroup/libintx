@@ -11,6 +11,12 @@ Until version 1.0 this will remain EXPERIMENTAL code development; expect things 
 - A C++ compiler with support for the 2017 C++ standard ([the list of compilers with partial or full support for C++17](https://en.cppreference.com/w/cpp/compiler_support/17))
 - CUDA toolkit, version 11 or higher (optional)
 
+Other CMake parameters:
+- LIBINTX_MAX_K - maximum primitives
+- LIBINTX_MAX_L - maximum angular momentum
+- LIBINTX_MAX_X - maximum auxillary angular momentum
+- LIBINTX_CUDA_MAX_SHMEM - maximum CUDA shared memory per *threadblock*
+
 ## Building
 - configure: \
     `cd libintx` \
@@ -22,13 +28,23 @@ Until version 1.0 this will remain EXPERIMENTAL code development; expect things 
     `cmake -DLIBINTX_LIBINT2=ON .`
 - build: \
     `cmake --build .`
-- benchmarks: \
-    `cmake --build . --target libintx.cuda.benchmarks` \
-    `./tests/libintx.cuda.benchmarks`
+- 3-center tests and benchmarks: \
+    `cmake --build . --target libintx.cuda.md3.test` \
+    `./tests/libintx.cuda.md3.test`
+    `cmake --build . --target libintx.cuda.md3.benchmarks` \
+    `./tests/libintx.cuda.md3.benchmarks`
+- 4-center tests and benchmarks: \
+    `cmake --build . --target libintx.cuda.md4.test` \
+    `./tests/libintx.cuda.md4.test`
+    `cmake --build . --target libintx.cuda.md4.benchmarks` \
+    `./tests/libintx.cuda.md4.benchmarks`
+
+# Python
+- Configure with LIBINTX_PYTHON=TRUE
+- Build `libintx-python` target
 
 # Using
-
-TBC
+Still work in progress.  Read through test programs and/or contact Andrey, asadchev@gmail.com
 
 # Developers
 LibintX is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Virginia Tech](http://www.vt.edu).
