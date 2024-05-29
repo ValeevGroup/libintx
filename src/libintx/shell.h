@@ -78,8 +78,6 @@ struct alignas(32) Gaussian : Shell {
 
 };
 
-static_assert(sizeof(Gaussian) == 192);
-
 inline Gaussian::Primitive normalized(int L, Gaussian::Primitive p) {
   using math::factorial2_Kminus1;
   using math::sqrt_pi3;

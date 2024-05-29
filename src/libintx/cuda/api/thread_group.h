@@ -15,7 +15,7 @@ namespace libintx::cuda {
     static constexpr int y = Y;
     static constexpr int z = Z;
     __device__ static constexpr int size() { return x*y*z; }
-    __device__ static constexpr auto thread_rank() {
+    __device__ static auto thread_rank() {
       return this_thread_block().thread_rank();
     }
     __device__ static void sync() {
@@ -39,10 +39,10 @@ namespace libintx::cuda {
     }
   };
 
-  template<int ... Dims>
+  template<int DimX, int ... Dims>
   __device__ __forceinline__
   constexpr auto this_thread_block() {
-    return thread_block<Dims...>{};
+    return thread_block<DimX,Dims...>{};
   }
 
 }

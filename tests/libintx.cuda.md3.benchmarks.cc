@@ -106,7 +106,7 @@ int main() {
     RUN(0,l,l,Ks, n, m/npure(l,l));
   }
 
-  for (int l = 0; l <= LMAX; l) {
+  for (int l = 0; l <= LMAX; ++l) {
     RUN(l,l,l,Ks, m/npure(l), n/npure(l,l));
   }
 
