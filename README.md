@@ -29,15 +29,15 @@ Other CMake parameters:
 - build: \
     `cmake --build .`
 - 3-center tests and benchmarks: \
-    `cmake --build . --target libintx.cuda.md3.test` \
-    `./tests/libintx.cuda.md3.test`
-    `cmake --build . --target libintx.cuda.md3.benchmarks` \
-    `./tests/libintx.cuda.md3.benchmarks`
+    `cmake --build . --target libintx.gpu.md3.test` \
+    `./tests/libintx.gpu.md3.test`
+    `cmake --build . --target libintx.gpu.md3.benchmarks` \
+    `./tests/libintx.gpu.md3.benchmarks`
 - 4-center tests and benchmarks: \
-    `cmake --build . --target libintx.cuda.md4.test` \
-    `./tests/libintx.cuda.md4.test`
-    `cmake --build . --target libintx.cuda.md4.benchmarks` \
-    `./tests/libintx.cuda.md4.benchmarks`
+    `cmake --build . --target libintx.gpu.md4.test` \
+    `./tests/libintx.gpu.md4.test`
+    `cmake --build . --target libintx.gpu.md4.benchmarks` \
+    `./tests/libintx.gpu.md4.benchmarks`
 
 # Python
 - Configure with LIBINTX_PYTHON=TRUE

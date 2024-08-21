@@ -78,7 +78,7 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
     }                                                   \
   }
 
-TEST_CASE("cuda.md.eri4") {
+TEST_CASE("gpu.md.eri4") {
 
   std::vector< std::pair<int,int> > Ks = {
     {1,1}, {1,5}, {3,5}

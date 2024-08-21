@@ -12,5 +12,5 @@ pybind11_add_module(
   src/libintx/libintx.cc
 )
 set_target_properties(libintx-python PROPERTIES OUTPUT_NAME libintx)
-target_link_libraries(libintx-python PRIVATE libintx.cuda.md.eri3)
-target_link_libraries(libintx-python PRIVATE libintx.cuda.md.eri4)
+target_link_libraries(libintx-python PRIVATE libintx.gpu.md.eri3)
+target_link_libraries(libintx-python PRIVATE libintx.gpu.md.eri4)

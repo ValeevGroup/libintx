@@ -9,40 +9,40 @@ endif()
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
 add_library(
-  libintx.cuda
+  libintx.gpu
   api/api.cc
   boys.cc
   blas.cu
   )
-set_target_properties(libintx.cuda PROPERTIES OUTPUT_NAME intx.cuda)
-target_link_libraries(libintx.cuda libintx.boys)
-target_link_libraries(libintx.cuda CUDA::cudart)
+set_target_properties(libintx.gpu PROPERTIES OUTPUT_NAME intx.gpu)
+target_link_libraries(libintx.gpu libintx.boys)
+target_link_libraries(libintx.gpu CUDA::cudart)
 
 math(EXPR lmax2 "2*${LIBINTX_MAX_L}")
 foreach (L RANGE ${lmax2})
   foreach (X RANGE ${LIBINTX_MAX_X})
-    set(target libintx.cuda.jengine.kernel.${L}_${X})
+    set(target libintx.gpu.jengine.kernel.${L}_${X})
     add_library(${target} OBJECT EXCLUDE_FROM_ALL jengine/md/jengine.kernel.cu)
     target_compile_definitions(
       ${target}
       PRIVATE
       LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET=${L}\\,${X}
       )
-    list(APPEND libintx_cuda_jengine_sources $<TARGET_OBJECTS:${target}>)
+    list(APPEND libintx_gpu_jengine_sources $<TARGET_OBJECTS:${target}>)
   endforeach()
 endforeach()
 
 add_library(
-  libintx.cuda.jengine
+  libintx.gpu.jengine
   EXCLUDE_FROM_ALL
   jengine/md/jengine.cpp
   jengine/md/hermite.cu
-  ${libintx_cuda_jengine_sources}
+  ${libintx_gpu_jengine_sources}
   )
-set_target_properties(libintx.cuda.jengine PROPERTIES OUTPUT_NAME intx.cuda.jengine)
-target_link_libraries(libintx.cuda.jengine libintx.cuda)
+set_target_properties(libintx.gpu.jengine PROPERTIES OUTPUT_NAME intx.gpu.jengine)
+target_link_libraries(libintx.gpu.jengine libintx.gpu)
 
-install(TARGETS libintx.cuda)
-install(FILES forward.h DESTINATION libintx/cuda)
+install(TARGETS libintx.gpu)
+install(FILES forward.h DESTINATION libintx/gpu)
 
 add_subdirectory(md)
