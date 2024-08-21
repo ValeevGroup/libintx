@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_MD_MD_KERNEL_H
-#define LIBINTX_CUDA_MD_MD_KERNEL_H
+#ifndef LIBINTX_GPU_MD_MD_KERNEL_H
+#define LIBINTX_GPU_MD_MD_KERNEL_H
 
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/md/basis.h"
@@ -776,4 +776,4 @@ namespace libintx::gpu::md::kernel {
 
 }
 
-#endif // LIBINTX_CUDA_MD_MD_KERNEL_H
+#endif // LIBINTX_GPU_MD_MD_KERNEL_H

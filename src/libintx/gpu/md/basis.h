@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_MD_BASIS_H
-#define LIBINTX_CUDA_MD_BASIS_H
+#ifndef LIBINTX_GPU_MD_BASIS_H
+#define LIBINTX_GPU_MD_BASIS_H
 
 #include "libintx/shell.h"
 #include "libintx/gpu/forward.h"
@@ -72,4 +72,4 @@ namespace libintx::gpu::md {
 }
 
 
-#endif /* LIBINTX_CUDA_MD_BASIS_H */
+#endif /* LIBINTX_GPU_MD_BASIS_H */

@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_MD_JENGINE_H
-#define LIBINTX_CUDA_MD_JENGINE_H
+#ifndef LIBINTX_GPU_MD_JENGINE_H
+#define LIBINTX_GPU_MD_JENGINE_H
 
 #include "libintx/gpu/jengine/md/forward.h"
 
@@ -73,4 +73,4 @@ namespace libintx::gpu::jengine::md {
 
 }
 
-#endif /* LIBINTX_CUDA_MD_JENGINE_H */
+#endif /* LIBINTX_GPU_MD_JENGINE_H */

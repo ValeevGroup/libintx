@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_FORWARD_H
-#define LIBINTX_CUDA_FORWARD_H
+#ifndef LIBINTX_GPU_FORWARD_H
+#define LIBINTX_GPU_FORWARD_H
 
 #include "libintx/forward.h"
 
@@ -31,4 +31,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_FORWARD_H */
+#endif /* LIBINTX_GPU_FORWARD_H */

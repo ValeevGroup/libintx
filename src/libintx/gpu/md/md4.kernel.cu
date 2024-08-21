@@ -15,12 +15,12 @@
 
 namespace libintx::gpu::md {
 
-#ifndef LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET
-#error LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET undefined
+#ifndef LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET
+#error LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET undefined
 #endif
 
   template
-  void ERI4::compute<LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET>(
+  void ERI4::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET>(
     const Basis2&,
     const Basis2&,
     TensorRef<double,2>,

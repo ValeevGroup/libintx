@@ -350,7 +350,7 @@ namespace {
 }
 }
 
-//#define LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET 0,0
+//#define LIBINTX_GPU_MD_JENGINE_KERNEL_BRA_KET 0,0
 
 template<int Bra, int Ket, int Step, class Boys>
 void libintx::gpu::jengine::md::df_jengine_kernel(
@@ -367,7 +367,7 @@ void libintx::gpu::jengine::md::df_jengine_kernel(
   kernel(boys, NP, P, NQ, Q, input, output, cutoff, stream);
 }
 
-#define LIBINTX_CUDA_MD_JENGINE_KERNEL(...)                             \
+#define LIBINTX_GPU_MD_JENGINE_KERNEL(...)                             \
   template                                                              \
   void libintx::gpu::jengine::md::df_jengine_kernel<__VA_ARGS__>(      \
     const Boys &boys,                                                   \
@@ -379,7 +379,7 @@ void libintx::gpu::jengine::md::df_jengine_kernel(
     Stream&                                                             \
   );
 
-LIBINTX_CUDA_MD_JENGINE_KERNEL(
-  LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET,1,libintx::gpu::Boys);
-LIBINTX_CUDA_MD_JENGINE_KERNEL(
-  LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET,2,libintx::gpu::Boys);
+LIBINTX_GPU_MD_JENGINE_KERNEL(
+  LIBINTX_GPU_MD_JENGINE_KERNEL_BRA_KET,1,libintx::gpu::Boys);
+LIBINTX_GPU_MD_JENGINE_KERNEL(
+  LIBINTX_GPU_MD_JENGINE_KERNEL_BRA_KET,2,libintx::gpu::Boys);

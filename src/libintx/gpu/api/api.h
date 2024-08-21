@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_API_H
-#define LIBINTX_CUDA_API_H
+#ifndef LIBINTX_GPU_API_H
+#define LIBINTX_GPU_API_H
 
 #include "libintx/gpu/forward.h"
 
@@ -247,4 +247,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_API_H */
+#endif /* LIBINTX_GPU_API_H */

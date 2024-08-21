@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_BLAS_H
-#define LIBINTX_CUDA_BLAS_H
+#ifndef LIBINTX_GPU_BLAS_H
+#define LIBINTX_GPU_BLAS_H
 
 #include "libintx/gpu/api/api.h"
 //#include "cublas_v2.h"
@@ -40,4 +40,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_BLAS_H */
+#endif /* LIBINTX_GPU_BLAS_H */

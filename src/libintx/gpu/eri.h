@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_ERI_H
-#define LIBINTX_CUDA_ERI_H
+#ifndef LIBINTX_GPU_ERI_H
+#define LIBINTX_GPU_ERI_H
 
 #include "libintx/array.h"
 #include "libintx/tuple.h"
@@ -72,4 +72,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_ERI_H */
+#endif /* LIBINTX_GPU_ERI_H */

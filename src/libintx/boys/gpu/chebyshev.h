@@ -1,5 +1,5 @@
-#ifndef BOYS_CUDA_CHEBYSHEV_H
-#define BOYS_CUDA_CHEBYSHEV_H
+#ifndef BOYS_GPU_CHEBYSHEV_H
+#define BOYS_GPU_CHEBYSHEV_H
 
 #include "libintx/boys/boys.h"
 #include "libintx/boys/asymptotic.h"
@@ -104,4 +104,4 @@ namespace boys::gpu {
 
 }
 
-#endif /* BOYS_CUDA_CHEBYSHEV_H */
+#endif /* BOYS_GPU_CHEBYSHEV_H */

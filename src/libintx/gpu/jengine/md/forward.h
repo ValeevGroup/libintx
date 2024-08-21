@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_MD_FORWARD_H
-#define LIBINTX_CUDA_MD_FORWARD_H
+#ifndef LIBINTX_GPU_MD_FORWARD_H
+#define LIBINTX_GPU_MD_FORWARD_H
 
 #include "libintx/array.h"
 #include "libintx/shell.h"
@@ -100,4 +100,4 @@ namespace libintx::gpu::jengine::md {
 
 }
 
-#endif /* LIBINTX_CUDA_MD_FORWARD_H */
+#endif /* LIBINTX_GPU_MD_FORWARD_H */

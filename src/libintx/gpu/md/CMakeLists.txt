@@ -11,7 +11,7 @@ foreach (KET RANGE ${lmax2})
     target_compile_definitions(
       ${target}
       PRIVATE
-      LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET=${BRA}\\,${KET}
+      LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET=${BRA}\\,${KET}
       )
     list(APPEND libintx.gpu_md_eri4_sources $<TARGET_OBJECTS:${target}>)
   endforeach()
@@ -22,7 +22,7 @@ foreach (KET RANGE ${lmax2})
     target_compile_definitions(
       ${target}
       PRIVATE
-      LIBINTX_CUDA_MD_MD3_KERNEL_X_KET=${X}\\,${KET}
+      LIBINTX_GPU_MD_MD3_KERNEL_X_KET=${X}\\,${KET}
       )
     list(APPEND libintx.gpu_md_eri3_sources $<TARGET_OBJECTS:${target}>)
   endforeach()
@@ -34,7 +34,7 @@ add_library(
   EXCLUDE_FROM_ALL
   basis.cu
   )
-set_target_properties(libintx.gpu.md.basis PROPERTIES OUTPUT_NAME intx.gpu.md.basis)	
+set_target_properties(libintx.gpu.md.basis PROPERTIES OUTPUT_NAME intx.gpu.md.basis)
 
 add_library(
   libintx.gpu.md.eri3

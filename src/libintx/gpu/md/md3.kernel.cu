@@ -9,12 +9,12 @@
 
 namespace libintx::gpu::md {
 
-#ifndef LIBINTX_CUDA_MD_MD3_KERNEL_X_KET
-#error LIBINTX_CUDA_MD_MD3_KERNEL_X_KET undefined
+#ifndef LIBINTX_GPU_MD_MD3_KERNEL_X_KET
+#error LIBINTX_GPU_MD_MD3_KERNEL_X_KET undefined
 #endif
 
   template
-  void ERI3::compute<LIBINTX_CUDA_MD_MD3_KERNEL_X_KET>(
+  void ERI3::compute<LIBINTX_GPU_MD_MD3_KERNEL_X_KET>(
     const Basis1&,
     const Basis2&,
     TensorRef<double,2>,

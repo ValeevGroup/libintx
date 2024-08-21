@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_API_THREAD_GROUP_H
-#define LIBINTX_CUDA_API_THREAD_GROUP_H
+#ifndef LIBINTX_GPU_API_THREAD_GROUP_H
+#define LIBINTX_GPU_API_THREAD_GROUP_H
 
 #include <cooperative_groups.h>
 
@@ -92,4 +92,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_API_THREAD_GROUP_H */
+#endif /* LIBINTX_GPU_API_THREAD_GROUP_H */

@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_API_INTRINSICS_H
-#define LIBINTX_CUDA_API_INTRINSICS_H
+#ifndef LIBINTX_GPU_API_INTRINSICS_H
+#define LIBINTX_GPU_API_INTRINSICS_H
 
 namespace libintx::gpu {
 
@@ -21,4 +21,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_API_INTRINSICS_H */
+#endif /* LIBINTX_GPU_API_INTRINSICS_H */

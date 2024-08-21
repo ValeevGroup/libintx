@@ -11,9 +11,9 @@
 #define LIBINTX_MAX_K 10
 #endif
 
-#cmakedefine LIBINTX_CUDA_MAX_SHMEM @LIBINTX_CUDA_MAX_SHMEM@
-#ifndef LIBINTX_CUDA_MAX_SHMEM
-#define LIBINTX_CUDA_MAX_SHMEM (48*1024)
+#cmakedefine LIBINTX_GPU_MAX_SHMEM @LIBINTX_GPU_MAX_SHMEM@
+#ifndef LIBINTX_GPU_MAX_SHMEM
+#define LIBINTX_GPU_MAX_SHMEM (48*1024)
 #endif
 
 namespace libintx {
@@ -26,7 +26,7 @@ namespace libintx {
 
 namespace libintx::gpu {
 
-  constexpr int MaxShmem = LIBINTX_CUDA_MAX_SHMEM;
+  constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
 
 }
 

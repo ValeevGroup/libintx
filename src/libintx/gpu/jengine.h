@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_JENGINE_H
-#define LIBINTX_CUDA_JENGINE_H
+#ifndef LIBINTX_GPU_JENGINE_H
+#define LIBINTX_GPU_JENGINE_H
 
 #include "libintx/jengine.h"
 #include <memory>
@@ -15,4 +15,4 @@ namespace libintx::gpu {
 
 }
 
-#endif /* LIBINTX_CUDA_JENGINE_H */
+#endif /* LIBINTX_GPU_JENGINE_H */

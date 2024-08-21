@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_STREAM_H
-#define LIBINTX_CUDA_STREAM_H
+#ifndef LIBINTX_GPU_STREAM_H
+#define LIBINTX_GPU_STREAM_H
 
 #include <cuda/api/stream.hpp>
 #include <vector>
@@ -54,4 +54,4 @@ namespace libintx::gpu::stream {
 
 }
 
-#endif /* LIBINTX_CUDA_STREAM_H */
+#endif /* LIBINTX_GPU_STREAM_H */

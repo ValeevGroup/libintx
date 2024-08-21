@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_MD_ENGINE_H
-#define LIBINTX_CUDA_MD_ENGINE_H
+#ifndef LIBINTX_GPU_MD_ENGINE_H
+#define LIBINTX_GPU_MD_ENGINE_H
 
 #include "libintx/engine.h"
 #include "libintx/shell.h"
@@ -39,4 +39,4 @@ namespace libintx::gpu::md {
 
 }
 
-#endif /* LIBINTX_CUDA_MD_ENGINE_H */
+#endif /* LIBINTX_GPU_MD_ENGINE_H */

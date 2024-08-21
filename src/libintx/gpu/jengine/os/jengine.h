@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_JENGINE_OS_H
-#define LIBINTX_CUDA_JENGINE_OS_H
+#ifndef LIBINTX_GPU_JENGINE_OS_H
+#define LIBINTX_GPU_JENGINE_OS_H
 
 #include "libintx/array.h"
 #include "libintx/shell.h"
@@ -67,4 +67,4 @@ namespace libintx::gpu::jengine::os {
 }
 
 
-#endif /* LIBINTX_CUDA_JENGINE_OS_H */
+#endif /* LIBINTX_GPU_JENGINE_OS_H */

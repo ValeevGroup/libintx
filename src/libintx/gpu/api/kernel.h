@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_API_KERNEL_H
-#define LIBINTX_CUDA_API_KERNEL_H
+#ifndef LIBINTX_GPU_API_KERNEL_H
+#define LIBINTX_GPU_API_KERNEL_H
 
 namespace libintx::gpu::kernel {
 
@@ -21,4 +21,4 @@ namespace libintx::gpu::kernel {
 
 }
 
-#endif /* LIBINTX_CUDA_API_KERNEL_H */
+#endif /* LIBINTX_GPU_API_KERNEL_H */

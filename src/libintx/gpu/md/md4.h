@@ -1,5 +1,5 @@
-#ifndef LIBINTX_CUDA_MD_ERI4_H
-#define LIBINTX_CUDA_MD_ERI4_H
+#ifndef LIBINTX_GPU_MD_ERI4_H
+#define LIBINTX_GPU_MD_ERI4_H
 
 #include "libintx/gpu/md/engine.h"
 #include "libintx/tensor.h"
@@ -67,4 +67,4 @@ namespace libintx::gpu::md {
 
 }
 
-#endif /* LIBINTX_CUDA_MD_ERI4_H */
+#endif /* LIBINTX_GPU_MD_ERI4_H */

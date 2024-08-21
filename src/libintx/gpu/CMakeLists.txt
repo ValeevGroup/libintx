@@ -26,7 +26,7 @@ foreach (L RANGE ${lmax2})
     target_compile_definitions(
       ${target}
       PRIVATE
-      LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET=${L}\\,${X}
+      LIBINTX_GPU_MD_JENGINE_KERNEL_BRA_KET=${L}\\,${X}
       )
     list(APPEND libintx_gpu_jengine_sources $<TARGET_OBJECTS:${target}>)
   endforeach()
