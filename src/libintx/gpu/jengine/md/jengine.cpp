@@ -9,12 +9,7 @@
 #include "libintx/array.h"
 #include "libintx/shell.h"
 #include "libintx/gpu/api/api.h"
-#include "libintx/gpu/api/stream.h"
-
-#include "cuda/api/current_device.hpp"
-#include "cuda/api/device.hpp"
-#include "cuda/api/event.hpp"
-#include "cuda/api/multi_wrapper_impls.hpp"
+#include "libintx/gpu/api/runtime.h"
 
 #include <vector>
 #include <utility>
@@ -231,7 +226,7 @@ namespace libintx::gpu::jengine::md {
     }
 
     // printf("JEngine-X t(init)=%f\n", time::since(t));
-    int num_devices = ::cuda::device::count();
+    int num_devices = gpu::device::count();
     thread_pool threads(THREADS_PER_DEVICE*num_devices);
 
     host::vector<double> X(Q_.nbf);
@@ -294,8 +289,8 @@ namespace libintx::gpu::jengine::md {
       decltype(t) start = time::now();
     } times;
 
-    ::cuda::device::current::set(device_id);
-    Stream stream(device_id);
+    gpu::current_device::set(device_id);
+    Stream stream;
 
     const auto &boys = gpu::boys();
 
@@ -449,9 +444,9 @@ namespace libintx::gpu::jengine::md {
 
     // printf("JEngine-X task device=%i at %f\n", device_id, time::since(t));
 
-    ::cuda::device::current::set(device_id);
-    Stream stream(device_id);
-    Stream jstream(device_id);
+    gpu::current_device::set(device_id);
+    Stream stream;
+    Stream jstream;
 
     // printf("Engine-X task device=%i set at %f\n", device_id, time::since(t));
 
@@ -505,7 +500,7 @@ namespace libintx::gpu::jengine::md {
     }
     stream_data.ijs.reserve(ijs.capacity());
 
-    auto event = ::cuda::event::create(::cuda::device::get(device_id));
+    gpu::Event event;
 
     while (true) {
 
@@ -595,11 +590,11 @@ namespace libintx::gpu::jengine::md {
       jstream.synchronize();
       times.jsync += time::since(t);
 
-      stream.enqueue.event(event);
+      stream.wait(event);
 
       j_update.ijs.swap(ijs);
       j_update.G2.swap(G2);
-      jstream.enqueue.callback(
+      jstream.add_callback(
         [&](auto ...){
           event.synchronize();
           for (auto &ij : j_update.ijs) {

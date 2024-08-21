@@ -3,10 +3,7 @@
 
 #include "libintx/array.h"
 #include "libintx/shell.h"
-
-namespace libintx::gpu {
-  class Stream;
-}
+#include "libintx/gpu/api/api.h"
 
 namespace libintx::gpu::jengine::md {
 
@@ -95,7 +92,7 @@ namespace libintx::gpu::jengine::md {
     const double* input,
     double* output,
     float cutoff,
-    Stream&
+    gpuStream_t
   );
 
 }

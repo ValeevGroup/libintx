@@ -1,19 +1,61 @@
 #ifndef LIBINTX_GPU_API_H
 #define LIBINTX_GPU_API_H
 
-#include "libintx/gpu/forward.h"
-
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
 #include <cassert>
 
+struct CUstream_st;
+
+namespace libintx {
+
+  typedef CUstream_st* gpuStream_t;
+
+}
+
 namespace libintx::gpu {
 
   struct Stream;
+  struct Event;
+
+  struct runtime_error : std::runtime_error {
+    using std::runtime_error::runtime_error;
+  };
+
+  struct current_device {
+
+    static int get();
+    static void set(int device);
+
+    explicit current_device(int device) {
+      this->state_ = current_device::get();
+      current_device::set(device);
+    }
+
+    ~current_device() {
+      current_device::set(this->state_);
+    }
+
+    current_device(current_device&&) = delete;
+    current_device(const current_device&) = delete;
+    current_device& operator=(current_device&&) = delete;
+    current_device& operator=(const current_device&) = delete;
+
+  private:
+    int state_ = 0;
+  };
+
+  namespace device {
+    int count();
+  }
+
+  namespace stream {
+    void synchronize(gpuStream_t = 0);
+  }
 
   void memcpy(void *dst, const void *src, size_t bytes);
-  void memcpy(void *dst, const void *src, size_t bytes, Stream&);
+  void memcpy(void *dst, const void *src, size_t bytes, gpuStream_t);
 
   template<typename T>
   void copy(const T *begin, const T *end, T *it) {
@@ -21,12 +63,12 @@ namespace libintx::gpu {
   }
 
   template<typename T>
-  void copy(const T *begin, const T *end, T *it, Stream &s) {
+  void copy(const T *begin, const T *end, T *it, gpuStream_t s) {
     memcpy(it, begin, sizeof(T)*size_t(end-begin), s);
   }
 
   void memset(void *dst, const int value, size_t bytes);
-  void memset(void *dst, const int value, size_t bytes, Stream&);
+  void memset(void *dst, const int value, size_t bytes, gpuStream_t);
 
   namespace detail {
 
@@ -59,7 +101,7 @@ namespace libintx::gpu {
     static void* allocate(size_t);
     static void free(void*);
     static void memset(void *dst, const int value, size_t bytes);
-    static void memset(void *dst, const int value, size_t bytes, Stream& stream);
+    static void memset(void *dst, const int value, size_t bytes, gpuStream_t);
   };
 
   struct host_memory_t {
@@ -137,7 +179,7 @@ namespace libintx::gpu {
 
     void push_back(const T& v) {
       if (this->size()+1 > this->capacity_) {
-        throw std::runtime_error("cuda::vector::capacity exceeded");
+        throw gpu::runtime_error("gpu::vector::capacity exceeded");
       }
       data_[size_] = v;
       ++size_;
@@ -168,7 +210,7 @@ namespace libintx::gpu {
   }
 
   template<typename T>
-  void memset(vector<T,device_memory_t> &v, const char value, Stream& stream) {
+  void memset(vector<T,device_memory_t> &v, const char value, gpuStream_t stream) {
     device_memory_t::memset(v.data(), value, sizeof(T)*v.size(), stream);
   }
 
@@ -214,35 +256,8 @@ namespace libintx::gpu {
     template<typename T>
     using vector = vector<T,device_memory_t>;
 
-    bool synchronize();
+    //bool synchronize();
 
-  }
-
-  namespace stream {
-
-    void synchronize(gpuStream_t = 0);
-
-  }
-
-  namespace kernel {
-
-    void set_max_dynamic_shared_memory_size(const void*, size_t);
-    void set_prefered_shared_memory_carveout(const void*, size_t);
-
-    template<typename F>
-    void set_max_dynamic_shared_memory_size(const F &f, size_t bytes) {
-      set_max_dynamic_shared_memory_size((const void*)f, bytes);
-    }
-
-    template<typename F>
-    void set_prefered_shared_memory_carveout(const F &f, size_t carveout) {
-      set_prefered_shared_memory_carveout((const void*)f, carveout);
-    }
-
-  }
-
-  namespace error {
-    void ensure_none(const char* = nullptr);
   }
 
 }

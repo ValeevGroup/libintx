@@ -3,10 +3,7 @@
 
 #include "libintx/boys/boys.h"
 #include "libintx/boys/asymptotic.h"
-
-//#include <cuda/api_wrappers.hpp>
-#include <cuda/api/memory.hpp>
-#include <cuda/api/device.hpp>
+#include "libintx/gpu/api/api.h"
 
 #include <assert.h>
 
@@ -17,14 +14,16 @@ namespace boys::gpu {
 
     constexpr static double Delta = double(MaxT)/Segments;
 
-    template<bool Flags>
-    explicit Chebyshev(::cuda::device_t<Flags> device) {
-      shared_table_ = ::cuda::memory::device::make_unique<double[]>(device, (Order+1)*M*Segments);
+    explicit Chebyshev(int device) {
+      libintx::gpu::current_device current_device(device);
+      shared_table_ = libintx::gpu::device::make_shared<double[]>((Order+1)*M*Segments);
       table_ = shared_table_.get();
       auto table = boys::chebyshev_interpolation_table(Order, M, MaxT, Segments);
       size_t bytes = sizeof(double)*(Order+1)*M*Segments;
-      ::cuda::memory::copy(shared_table_.get(), table.get(), bytes);
+      libintx::gpu::memcpy(shared_table_.get(), table.get(), bytes);
     }
+
+#ifdef __CUDACC__
 
     __device__
     double compute(double x, int m) const {
@@ -96,6 +95,8 @@ namespace boys::gpu {
 
     }
 
+#endif
+
   private:
     const double* table_;
     std::shared_ptr<double[]> shared_table_;
@@ -104,4 +105,4 @@ namespace boys::gpu {
 
 }
 
-#endif /* BOYS_GPU_CHEBYSHEV_H */
+#endif /* BOYS_CUDA_CHEBYSHEV_H */

@@ -1,7 +1,6 @@
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/api/kernel.h"
-#include "libintx/gpu/api/stream.h"
 #include "libintx/gpu/api/thread_group.h"
 #include "libintx/orbital.h"
 #include "libintx/pure.h"
@@ -508,7 +507,7 @@ namespace libintx::gpu::jengine::md {
     int P, int nij, const Index2 *ijs,
     const Shell *basis, Primitive2 *Ps,
     const double *G, double *H,
-    Stream &stream)
+    gpuStream_t stream)
   {
     // if (!G) {
     //   int shmem = 0;
@@ -534,7 +533,7 @@ namespace libintx::gpu::jengine::md {
     const Shell *basis,
     const double *H,
     double *G,
-    Stream &stream)
+    gpuStream_t stream)
   {
     int A = (P+1)/2;
     int B = P/2;

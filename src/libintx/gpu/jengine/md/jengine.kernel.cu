@@ -4,7 +4,6 @@
 #include "libintx/engine/md/r1.h"
 
 #include "libintx/gpu/api/kernel.h"
-#include "libintx/gpu/api/stream.h"
 #include "libintx/gpu/api/thread_group.h"
 
 namespace libintx::gpu::jengine::md {
@@ -34,7 +33,7 @@ namespace {
       const double* input,
       double* output,
       float cutoff,
-      Stream &stream)
+      gpuStream_t stream)
     {
       if (!NP || !NQ) return;
       dim3 grid = { (unsigned int)NP };
@@ -360,23 +359,23 @@ void libintx::gpu::jengine::md::df_jengine_kernel(
   const double* input,
   double* output,
   float cutoff,
-  Stream &stream
+  gpuStream_t stream
 )
 {
   auto kernel = &DFJ<Bra,Ket,Boys>::template kernel<Step>;
   kernel(boys, NP, P, NQ, Q, input, output, cutoff, stream);
 }
 
-#define LIBINTX_GPU_MD_JENGINE_KERNEL(...)                             \
+#define LIBINTX_GPU_MD_JENGINE_KERNEL(...)                              \
   template                                                              \
-  void libintx::gpu::jengine::md::df_jengine_kernel<__VA_ARGS__>(      \
+  void libintx::gpu::jengine::md::df_jengine_kernel<__VA_ARGS__>(       \
     const Boys &boys,                                                   \
     int NP, const Primitive2 *P,                                        \
     int NQ, const Primitive2 *Q,                                        \
     const double* input,                                                \
     double* output,                                                     \
     float cutoff,                                                       \
-    Stream&                                                             \
+    gpuStream_t                                                         \
   );
 
 LIBINTX_GPU_MD_JENGINE_KERNEL(

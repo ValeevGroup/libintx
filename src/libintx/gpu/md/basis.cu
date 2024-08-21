@@ -2,7 +2,6 @@
 
 #include "libintx/gpu/md/basis.h"
 #include "libintx/gpu/api/api.h"
-#include "libintx/gpu/api/stream.h"
 #include "libintx/gpu/api/thread_group.h"
 #include "libintx/engine/md/hermite.h"
 #include "libintx/pure.transform.h"
