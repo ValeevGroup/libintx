@@ -14,7 +14,7 @@ namespace libintx::gpu {
     size_t M, size_t N,
     const double *S, size_t ldS,
     double *T, size_t ldT,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
   // S[M,N,batches] -> T[N,M,batches]
@@ -23,7 +23,7 @@ namespace libintx::gpu {
     const double *S, size_t ldS,
     double *T, size_t ldT,
     size_t batches,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
   template<typename LayoutA, typename LayoutB, typename LayoutC>
@@ -35,7 +35,7 @@ namespace libintx::gpu {
     double beta,
     double *C, int64_t ldC, int64_t strideC,
     int batches,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
 }

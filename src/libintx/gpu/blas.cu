@@ -35,7 +35,7 @@ namespace libintx::gpu {
     size_t M, size_t N,
     const double *A, size_t ldA,
     double *T, size_t ldT,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
     if (!M || !N) return;
     constexpr int DimX = 16;
@@ -81,7 +81,7 @@ namespace libintx::gpu {
     const double *A, size_t ldA,
     double *T, size_t ldT,
     size_t batches,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
     if (!M || !N) return;
     constexpr int Tile = 16;
@@ -100,7 +100,7 @@ namespace libintx::gpu {
     double beta,
     double *C, int64_t ldC, int64_t strideC,
     int batches,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     using namespace cutlass::gemm;
@@ -149,7 +149,7 @@ namespace libintx::gpu {
     double beta,
     double *C, int64_t ldC, int64_t strideC,
     int batches,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
   template
@@ -161,7 +161,7 @@ namespace libintx::gpu {
     double beta,
     double *C, int64_t ldC, int64_t strideC,
     int batches,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
   template
@@ -173,7 +173,7 @@ namespace libintx::gpu {
     double beta,
     double *C, int64_t ldC, int64_t strideC,
     int batches,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
 

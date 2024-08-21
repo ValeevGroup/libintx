@@ -18,7 +18,7 @@ namespace libintx::gpu::md {
     const Basis1&,
     const Basis2&,
     TensorRef<double,2>,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
   template<int X, int C, int D>
@@ -26,7 +26,7 @@ namespace libintx::gpu::md {
     const Basis1& bra,
     const Basis2& ket,
     TensorRef<double,2> XCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     constexpr int shmem = 0;
@@ -98,7 +98,7 @@ namespace libintx::gpu::md {
     const Basis1& bra,
     const Basis2& ket,
     TensorRef<double,2> XCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
     //printf("ERI3::compute_v2<%i,%i,%i>\n", X,C,D);
 
@@ -148,7 +148,7 @@ namespace libintx::gpu::md {
     const Basis1& x,
     const Basis2& ket,
     TensorRef<double,2> XCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
     foreach(
       std::make_index_sequence<Ket+1>{},

@@ -58,7 +58,7 @@ namespace libintx::gpu::md {
     const Basis<Gaussian> &A,
     const std::vector<Index1> &idx,
     device::vector<Hermite> &H,
-    cudaStream_t
+    gpuStream_t
   );
 
   Basis2 make_basis(
@@ -66,7 +66,7 @@ namespace libintx::gpu::md {
     const Basis<Gaussian> &B,
     const std::vector<Index2> &pairs,
     device::vector<double> &H,
-    cudaStream_t
+    gpuStream_t
   );
 
 }

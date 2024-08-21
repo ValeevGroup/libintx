@@ -10,7 +10,7 @@ namespace libintx::gpu {
   struct Stream : ::cuda::stream_t<> {
     Stream(int device = 0)
       : ::cuda::stream_t<>(create(device)) {}
-    operator cudaStream_t() const {
+    operator gpuStream_t() const {
       return this->id();
     }
     template<class F>

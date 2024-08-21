@@ -40,7 +40,7 @@ void libintx::gpu::device_memory_t::memset(void *dst, const int value, size_t by
   ::cuda::memory::device::async::set(dst, value, bytes, stream);
 }
 
-void libintx::gpu::stream::synchronize(cudaStream_t stream) {
+void libintx::gpu::stream::synchronize(gpuStream_t stream) {
   auto status = ::cudaStreamSynchronize(stream);
   ::cuda::throw_if_error(
     status,

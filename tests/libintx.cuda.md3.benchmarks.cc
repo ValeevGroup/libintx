@@ -39,7 +39,7 @@ auto run(
     auto [bra,is] = test::basis1({X}, {K.first}, Nij);
     auto [ket,kls] = test::basis2({C,D}, {K.second,1}, Nkl);
 
-    cudaStream_t stream = 0;
+    gpuStream_t stream = 0;
     md.engine = libintx::gpu::md::eri<3>(bra, ket, stream);
     md.engine->compute(is, kls, buffer.data(), dims);
     libintx::gpu::stream::synchronize(stream);

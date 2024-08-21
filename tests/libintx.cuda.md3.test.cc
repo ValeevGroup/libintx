@@ -30,7 +30,7 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
   Eigen::Tensor<double,6> result(M,NX,1,NC,ND,N);
   gpu::host::register_pointer(result.data(), result.size());
 
-  cudaStream_t stream = 0;
+  gpuStream_t stream = 0;
   auto md = libintx::gpu::md::eri<3>(bra, ket, stream);
   md->compute(is, kls, result.data(), {(size_t)M*NX, (size_t)N*NC*ND});
   gpu::stream::synchronize(stream);

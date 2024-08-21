@@ -6,7 +6,13 @@
 #include <memory>
 #include <vector>
 
-typedef struct CUstream_st* cudaStream_t;
+struct CUstream_st;
+
+namespace libintx {
+
+  typedef CUstream_st* gpuStream_t;
+
+}
 
 namespace boys::gpu {
 

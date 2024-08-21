@@ -75,7 +75,7 @@ namespace libintx::gpu::jengine::md {
     const Index2 *index2,
     const Shell *basis,
     const double*, double*,
-    Stream&
+    gpuStream_t
   );
 
   void cartesian_to_hermite_2(
@@ -84,7 +84,7 @@ namespace libintx::gpu::jengine::md {
     const Shell *basis,
     Primitive2 *P,
     const double*, double*,
-    Stream&
+    gpuStream_t
   );
 
   template<int Bra, int Ket, int Step, class Boys>

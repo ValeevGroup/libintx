@@ -24,7 +24,7 @@ namespace libintx::gpu::md {
     const Basis2&,
     const Basis2&,
     TensorRef<double,2>,
-    cudaStream_t stream
+    gpuStream_t stream
   );
 
   template<int A, int B, int C, int D>
@@ -32,7 +32,7 @@ namespace libintx::gpu::md {
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     using Bra = kernel::Basis2<A,B>;
@@ -123,7 +123,7 @@ namespace libintx::gpu::md {
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     //return std::false_type();
@@ -304,7 +304,7 @@ namespace libintx::gpu::md {
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
     //printf("ERI4::compute_v2<%i,%i,%i,%i>\n", A,B,C,D);
     using kernel::Basis2;
@@ -441,7 +441,7 @@ namespace libintx::gpu::md {
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     constexpr size_t NP = nherm2(Bra);

@@ -279,7 +279,7 @@ namespace libintx::gpu::md {
   Basis2 make_basis(
     const std::vector<Gaussian2> &ab,
     device::vector<double> &H, // Hermite data buffer
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     constexpr uint NP = nherm2(A+B);
@@ -350,7 +350,7 @@ namespace libintx::gpu::md {
     const Basis<Gaussian> &B,
     const std::vector<Index2> &pairs,
     device::vector<double> &H,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     std::vector<Gaussian2> ab;
@@ -372,7 +372,7 @@ namespace libintx::gpu::md {
       Basis2(
         const std::vector<Gaussian2> &ab,
         device::vector<double> &H,
-        cudaStream_t stream
+        gpuStream_t stream
       )>;
 
     static auto make_basis = make_array<F,LMAX+1,LMAX+1>(
@@ -394,7 +394,7 @@ namespace libintx::gpu::md {
     const Basis<Gaussian> &A,
     const std::vector<Index1> &idx,
     device::vector<Hermite> &H,
-    cudaStream_t stream)
+    gpuStream_t stream)
   {
 
     libintx_assert(!A.empty());

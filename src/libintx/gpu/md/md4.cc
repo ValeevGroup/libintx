@@ -11,7 +11,7 @@ namespace libintx::gpu::md {
     std::array<device::vector<double>,3> buffer;
   };
 
-  ERI4::ERI4(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, cudaStream_t stream) {
+  ERI4::ERI4(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream) {
     libintx_assert(!bra.empty());
     libintx_assert(!ket.empty());
     bra_ = bra;
@@ -30,7 +30,7 @@ namespace libintx::gpu::md {
   {
 
     using Kernel = std::function<void(
-      ERI4&, const Basis2&, const Basis2&, TensorRef<double,2>, cudaStream_t
+      ERI4&, const Basis2&, const Basis2&, TensorRef<double,2>, gpuStream_t
     )>;
 
     static auto ab_cd_kernels = make_array<Kernel,2*LMAX+1,2*LMAX+1>(
@@ -62,7 +62,7 @@ namespace libintx::gpu::md {
   std::unique_ptr< IntegralEngine<2,2> > integral_engine(
     const Basis<Gaussian> &bra,
     const Basis<Gaussian> &ket,
-    const cudaStream_t &stream)
+    const gpuStream_t &stream)
   {
     return std::make_unique<ERI4>(bra, ket, stream);
   }

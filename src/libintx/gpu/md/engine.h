@@ -13,21 +13,21 @@ namespace libintx::gpu::md {
   std::unique_ptr< IntegralEngine<Bra,Ket> > integral_engine(
     const Basis<Gaussian>& bra,
     const Basis<Gaussian>& ket,
-    const cudaStream_t& stream
+    const gpuStream_t& stream
   ) = delete;
 
   template<>
   std::unique_ptr< IntegralEngine<1,2> > integral_engine(
     const Basis<Gaussian>& bra,
     const Basis<Gaussian>& ket,
-    const cudaStream_t& stream
+    const gpuStream_t& stream
   );
 
   template<>
   std::unique_ptr< IntegralEngine<2,2> > integral_engine(
     const Basis<Gaussian>& bra,
     const Basis<Gaussian>& ket,
-    const cudaStream_t& stream
+    const gpuStream_t& stream
   );
 
   template<int Order, typename ... Args>

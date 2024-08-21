@@ -54,10 +54,10 @@ namespace libintx::python {
       using libintx::gpu::md::integral_engine;
       std::unique_ptr< IntegralEngine<> > eri;
       if (centers == 3) {
-        eri = integral_engine<1,2>(basis_cast(bra), basis_cast(ket), cudaStream_t(stream));
+        eri = integral_engine<1,2>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
       }
       if (centers == 4) {
-        eri = integral_engine<2,2>(basis_cast(bra), basis_cast(ket), cudaStream_t(stream));
+        eri = integral_engine<2,2>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
       }
       return py::cast(std::move(eri));
     }

@@ -15,7 +15,7 @@ namespace libintx::gpu::md {
     ERI3(
       const Basis<Gaussian> &bra,
       const Basis<Gaussian> &ket,
-      cudaStream_t stream
+      gpuStream_t stream
     );
 
     ~ERI3();
@@ -33,14 +33,14 @@ namespace libintx::gpu::md {
     double* allocate(size_t);
 
     template<int Bra, int Ket>
-    void compute(const Basis1&, const Basis2&, TensorRef<double,2>, cudaStream_t);
+    void compute(const Basis1&, const Basis2&, TensorRef<double,2>, gpuStream_t);
 
     template<int,int,int>
     auto compute_v0(
       const Basis1& x,
       const Basis2& ket,
       TensorRef<double,2> XCD,
-      cudaStream_t stream
+      gpuStream_t stream
     );
 
     template<int,int,int>
@@ -48,13 +48,13 @@ namespace libintx::gpu::md {
       const Basis1& x,
       const Basis2& ket,
       TensorRef<double,2> XCD,
-      cudaStream_t stream
+      gpuStream_t stream
     );
 
   private:
 
     Basis<Gaussian> bra_, ket_;
-    cudaStream_t stream_;
+    gpuStream_t stream_;
     struct Memory;
     std::unique_ptr<Memory> memory_;
 

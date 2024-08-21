@@ -1,12 +1,12 @@
 #ifndef LIBINTX_CUDA_API_H
 #define LIBINTX_CUDA_API_H
 
+#include "libintx/gpu/forward.h"
+
 #include <memory>
 #include <stdexcept>
 #include <algorithm>
 #include <cassert>
-
-typedef struct CUstream_st* cudaStream_t;
 
 namespace libintx::gpu {
 
@@ -220,7 +220,7 @@ namespace libintx::gpu {
 
   namespace stream {
 
-    void synchronize(cudaStream_t = 0);
+    void synchronize(gpuStream_t = 0);
 
   }
 

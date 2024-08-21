@@ -31,7 +31,7 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
   Eigen::Tensor<double,6> result(M,NA,NB,NC,ND,N);
   gpu::host::register_pointer(result.data(), result.size());
 
-  cudaStream_t stream = 0;
+  gpuStream_t stream = 0;
   auto md = gpu::md::eri<4>(bra, ket, stream);
   md->compute(ijs, kls, result.data(), {M*NA*NB, NC*ND*N});
   gpu::stream::synchronize(stream);
