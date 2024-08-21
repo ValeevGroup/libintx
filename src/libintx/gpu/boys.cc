@@ -5,7 +5,7 @@
 #include <mutex>
 #include <map>
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   const Boys& boys() {
     return *boys(::cuda::device::current::get_id());

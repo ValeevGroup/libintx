@@ -25,7 +25,7 @@ namespace libintx::md::r1 {
 
     LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
     constexpr auto operator[](int idx) const {
-      return cuda::ldg(this->table+idx);
+      return gpu::ldg(this->table+idx);
     }
 
     static constexpr auto make_table() {
@@ -80,7 +80,7 @@ namespace libintx::md::r1 {
     for (int k = 0; k < N; ++k) {
       int i = rank + k*num_threads;
       if (k+1 == N && i >= nherm2(L)-1) break;
-      auto idx1 = cuda::ldg(&recurrence.table[1+i]);
+      auto idx1 = gpu::ldg(&recurrence.table[1+i]);
       X[k] = PQ[idx1.x];
       n[k] = idx1.n;
       idx[k][0] = idx1.idx0;

@@ -8,16 +8,16 @@
 
 typedef struct CUstream_st* cudaStream_t;
 
-namespace boys::cuda {
+namespace boys::gpu {
 
   template<int Order, int M, int MaxT, int Segments>
   struct Chebyshev;
 
 }
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
-  using Boys = boys::cuda::Chebyshev<7,40,117,117*7>;
+  using Boys = boys::gpu::Chebyshev<7,40,117,117*7>;
 
   const Boys& boys();
 

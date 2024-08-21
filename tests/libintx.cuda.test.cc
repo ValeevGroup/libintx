@@ -7,7 +7,7 @@
 #include "libintx/utility.h"
 
 using namespace libintx;
-using namespace libintx::cuda;
+using namespace libintx::gpu;
 
 template<size_t N>
 auto integral_list(size_t n) {
@@ -35,7 +35,7 @@ auto obara_saika_eri3_test_case(
   auto b = test::gaussian(B, K[1], false);
   auto x = test::gaussian(X, 1, true);
 
-  auto engine = libintx::cuda::eri<3>();
+  auto engine = libintx::gpu::eri<3>();
 
   auto centers = std::vector< Double<3> >{r0,r1,rx};
   engine->set_centers(centers);

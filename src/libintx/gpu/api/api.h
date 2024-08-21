@@ -8,7 +8,7 @@
 
 typedef struct CUstream_st* cudaStream_t;
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   struct Stream;
 

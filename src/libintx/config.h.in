@@ -24,7 +24,7 @@ namespace libintx {
 
 }
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   constexpr int MaxShmem = LIBINTX_CUDA_MAX_SHMEM;
 

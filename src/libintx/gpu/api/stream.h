@@ -5,7 +5,7 @@
 #include <vector>
 #include <tuple>
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   struct Stream : ::cuda::stream_t<> {
     Stream(int device = 0)
@@ -42,7 +42,7 @@ namespace libintx::cuda {
 
 }
 
-namespace libintx::cuda::stream {
+namespace libintx::gpu::stream {
 
   inline void synchronize() {
     auto status = ::cudaStreamSynchronize(0);

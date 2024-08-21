@@ -30,7 +30,7 @@ void test(int grid) {
   //dim3 block = { Order+1, 32/(Order+1), 4 };
   dim3 block = { 1, 8, 32 };
 
-  typedef boys::cuda::Chebyshev<Order,M,117,Segments> Chebyshev;
+  typedef boys::gpu::Chebyshev<Order,M,117,Segments> Chebyshev;
 
   auto current_device = cuda::device::current::get();
   auto ptr = cuda::memory::device::make_unique<double[]>(current_device, grid*block.y*block.z);

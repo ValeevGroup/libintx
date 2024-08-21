@@ -7,7 +7,7 @@
 #include "libintx/reference.h"
 
 using namespace libintx;
-using namespace libintx::cuda;
+using namespace libintx::gpu;
 using libintx::time;
 
 const Double<3> rs[] = {
@@ -47,14 +47,14 @@ auto run(
     auto [ket,kls] = test::basis2({C,D}, {K.second,1}, Nkl);
 
     cudaStream_t stream = 0;
-    md.engine = libintx::cuda::md::eri<4>(bra, ket, stream);
+    md.engine = libintx::gpu::md::eri<4>(bra, ket, stream);
     md.engine->max_memory = 2ul*1024*1024*1024;
     md.engine->compute(ijs, kls, buffer.data(), dims);
-    libintx::cuda::stream::synchronize(stream);
+    libintx::gpu::stream::synchronize(stream);
     {
       auto t0 = time::now();
       md.engine->compute(ijs, kls, buffer.data(), dims);
-      libintx::cuda::stream::synchronize(stream);
+      libintx::gpu::stream::synchronize(stream);
       double t = time::since(t0);
       md.time = 1/t;
     }

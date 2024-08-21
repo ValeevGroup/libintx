@@ -5,7 +5,7 @@
 //#include "cublas_v2.h"
 #include "cutlass/layout/layout.h"
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   using cutlass::layout::RowMajor;
   using cutlass::layout::ColumnMajor;

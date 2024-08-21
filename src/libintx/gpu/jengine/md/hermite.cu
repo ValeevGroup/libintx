@@ -7,7 +7,7 @@
 #include "libintx/pure.h"
 #include <iostream>
 
-namespace libintx::cuda::jengine::md {
+namespace libintx::gpu::jengine::md {
 namespace {
 
   struct E2 {
@@ -501,7 +501,7 @@ namespace {
 }
 }
 
-namespace libintx::cuda::jengine::md {
+namespace libintx::gpu::jengine::md {
 
   //__global__
   void cartesian_to_hermite_2(

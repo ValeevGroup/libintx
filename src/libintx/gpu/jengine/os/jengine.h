@@ -13,7 +13,7 @@
 #include <map>
 #include <functional>
 
-namespace libintx::cuda::jengine::os {
+namespace libintx::gpu::jengine::os {
 
   struct JEngine : libintx::JEngine {
 

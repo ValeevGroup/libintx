@@ -6,7 +6,7 @@
 #include "libintx/engine/md/r1/recurrence.h"
 #include "libintx/math.h"
 
-namespace libintx::cuda::md::kernel {
+namespace libintx::gpu::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
@@ -52,7 +52,7 @@ namespace libintx::cuda::md::kernel {
     static constexpr int L = (bra.L+ket.L);
     static constexpr int NH = nherm2(L);
 
-    constexpr cuda::thread_block<DimX,DimY> thread_block;
+    constexpr gpu::thread_block<DimX,DimY> thread_block;
     constexpr auto warp = this_warp();
     constexpr int num_threads = thread_block.size();
     int thread_rank = thread_block.thread_rank();
@@ -227,7 +227,7 @@ namespace libintx::cuda::md::kernel {
     >
   struct md4_v1_r1_p_cd_kernel {
 
-    using ThreadBlock = cuda::thread_block<DimX,DimY>;
+    using ThreadBlock = gpu::thread_block<DimX,DimY>;
     static constexpr int num_threads = ThreadBlock::size();
     static constexpr int max_shmem = MaxShmem;
     static constexpr int min_blocks = MinBlocks;
@@ -354,7 +354,7 @@ namespace libintx::cuda::md::kernel {
     >
   struct md4_v1_ab_cd_kernel {
 
-    using ThreadBlock = cuda::thread_block<DimX,DimY>;
+    using ThreadBlock = gpu::thread_block<DimX,DimY>;
     static constexpr int num_threads = ThreadBlock::size();
     static constexpr int max_shmem = MaxShmem;
     static constexpr int min_blocks = MinBlocks;

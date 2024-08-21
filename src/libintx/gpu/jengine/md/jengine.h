@@ -11,7 +11,7 @@
 
 #include <map>
 
-namespace libintx::cuda::jengine::md {
+namespace libintx::gpu::jengine::md {
 
   struct JEngine : libintx::JEngine {
 

@@ -3,7 +3,7 @@
 //#include "cublas_v2.h"
 #include "cutlass/gemm/device/gemm_batched.h"
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   template<int Tile>
   __global__

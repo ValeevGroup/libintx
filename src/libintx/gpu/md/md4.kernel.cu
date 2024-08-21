@@ -13,7 +13,7 @@
 
 #pragma nv_diag_suppress 2361
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
 #ifndef LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET
 #error LIBINTX_CUDA_MD_MD4_KERNEL_BRA_KET undefined
@@ -71,7 +71,7 @@ namespace libintx::cuda::md {
       );
       // E(ab,p,ij) -> (ij,ab,p)
       for (int kab = 0; kab < bra.K; ++kab) {
-        cuda::batch_transpose(
+        gpu::batch_transpose(
           NAB*nherm2(A+B-1), thread_block.x,
           ab.gdata(0,kab), ab.stride,
           &ab_p(0,0,0,0,kab), thread_block.x,
@@ -80,7 +80,7 @@ namespace libintx::cuda::md {
         );
       }
       launch<<<grid,thread_block,shmem,stream>>>(
-        kernel_xy(), ab, cd, cuda::boys(), std::tuple{ab_p}, ABCD
+        kernel_xy(), ab, cd, gpu::boys(), std::tuple{ab_p}, ABCD
       );
       return std::true_type();
     }
@@ -96,7 +96,7 @@ namespace libintx::cuda::md {
         { thread_block.x, NAB, nherm2(A+B-1), grid.x }
       );
       for (int kab = 0; kab < ab.K; ++kab) {
-        cuda::batch_transpose(
+        gpu::batch_transpose(
           NAB*nherm2(A+B-1), thread_block.x,
           ab.gdata(0,kab), ab.stride,
           ab_p.data(), thread_block.x,
@@ -104,7 +104,7 @@ namespace libintx::cuda::md {
           stream
         );
         launch<<<grid,thread_block,shmem,stream>>>(
-          kernel_xz(), ab, kab, cd, cuda::boys(), std::tuple{ab_p}, ABCD
+          kernel_xz(), ab, kab, cd, gpu::boys(), std::tuple{ab_p}, ABCD
         );
       }
       return std::true_type();
@@ -143,7 +143,7 @@ namespace libintx::cuda::md {
 
     constexpr int DimX = 16;
     constexpr int DimY = 128/DimX;
-    auto thread_block = cuda::thread_block<DimX,DimY>();
+    auto thread_block = gpu::thread_block<DimX,DimY>();
 
     using kernel0 = kernel::md4_v1_r1_p_cd_kernel<Basis2<A+B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
     using kernel1 = kernel::md4_v1_ab_cd_kernel<Basis2<A,B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
@@ -233,7 +233,7 @@ namespace libintx::cuda::md {
 
         if constexpr (kernel::test<p_cd_kernel>(800,MaxShmem)) {
           launch<<<grid0,thread_block,0,stream>>>(
-            p_cd_kernel(), ab, kp, Basis2<C,D>(cd), cuda::boys(), std::tuple{}, pCD
+            p_cd_kernel(), ab, kp, Basis2<C,D>(cd), gpu::boys(), std::tuple{}, pCD
           );
         }
         else {
@@ -243,7 +243,7 @@ namespace libintx::cuda::md {
               int ldR = (grid0.x*grid0.y)*(DimX*nherm2(Bra+Ket));
               kernel::compute_r1_kernel<DimX,DimY,0><<<grid0,thread_block,0,stream>>>(
                 ab, cd, {kp,kq+k},
-                cuda::boys(),
+                gpu::boys(),
                 TensorRef<double,4>{
                   buffer1+k*ldR,
                   { DimX, nherm2(Bra+Ket), grid0.x, grid0.y }
@@ -269,7 +269,7 @@ namespace libintx::cuda::md {
           { DimX, 1+nherm2(Bra-1)*NAB, grid1.x }
         };
         static_assert(bra.alignment%DimX == 0);
-        cuda::batch_transpose(
+        gpu::batch_transpose(
           (1+nherm2(Bra-1)*NAB), DimX,
           ab.gdata(0,kp)-1, ab.stride,
           batched_ab_p.data(), DimX,
@@ -340,7 +340,7 @@ namespace libintx::cuda::md {
         typename md_v2_p_cd_kernel::ThreadBlock thread_block;
         kernel::launch<<<grid,thread_block,kcd_batch*dynamic_shmem,stream>>>(
           md_v2_p_cd_kernel(),
-          ab, kab, Basis2<C,D>(cd), kcd_batch, cuda::boys(),
+          ab, kab, Basis2<C,D>(cd), kcd_batch, gpu::boys(),
           TensorRef<double,4>{ buffer0, { NP, NCD, grid.y, grid.x } }
         );
         // H(ab,p,ij)*[p,cd,kl,ij] -> [ab,cd,kl,ij]
@@ -358,7 +358,7 @@ namespace libintx::cuda::md {
       }
 
       // [ij,ab,cd,kl] = [ab,cd,kl,ij]
-      cuda::transpose(
+      gpu::transpose(
         NAB*NCD*cd.N, ab.N,
         buffer1, NAB*NCD*cd.N,
         ABCD.data(), ab.N,
@@ -369,7 +369,7 @@ namespace libintx::cuda::md {
     else {
 
 
-      using Block = cuda::thread_block<32,4>;
+      using Block = gpu::thread_block<32,4>;
 
       auto *pq = this->allocate<0>(
         std::max(
@@ -387,7 +387,7 @@ namespace libintx::cuda::md {
           // [p,ij,q,kl]
           kernel::compute_p_q_kernel<Block::x,Block::y,2><<<grid,Block{},0,stream>>>(
             ab, cd, {kab,kcd},
-            cuda::boys(),
+            gpu::boys(),
             TensorRef<double,4>{pq, { NP, grid.x, NQ, grid.y}}
           );
           // [p,ij,q,kl]*H(cd,q,kl)' -> [p,ij,cd,kl]
@@ -404,7 +404,7 @@ namespace libintx::cuda::md {
         }
 
         // [p,ij,cd,kl] -> [cd,kl,p,ij]
-        cuda::transpose(
+        gpu::transpose(
           NP*ab.N, NCD*cd.N,
           p_cd, NP*ab.N,
           p_cd_transpose, NCD*cd.N,
@@ -425,7 +425,7 @@ namespace libintx::cuda::md {
       } // kcd
 
       // [ab,cd,kl,ij] -> [ij,ab,cd,kl]
-      cuda::transpose(
+      gpu::transpose(
         NAB*NCD*cd.N, ab.N,
         ab_cd_transpose, NAB*NCD*cd.N,
         ABCD.data(), ab.N,

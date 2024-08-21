@@ -11,7 +11,7 @@
 #include "libintx/math.h"
 #include "libintx/utility.h"
 
-namespace libintx::cuda::md::kernel {
+namespace libintx::gpu::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
@@ -70,7 +70,7 @@ namespace libintx::cuda::md::kernel {
     static constexpr int D = Ket::Second;
     static constexpr int NCD = Ket::nbf;
 
-    using ThreadBlock = cuda::thread_block<DimX,1,DimZ>;
+    using ThreadBlock = gpu::thread_block<DimX,1,DimZ>;
     static constexpr int num_threads = ThreadBlock::size();
     static constexpr int max_shmem = MaxShmem;
     static constexpr int min_blocks = MinBlocks;

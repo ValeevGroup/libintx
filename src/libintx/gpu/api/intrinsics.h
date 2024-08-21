@@ -1,7 +1,7 @@
 #ifndef LIBINTX_CUDA_API_INTRINSICS_H
 #define LIBINTX_CUDA_API_INTRINSICS_H
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   template<typename T>
   __device__

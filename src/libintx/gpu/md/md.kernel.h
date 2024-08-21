@@ -12,7 +12,7 @@
 #include "libintx/math.h"
 #include "libintx/utility.h"
 
-namespace libintx::cuda::md::kernel {
+namespace libintx::gpu::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
@@ -148,7 +148,7 @@ namespace libintx::cuda::md::kernel {
     static constexpr int NAB = Bra::nbf;
     static constexpr int NCD = Ket::nbf;
 
-    using ThreadBlock = cuda::thread_block<DimX,DimY>;
+    using ThreadBlock = gpu::thread_block<DimX,DimY>;
     static constexpr int num_threads = ThreadBlock::size();
     static constexpr int max_shmem = MaxShmem;
     static constexpr int min_blocks = MinBlocks;
@@ -207,7 +207,7 @@ namespace libintx::cuda::md::kernel {
       int ij = blockIdx.x*thread_block.x;
       int kl = blockIdx.y*thread_block.y;
 
-      libintx::cuda::memset1(&shmem.cds[threadIdx.y].hdata, 0, gx);
+      libintx::gpu::memset1(&shmem.cds[threadIdx.y].hdata, 0, gx);
       memset1(&shmem.abs, 0, thread_block);
       //static_assert(sizeof(shmem.abs) == sizeof(Hermite)*DimX);
       // for (int ix = threadIdx.y; ix < DimX; ix += DimY) {
@@ -443,7 +443,7 @@ namespace libintx::cuda::md::kernel {
     static constexpr int D = Ket::Second;
     static constexpr int NCD = Ket::nbf;
 
-    using ThreadBlock = cuda::thread_block<DimX,DimY,1>;
+    using ThreadBlock = gpu::thread_block<DimX,DimY,1>;
     static constexpr int num_threads = ThreadBlock::size();
     static constexpr int max_shmem = MaxShmem;
     static constexpr int min_blocks = MinBlocks;

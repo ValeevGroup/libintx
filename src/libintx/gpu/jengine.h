@@ -4,7 +4,7 @@
 #include "libintx/jengine.h"
 #include <memory>
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   std::unique_ptr<libintx::JEngine> make_jengine(
     const std::vector< std::tuple< Gaussian, array<double,3> > > &basis,

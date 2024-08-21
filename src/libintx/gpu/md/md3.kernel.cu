@@ -7,7 +7,7 @@
 
 #pragma nv_diag_suppress 2361
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
 #ifndef LIBINTX_CUDA_MD_MD3_KERNEL_X_KET
 #error LIBINTX_CUDA_MD_MD3_KERNEL_X_KET undefined
@@ -68,7 +68,7 @@ namespace libintx::cuda::md {
         (uint)(cd.N+thread_block.z-1)/thread_block.z
       };
       launch<<<grid,thread_block,shmem,stream>>>(
-        x_cd_kernel_x(), x, cd, cuda::boys(), std::tuple{}, XCD
+        x_cd_kernel_x(), x, cd, gpu::boys(), std::tuple{}, XCD
       );
       //printf("v0:xz\n");
       return std::true_type();
@@ -81,7 +81,7 @@ namespace libintx::cuda::md {
       };
       for (int kx = 0; kx < bra.K; ++kx) {
         launch<<<grid,thread_block,shmem,stream>>>(
-          x_cd_kernel(), x, kx, cd, cuda::boys(), std::tuple{}, XCD
+          x_cd_kernel(), x, kx, cd, gpu::boys(), std::tuple{}, XCD
         );
       }
       //printf("v0:xz\n");
@@ -112,7 +112,7 @@ namespace libintx::cuda::md {
     const int NCD = cd.nbf;
 
     dim3 grid = { (uint)x.N, (uint)cd.N };
-    using Block = cuda::thread_block<std::clamp(NQ,32,128)>;
+    using Block = gpu::thread_block<std::clamp(NQ,32,128)>;
 
     TensorRef<double,4> qx {
       this->allocate<0>(NQ*x.N*NX*cd.N),
@@ -124,7 +124,7 @@ namespace libintx::cuda::md {
         // [q,i,x,kl]
         kernel::compute_q_x_kernel<Block::x,2><<<grid,Block{},0,stream>>>(
           x, cd, {kx,kcd},
-          cuda::boys(),
+          gpu::boys(),
           qx
         );
       }

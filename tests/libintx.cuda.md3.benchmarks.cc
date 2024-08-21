@@ -19,7 +19,7 @@ auto run(
   Basis<Gaussian> basis;
 
   std::array<size_t,2> dims{ Nij*npure(X), npure(C)*npure(D)*Nkl };
-  auto buffer = cuda::device::vector<double>(dims[0]*dims[1]);
+  auto buffer = gpu::device::vector<double>(dims[0]*dims[1]);
 
   printf("# (%i|%i%i) ", X, C, D);
   printf("dims: %ix%i, memory=%f GB\n", Nij, Nkl, 8*buffer.size()/1e9);
@@ -40,13 +40,13 @@ auto run(
     auto [ket,kls] = test::basis2({C,D}, {K.second,1}, Nkl);
 
     cudaStream_t stream = 0;
-    md.engine = libintx::cuda::md::eri<3>(bra, ket, stream);
+    md.engine = libintx::gpu::md::eri<3>(bra, ket, stream);
     md.engine->compute(is, kls, buffer.data(), dims);
-    libintx::cuda::stream::synchronize(stream);
+    libintx::gpu::stream::synchronize(stream);
     {
       auto t0 = time::now();
       md.engine->compute(is, kls, buffer.data(), dims);
-      libintx::cuda::stream::synchronize(stream);
+      libintx::gpu::stream::synchronize(stream);
       double t = time::since(t0);
       md.time = 1/t;
     }

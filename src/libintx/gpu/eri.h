@@ -11,7 +11,7 @@
 #include <utility>
 #include <memory>
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   template<int N>
   struct alignas(8) IntegralTuple {

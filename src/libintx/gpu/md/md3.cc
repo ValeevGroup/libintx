@@ -4,7 +4,7 @@
 #include "libintx/config.h"
 #include "libintx/utility.h"
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
   struct ERI3::Memory {
     device::vector<Hermite> p;

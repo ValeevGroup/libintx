@@ -5,7 +5,7 @@
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/api/api.h"
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
   struct alignas(8) Hermite {
     double exp;

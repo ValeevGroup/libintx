@@ -3,7 +3,7 @@
 
 #include <cooperative_groups.h>
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   using cooperative_groups::thread_group;
   using cooperative_groups::tiled_partition;
@@ -47,7 +47,7 @@ namespace libintx::cuda {
 
 }
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   template<typename T, typename V = T>
   __device__

@@ -13,7 +13,7 @@ using namespace libintx;
 
 void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
 
-  namespace cuda = libintx::cuda;
+  namespace gpu = libintx::gpu;
 
   printf("(%i|%i%i) K={%i,%i}\n", X, C, D, K.first, K.second);
 
@@ -28,12 +28,12 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
   auto [ket,kls] = test::basis2({C,D}, {K.second,1}, N);
 
   Eigen::Tensor<double,6> result(M,NX,1,NC,ND,N);
-  cuda::host::register_pointer(result.data(), result.size());
+  gpu::host::register_pointer(result.data(), result.size());
 
   cudaStream_t stream = 0;
-  auto md = libintx::cuda::md::eri<3>(bra, ket, stream);
+  auto md = libintx::gpu::md::eri<3>(bra, ket, stream);
   md->compute(is, kls, result.data(), {(size_t)M*NX, (size_t)N*NC*ND});
-  cuda::stream::synchronize(stream);
+  gpu::stream::synchronize(stream);
 
   for (size_t i = 0; i < bra.size(); ++i) {
     for (size_t kl = 0; kl < kls.size(); ++kl) {
@@ -68,7 +68,7 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
     }
   }
 
-  cuda::host::unregister_pointer(result.data());
+  gpu::host::unregister_pointer(result.data());
 
 }
 

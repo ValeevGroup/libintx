@@ -7,7 +7,7 @@
 
 #include <memory>
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
   template<int Bra, int Ket>
   std::unique_ptr< IntegralEngine<Bra,Ket> > integral_engine(

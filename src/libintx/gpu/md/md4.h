@@ -4,7 +4,7 @@
 #include "libintx/gpu/md/engine.h"
 #include "libintx/tensor.h"
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
   struct Basis2;
 

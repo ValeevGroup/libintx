@@ -4,11 +4,11 @@
 #include "libintx/array.h"
 #include "libintx/shell.h"
 
-namespace libintx::cuda {
+namespace libintx::gpu {
   class Stream;
 }
 
-namespace libintx::cuda::jengine::md {
+namespace libintx::gpu::jengine::md {
 
   using Center = Double<3>;
 

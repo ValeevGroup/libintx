@@ -22,7 +22,7 @@
 #include <functional>
 #include <mutex>
 
-namespace libintx::cuda::jengine::md {
+namespace libintx::gpu::jengine::md {
 
   constexpr int THREADS_PER_DEVICE = 1;
 
@@ -157,7 +157,7 @@ namespace libintx::cuda::jengine::md {
     );
 
     // initialise boys
-    cuda::boys();
+    gpu::boys();
 
   }
 
@@ -223,11 +223,11 @@ namespace libintx::cuda::jengine::md {
 
     auto t = time::now();
 
-    cuda::host::register_pointer(AB_.basis.data(), AB_.basis.size());
-    cuda::host::register_pointer(Q_.basis.data(), Q_.basis.size());
+    gpu::host::register_pointer(AB_.basis.data(), AB_.basis.size());
+    gpu::host::register_pointer(Q_.basis.data(), Q_.basis.size());
     for (const auto &q : Q_.blocks) {
       if (q.index.empty()) continue;
-      cuda::host::register_pointer(q.index.data(), q.index.size());
+      gpu::host::register_pointer(q.index.data(), q.index.size());
     }
 
     // printf("JEngine-X t(init)=%f\n", time::since(t));
@@ -269,10 +269,10 @@ namespace libintx::cuda::jengine::md {
     threads.wait();
     printf("J-Engine J: %f\n", time::since(t));
 
-    cuda::host::unregister_pointer(AB_.basis.data());
-    cuda::host::unregister_pointer(Q_.basis.data());
+    gpu::host::unregister_pointer(AB_.basis.data());
+    gpu::host::unregister_pointer(Q_.basis.data());
     for (const auto &q : Q_.blocks) {
-      cuda::host::unregister_pointer(q.index.data());
+      gpu::host::unregister_pointer(q.index.data());
     }
 
   }
@@ -297,7 +297,7 @@ namespace libintx::cuda::jengine::md {
     ::cuda::device::current::set(device_id);
     Stream stream(device_id);
 
-    const auto &boys = cuda::boys();
+    const auto &boys = gpu::boys();
 
     device::vector<double> Xq;
     Xq.resize(Q_.nherm);
@@ -382,7 +382,7 @@ namespace libintx::cuda::jengine::md {
         p,
         stream_data.ijs.size(),
         stream_data.ijs.data(),
-        cuda::host::device_pointer(AB_.basis.data()),
+        gpu::host::device_pointer(AB_.basis.data()),
         stream_data.P.data(),
         stream_data.G2.data(),
         stream_data.H2.data(),
@@ -417,10 +417,10 @@ namespace libintx::cuda::jengine::md {
     for (const auto &q : Q_.blocks) {
       hermite_to_cartesian_1(
         q.L, q.index.size(),
-        cuda::host::device_pointer(q.index.data()),
-        cuda::host::device_pointer(Q_.basis.data()),
+        gpu::host::device_pointer(q.index.data()),
+        gpu::host::device_pointer(Q_.basis.data()),
         Xq.data()+q.kherm,
-        cuda::host::device_pointer(X)
+        gpu::host::device_pointer(X)
       );
     }
 
@@ -455,7 +455,7 @@ namespace libintx::cuda::jengine::md {
 
     // printf("Engine-X task device=%i set at %f\n", device_id, time::since(t));
 
-    const auto &boys = cuda::boys();
+    const auto &boys = gpu::boys();
 
     struct {
       struct Q {
@@ -478,9 +478,9 @@ namespace libintx::cuda::jengine::md {
     for (const auto &q : Q_.blocks) {
       cartesian_to_hermite_1(
         q.L, q.index.size(),
-        cuda::host::device_pointer(q.index.data()),
-        cuda::host::device_pointer(Q_.basis.data()),
-        cuda::host::device_pointer(X),
+        gpu::host::device_pointer(q.index.data()),
+        gpu::host::device_pointer(Q_.basis.data()),
+        gpu::host::device_pointer(X),
         stream_data.Xh.data()+q.kherm
       );
     }
@@ -556,7 +556,7 @@ namespace libintx::cuda::jengine::md {
         p,
         stream_data.ijs.size(),
         stream_data.ijs.data(),
-        cuda::host::device_pointer(AB_.basis.data()),
+        gpu::host::device_pointer(AB_.basis.data()),
         stream_data.P.data(),
         nullptr,
         nullptr,
@@ -585,9 +585,9 @@ namespace libintx::cuda::jengine::md {
         p,
         stream_data.ijs.size(),
         stream_data.ijs.data(),
-        cuda::host::device_pointer(AB_.basis.data()),
+        gpu::host::device_pointer(AB_.basis.data()),
         stream_data.H2.data(),
-        cuda::host::device_pointer(G2.data()),
+        gpu::host::device_pointer(G2.data()),
         stream
       );
 
@@ -632,7 +632,7 @@ namespace libintx::cuda::jengine::md {
 
 }
 
-std::unique_ptr<libintx::JEngine> libintx::cuda::make_jengine(
+std::unique_ptr<libintx::JEngine> libintx::gpu::make_jengine(
   const std::vector< std::tuple< Gaussian, Double<3> > > &basis,
   const std::vector< std::tuple< Gaussian, Double<3> > > &df_basis,
   std::function<void(double*)> v_transform,

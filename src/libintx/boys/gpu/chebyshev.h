@@ -10,8 +10,7 @@
 
 #include <assert.h>
 
-namespace boys {
-namespace cuda {
+namespace boys::gpu {
 
   template<int Order, int M, int MaxT, int Segments>
   struct Chebyshev {
@@ -103,7 +102,6 @@ namespace cuda {
 
   };
 
-}
 }
 
 #endif /* BOYS_CUDA_CHEBYSHEV_H */

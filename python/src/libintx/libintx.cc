@@ -51,7 +51,7 @@ namespace libintx::python {
       const std::vector<PyGaussian> &ket,
       std::ptrdiff_t stream)
     {
-      using libintx::cuda::md::integral_engine;
+      using libintx::gpu::md::integral_engine;
       std::unique_ptr< IntegralEngine<> > eri;
       if (centers == 3) {
         eri = integral_engine<1,2>(basis_cast(bra), basis_cast(ket), cudaStream_t(stream));

@@ -3,7 +3,7 @@
 #include "libintx/config.h"
 #include "libintx/utility.h"
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
   struct ERI4::Memory {
     device::vector<double> p;

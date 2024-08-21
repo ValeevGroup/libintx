@@ -1,7 +1,7 @@
 #ifndef LIBINTX_CUDA_API_KERNEL_H
 #define LIBINTX_CUDA_API_KERNEL_H
 
-namespace libintx::cuda::kernel {
+namespace libintx::gpu::kernel {
 
   struct launch_bounds {
     int max_threads, min_blocks;

@@ -11,7 +11,7 @@
 #include "libintx/math.h"
 #include <numbers>
 
-namespace libintx::cuda::md {
+namespace libintx::gpu::md {
 
   namespace cart = cartesian;
   namespace herm = hermite;
@@ -311,7 +311,7 @@ namespace libintx::cuda::md {
       //printf("BLOCK<%i,%i,%i>\n", Block::x, Block::y, Block::z);
       make_basis<Block,A,B,Pure><<<grid,Block(),0,stream>>>(ab.data(), H.data(), extent, k_stride);
       constexpr pure_transform_term<A,B> pure_transform;
-      cuda::memcpy(
+      gpu::memcpy(
         pure_transform_ptr,
         pure_transform.data,
         sizeof(pure_transform.data)
@@ -363,7 +363,7 @@ namespace libintx::cuda::md {
       ab.push_back(g);
     }
 
-    cuda::host::register_pointer(ab.data(), ab.size());
+    gpu::host::register_pointer(ab.data(), ab.size());
 
     auto a = ab[0].first;
     auto b = ab[0].second;
@@ -383,8 +383,8 @@ namespace libintx::cuda::md {
 
     auto basis = make_basis[a.L][b.L](ab, H, stream);
 
-    cuda::stream::synchronize(stream);
-    cuda::host::unregister_pointer(ab.data());
+    gpu::stream::synchronize(stream);
+    gpu::host::unregister_pointer(ab.data());
 
     return basis;
 

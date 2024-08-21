@@ -7,7 +7,7 @@
 #include "libintx/gpu/api/stream.h"
 #include "libintx/gpu/api/thread_group.h"
 
-namespace libintx::cuda::jengine::md {
+namespace libintx::gpu::jengine::md {
 namespace {
 
   // __inline__ __device__
@@ -41,7 +41,7 @@ namespace {
       dim3 block = { NW };
       //shmem += nbra()*8;
       //printf("DFJ<%i,%i>\n", Bra, Ket);
-      cuda::kernel::launch<32,2><<<grid,block,0,stream>>>(
+      gpu::kernel::launch<32,2><<<grid,block,0,stream>>>(
         DFJ{},
         std::integral_constant<int,Step>{},
         boys, NQ, P, Q,
@@ -353,7 +353,7 @@ namespace {
 //#define LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET 0,0
 
 template<int Bra, int Ket, int Step, class Boys>
-void libintx::cuda::jengine::md::df_jengine_kernel(
+void libintx::gpu::jengine::md::df_jengine_kernel(
   const Boys &boys,
   int NP, const Primitive2 *P,
   int NQ, const Primitive2 *Q,
@@ -369,7 +369,7 @@ void libintx::cuda::jengine::md::df_jengine_kernel(
 
 #define LIBINTX_CUDA_MD_JENGINE_KERNEL(...)                             \
   template                                                              \
-  void libintx::cuda::jengine::md::df_jengine_kernel<__VA_ARGS__>(      \
+  void libintx::gpu::jengine::md::df_jengine_kernel<__VA_ARGS__>(      \
     const Boys &boys,                                                   \
     int NP, const Primitive2 *P,                                        \
     int NQ, const Primitive2 *Q,                                        \
@@ -380,6 +380,6 @@ void libintx::cuda::jengine::md::df_jengine_kernel(
   );
 
 LIBINTX_CUDA_MD_JENGINE_KERNEL(
-  LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET,1,libintx::cuda::Boys);
+  LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET,1,libintx::gpu::Boys);
 LIBINTX_CUDA_MD_JENGINE_KERNEL(
-  LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET,2,libintx::cuda::Boys);
+  LIBINTX_CUDA_MD_JENGINE_KERNEL_BRA_KET,2,libintx::gpu::Boys);

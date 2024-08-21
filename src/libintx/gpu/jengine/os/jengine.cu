@@ -10,10 +10,10 @@
 
 #include <cuda_fp16.h>
 
-namespace libintx::cuda::jengine::os {
+namespace libintx::gpu::jengine::os {
 
-  using libintx::cuda::os::ERI;
-  using libintx::cuda::os::Vector3;
+  using libintx::gpu::os::ERI;
+  using libintx::gpu::os::Vector3;
 
   inline double norm2(const double *v, size_t n) {
     double s = 0;
@@ -521,7 +521,7 @@ namespace libintx::cuda::jengine::os {
 }
 
 
-namespace libintx::cuda {
+namespace libintx::gpu {
 
   std::unique_ptr<libintx::JEngine> make_jengine(
     const std::vector< std::tuple< Gaussian, array<double,3> > > &basis,
@@ -529,7 +529,7 @@ namespace libintx::cuda {
     std::function<void(double*)> v_transform,
     std::shared_ptr<const libintx::JEngine::Screening> screening)
   {
-    using JEngine = libintx::cuda::jengine::os::JEngine;
+    using JEngine = libintx::gpu::jengine::os::JEngine;
     return std::make_unique<JEngine>(
       basis, df_basis, v_transform, screening
     );
