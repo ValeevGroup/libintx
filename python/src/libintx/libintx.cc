@@ -2,7 +2,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 #include "libintx/engine.h"
-#include "libintx/cuda/md/engine.h"
+#include "libintx/gpu/md/engine.h"
 
 namespace py = pybind11;
 

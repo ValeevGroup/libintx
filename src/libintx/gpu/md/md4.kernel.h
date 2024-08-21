@@ -1,7 +1,7 @@
-#include "libintx/cuda/forward.h"
-#include "libintx/cuda/md/basis.h"
-#include "libintx/cuda/md/md.kernel.h"
-#include "libintx/cuda/api/thread_group.h"
+#include "libintx/gpu/forward.h"
+#include "libintx/gpu/md/basis.h"
+#include "libintx/gpu/md/md.kernel.h"
+#include "libintx/gpu/api/thread_group.h"
 
 #include "libintx/engine/md/r1/recurrence.h"
 #include "libintx/math.h"

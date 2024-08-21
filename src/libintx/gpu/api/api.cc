@@ -1,5 +1,5 @@
-#include "libintx/cuda/api/api.h"
-#include "libintx/cuda/api/stream.h"
+#include "libintx/gpu/api/api.h"
+#include "libintx/gpu/api/stream.h"
 #include <cuda/api_wrappers.hpp>
 
 void libintx::cuda::memcpy(void *dst, const void *src, size_t bytes) {

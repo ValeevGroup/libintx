@@ -1,5 +1,5 @@
-#include "libintx/cuda/jengine/md/jengine.h"
-#include "libintx/cuda/jengine/md/forward.h"
+#include "libintx/gpu/jengine/md/jengine.h"
+#include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/engine/md/hermite.h"
 
 #include "libintx/utility.h"
@@ -8,8 +8,8 @@
 
 #include "libintx/array.h"
 #include "libintx/shell.h"
-#include "libintx/cuda/api/api.h"
-#include "libintx/cuda/api/stream.h"
+#include "libintx/gpu/api/api.h"
+#include "libintx/gpu/api/stream.h"
 
 #include "cuda/api/current_device.hpp"
 #include "cuda/api/device.hpp"

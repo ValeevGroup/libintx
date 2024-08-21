@@ -1,8 +1,8 @@
 // -*-c++-*-
 
-#include "libintx/cuda/md/md3.h"
-#include "libintx/cuda/md/md3.kernel.h"
-#include "libintx/boys/cuda/chebyshev.h"
+#include "libintx/gpu/md/md3.h"
+#include "libintx/gpu/md/md3.kernel.h"
+#include "libintx/boys/gpu/chebyshev.h"
 #include "libintx/utility.h"
 
 #pragma nv_diag_suppress 2361

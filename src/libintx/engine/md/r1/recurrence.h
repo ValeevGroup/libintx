@@ -4,7 +4,7 @@
 #include "libintx/forward.h"
 #include "libintx/math.h"
 #include "libintx/orbital.h"
-#include "libintx/cuda/api/intrinsics.h"
+#include "libintx/gpu/api/intrinsics.h"
 
 namespace libintx::md::r1 {
 

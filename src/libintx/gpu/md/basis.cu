@@ -1,9 +1,9 @@
 // -*-c++-*-
 
-#include "libintx/cuda/md/basis.h"
-#include "libintx/cuda/api/api.h"
-#include "libintx/cuda/api/stream.h"
-#include "libintx/cuda/api/thread_group.h"
+#include "libintx/gpu/md/basis.h"
+#include "libintx/gpu/api/api.h"
+#include "libintx/gpu/api/stream.h"
+#include "libintx/gpu/api/thread_group.h"
 #include "libintx/engine/md/hermite.h"
 #include "libintx/pure.transform.h"
 #include "libintx/config.h"

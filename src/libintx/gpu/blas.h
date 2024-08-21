@@ -1,7 +1,7 @@
 #ifndef LIBINTX_CUDA_BLAS_H
 #define LIBINTX_CUDA_BLAS_H
 
-#include "libintx/cuda/api/api.h"
+#include "libintx/gpu/api/api.h"
 //#include "cublas_v2.h"
 #include "cutlass/layout/layout.h"
 

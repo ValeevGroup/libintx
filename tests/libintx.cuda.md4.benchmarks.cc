@@ -1,5 +1,5 @@
-#include "libintx/cuda/md/engine.h"
-#include "libintx/cuda/api/api.h"
+#include "libintx/gpu/md/engine.h"
+#include "libintx/gpu/api/api.h"
 #include "libintx/utility.h"
 #include "test.h"
 #include <iostream>

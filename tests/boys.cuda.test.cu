@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/boys/cuda/chebyshev.h"
+#include "libintx/boys/gpu/chebyshev.h"
 #include <cuda/api_wrappers.hpp>
 //#include <cuda/api/memory.hpp>
 

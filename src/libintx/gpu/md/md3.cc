@@ -1,6 +1,6 @@
-#include "libintx/cuda/md/md3.h"
-#include "libintx/cuda/md/engine.h"
-#include "libintx/cuda/md/basis.h"
+#include "libintx/gpu/md/md3.h"
+#include "libintx/gpu/md/engine.h"
+#include "libintx/gpu/md/basis.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"
 

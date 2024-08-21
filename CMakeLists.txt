@@ -65,7 +65,7 @@ if (LIBINTX_ENABLE_CUDA)
   endif()
   mark_as_advanced(LIBINTX_CUDA_MAX_SHMEM)
 
-  add_subdirectory(src/libintx/cuda)
+  add_subdirectory(src/libintx/gpu)
 endif()
 
 add_executable(pure-harmonics-table EXCLUDE_FROM_ALL src/libintx/pure-harmonics-table.cc)

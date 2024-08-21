@@ -1,7 +1,7 @@
 #ifndef LIBINTX_CUDA_MD_ERI4_H
 #define LIBINTX_CUDA_MD_ERI4_H
 
-#include "libintx/cuda/md/engine.h"
+#include "libintx/gpu/md/engine.h"
 #include "libintx/tensor.h"
 
 namespace libintx::cuda::md {

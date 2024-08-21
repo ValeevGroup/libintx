@@ -4,8 +4,8 @@
 #include "libintx/engine/md/reference.h"
 #include "libintx/pure.transform.h"
 
-#include "libintx/cuda/api/api.h"
-#include "libintx/cuda/md/engine.h"
+#include "libintx/gpu/api/api.h"
+#include "libintx/gpu/md/engine.h"
 
 #include <unsupported/Eigen/CXX11/Tensor>
 

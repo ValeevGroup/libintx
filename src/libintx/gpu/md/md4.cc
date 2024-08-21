@@ -1,5 +1,5 @@
-#include "libintx/cuda/md/md4.h"
-#include "libintx/cuda/md/basis.h"
+#include "libintx/gpu/md/md4.h"
+#include "libintx/gpu/md/basis.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"
 

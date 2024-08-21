@@ -1,11 +1,11 @@
-#include "libintx/cuda/forward.h"
-#include "libintx/cuda/jengine/md/forward.h"
-#include "libintx/boys/cuda/chebyshev.h"
+#include "libintx/gpu/forward.h"
+#include "libintx/gpu/jengine/md/forward.h"
+#include "libintx/boys/gpu/chebyshev.h"
 #include "libintx/engine/md/r1.h"
 
-#include "libintx/cuda/api/kernel.h"
-#include "libintx/cuda/api/stream.h"
-#include "libintx/cuda/api/thread_group.h"
+#include "libintx/gpu/api/kernel.h"
+#include "libintx/gpu/api/stream.h"
+#include "libintx/gpu/api/thread_group.h"
 
 namespace libintx::cuda::jengine::md {
 namespace {

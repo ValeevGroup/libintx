@@ -3,7 +3,7 @@
 
 #include "libintx/engine.h"
 #include "libintx/shell.h"
-#include "libintx/cuda/forward.h"
+#include "libintx/gpu/forward.h"
 
 #include <memory>
 

@@ -1,8 +1,8 @@
-#include "libintx/cuda/jengine/md/forward.h"
-#include "libintx/cuda/api/api.h"
-#include "libintx/cuda/api/kernel.h"
-#include "libintx/cuda/api/stream.h"
-#include "libintx/cuda/api/thread_group.h"
+#include "libintx/gpu/jengine/md/forward.h"
+#include "libintx/gpu/api/api.h"
+#include "libintx/gpu/api/kernel.h"
+#include "libintx/gpu/api/stream.h"
+#include "libintx/gpu/api/thread_group.h"
 #include "libintx/orbital.h"
 #include "libintx/pure.h"
 #include <iostream>

@@ -1,13 +1,13 @@
 #ifndef LIBINTX_CUDA_MD_JENGINE_H
 #define LIBINTX_CUDA_MD_JENGINE_H
 
-#include "libintx/cuda/jengine/md/forward.h"
+#include "libintx/gpu/jengine/md/forward.h"
 
 #include "libintx/array.h"
 #include "libintx/shell.h"
-#include "libintx/cuda/forward.h"
-#include "libintx/cuda/jengine.h"
-#include "libintx/cuda/api/api.h"
+#include "libintx/gpu/forward.h"
+#include "libintx/gpu/jengine.h"
+#include "libintx/gpu/api/api.h"
 
 #include <map>
 

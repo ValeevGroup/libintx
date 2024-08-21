@@ -1,7 +1,7 @@
 #ifndef LIBINTX_CUDA_MD_MD3_H
 #define LIBINTX_CUDA_MD_MD3_H
 
-#include "libintx/cuda/forward.h"
+#include "libintx/gpu/forward.h"
 #include "libintx/engine.h"
 #include "libintx/tensor.h"
 

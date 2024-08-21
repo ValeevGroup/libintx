@@ -1,4 +1,4 @@
-#include "libintx/cuda/blas.h"
+#include "libintx/gpu/blas.h"
 
 //#include "cublas_v2.h"
 #include "cutlass/gemm/device/gemm_batched.h"

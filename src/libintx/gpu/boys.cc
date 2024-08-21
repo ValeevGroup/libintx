@@ -1,5 +1,5 @@
-#include "libintx/cuda/forward.h"
-#include "libintx/boys/cuda/chebyshev.h"
+#include "libintx/gpu/forward.h"
+#include "libintx/boys/gpu/chebyshev.h"
 #include "cuda/api/current_device.hpp"
 
 #include <mutex>

@@ -2,8 +2,8 @@
 #define LIBINTX_CUDA_MD_BASIS_H
 
 #include "libintx/shell.h"
-#include "libintx/cuda/forward.h"
-#include "libintx/cuda/api/api.h"
+#include "libintx/gpu/forward.h"
+#include "libintx/gpu/api/api.h"
 
 namespace libintx::cuda::md {
 
