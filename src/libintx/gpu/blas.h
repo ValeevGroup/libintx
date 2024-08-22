@@ -1,14 +1,13 @@
 #ifndef LIBINTX_GPU_BLAS_H
 #define LIBINTX_GPU_BLAS_H
 
-#include "libintx/gpu/api/api.h"
-//#include "cublas_v2.h"
-#include "cutlass/layout/layout.h"
+#include "libintx/gpu/forward.h"
 
 namespace libintx::gpu {
 
-  using cutlass::layout::RowMajor;
-  using cutlass::layout::ColumnMajor;
+  enum Order {
+    RowMajor, ColumnMajor
+  };
 
   void transpose(
     size_t M, size_t N,
@@ -26,7 +25,7 @@ namespace libintx::gpu {
     gpuStream_t stream
   );
 
-  template<typename LayoutA, typename LayoutB, typename LayoutC>
+  template<Order LayoutA, Order LayoutB, Order LayoutC>
   void batch_gemm(
     int M, int N, int K,
     double alpha,

@@ -57,17 +57,17 @@ namespace libintx::md::r1 {
   //constexpr Recurrence<libintx::LMAX*4> recurrence;
   constexpr const Recurrence<2*LMAX+std::max(2*LMAX,XMAX)> recurrence;
 
-  template<int L, int Max>
+  template<int L, int Max, typename G>
   LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
   void compute(
     const Recurrence<Max> &recurrence,
     const array<double,3> &PQ,
     double* __restrict__ r1,
-    const auto &thread_group)
+    const G &thread_group)
   {
     static_assert(L <= Max);
 
-    constexpr int num_threads = thread_group.size();
+    constexpr int num_threads = G::size();
     constexpr int N = (nherm2(L)-1+num_threads-1)/num_threads;
     int rank = thread_group.thread_rank();
 

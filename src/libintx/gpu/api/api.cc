@@ -3,8 +3,6 @@
 
 #include <cstring>
 
-constexpr auto MemcpyDefault = cudaMemcpyDefault;
-
 int libintx::gpu::current_device::get() {
   int device;
   LIBINTX_GPU_API(GetDevice, &device);
@@ -36,11 +34,11 @@ void libintx::gpu::device_memory_t::free(void *ptr) {
 }
 
 void libintx::gpu::memcpy(void *dst, const void *src, size_t bytes) {
-  LIBINTX_GPU_API(Memcpy, dst, src, bytes, MemcpyDefault);
+  LIBINTX_GPU_API(Memcpy, dst, src, bytes, gpuMemcpyDefault);
 }
 
 void libintx::gpu::memcpy(void *dst, const void *src, size_t bytes, gpuStream_t stream) {
-  LIBINTX_GPU_API(MemcpyAsync, dst, src, bytes, MemcpyDefault, stream);
+  LIBINTX_GPU_API(MemcpyAsync, dst, src, bytes, gpuMemcpyDefault, stream);
 }
 
 void* libintx::gpu::host_memory_t::allocate(size_t bytes) {
@@ -74,7 +72,7 @@ void* libintx::gpu::host::device_pointer(void* ptr) {
 
 template<>
 void libintx::gpu::host::register_pointer(const void *ptr, size_t size) {
-  LIBINTX_GPU_API(HostRegister, const_cast<void*>(ptr), size, cudaHostRegisterDefault);
+  LIBINTX_GPU_API(HostRegister, const_cast<void*>(ptr), size, gpuHostRegisterDefault);
 }
 
 void libintx::gpu::host::unregister_pointer(const void *ptr) {

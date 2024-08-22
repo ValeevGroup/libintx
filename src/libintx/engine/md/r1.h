@@ -41,8 +41,8 @@ struct visitor {
   constexpr static void apply(F &&f, const R &r) {
     constexpr bool valid = (
       K <= Q &&
-      Q-K <= r.L &&
-      r.L-(Q-K) <= P
+      Q-K <= R::L &&
+      R::L-(Q-K) <= P
     );
     if constexpr (valid) apply<Q-K,0>(f,r);
   }
@@ -51,8 +51,8 @@ struct visitor {
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
   constexpr static void apply(F &&f, const R &r) {
     constexpr auto q = cartesian::orbital<QK,Idx>();
-    if constexpr (q <= r.orbital) {
-      constexpr auto p = r.orbital-q;
+    if constexpr (q <= R::orbital) {
+      constexpr auto p = R::orbital-q;
       static_assert(p.L() <= P);
       static_assert(q.L() <= Q);
       constexpr int phase = (q.L()%2 ? -1 : +1);
@@ -125,18 +125,18 @@ void visit(F f, const auto& PQ, const auto (&s)[N]) {
 
 template<int L, Order Order = Order::BreadthFirst>
 LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
-void compute(const auto &PQ, const auto &s, auto* __restrict__ R) {
-  auto f = [&](auto &r) constexpr {
-    if constexpr (L >= r.L) R[r.index] = r.value;
+void compute(const auto &PQ, const auto &s, auto* __restrict__ r1) {
+  auto f = [&](auto r) constexpr {
+    if constexpr (L >= r.L) r1[r.index] = r.value;
   };
   visit<L,Order>(f, PQ, s);
 }
 
-template<int L, Order Order = Order::BreadthFirst>
+template<int L, Order Order = r1::Order::BreadthFirst>
 LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
-void compute1(const auto &PQ, const auto &s, auto* __restrict__ R) {
-  auto f = [&](auto &r) constexpr {
-    if constexpr (L == r.L) R[r.index] = r.value;
+void compute1(const auto &PQ, const auto &s, auto* __restrict__ r1) {
+  auto f = [&](auto r) constexpr {
+    if constexpr (L == r.L) r1[r.index] = r.value;
   };
   visit<L,Order>(f, PQ, s);
 }

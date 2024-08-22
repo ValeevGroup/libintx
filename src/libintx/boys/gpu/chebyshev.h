@@ -22,7 +22,7 @@ namespace boys::gpu {
       libintx::gpu::memcpy(shared_table_.get(), table.get(), bytes);
     }
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
 
     __device__
     double compute(double x, int m) const {

@@ -2,20 +2,39 @@
 #define LIBINTX_GPU_API_RUNTIME_H
 
 #include "libintx/gpu/api/forward.h"
+#include "libintx/gpu/api/api.h"
 
 #include <memory>
 #include <cstdio>
-#include <cuda_runtime.h>
 
-#define LIBINTX_GPU_API(SYMBOL, ...)                                    \
-  if (auto err = cuda ## SYMBOL (__VA_ARGS__); err != cudaSuccess) {    \
-    char msg[128];                                                      \
-    snprintf(                                                           \
-      msg, sizeof(msg),                                                 \
-      "cuda" #SYMBOL " returned with %s: %s",                           \
-      cudaGetErrorName(err), cudaGetErrorString(err)                    \
-    );                                                                  \
-    throw libintx::gpu::runtime_error(msg);                             \
+#ifdef LIBINTX_GPU_API_CUDA
+#include <cuda_runtime.h>
+#define LIBINTX_GPU_API_NAME "cuda"
+#define LIBINTX_GPU_API_SYMBOL(SYMBOL) cuda ## SYMBOL
+#endif
+
+#ifdef LIBINTX_GPU_API_HIP
+#include <hip/hip_runtime.h>
+#define LIBINTX_GPU_API_NAME "hip"
+#define LIBINTX_GPU_API_SYMBOL(SYMBOL) hip ## SYMBOL
+#endif
+
+using gpuError_t = LIBINTX_GPU_API_SYMBOL(Error_t);
+constexpr auto gpuSuccess = LIBINTX_GPU_API_SYMBOL(Success);
+constexpr auto gpuMemcpyDefault = LIBINTX_GPU_API_SYMBOL(MemcpyDefault);
+constexpr auto gpuHostRegisterDefault = LIBINTX_GPU_API_SYMBOL(HostRegisterDefault);
+
+#define LIBINTX_GPU_API(SYMBOL, ...)                                            \
+  if (auto err = LIBINTX_GPU_API_SYMBOL(SYMBOL) (__VA_ARGS__); err != gpuSuccess) { \
+  char msg[128];                                                                \
+  snprintf(                                                                     \
+    msg, sizeof(msg),                                                           \
+    "%s%s returned with %s: %s",                                                \
+    LIBINTX_GPU_API_NAME, #SYMBOL,                                              \
+    LIBINTX_GPU_API_SYMBOL(GetErrorName)(err),                                  \
+    LIBINTX_GPU_API_SYMBOL(GetErrorString)(err)                                 \
+  );                                                                            \
+  throw libintx::gpu::runtime_error(msg);                                       \
   }
 
 namespace libintx::gpu {
@@ -50,7 +69,7 @@ namespace libintx::gpu {
 
     template<typename F>
     void add_callback(F &&callback) {
-      constexpr auto callback_adapter = [](gpuStream_t stream, cudaError_t error, void *data) {
+      constexpr auto callback_adapter = [](gpuStream_t stream, gpuError_t error, void *data) {
         auto callback = ::std::unique_ptr<F>(reinterpret_cast<F*>(data));
         (*callback)(stream, error);
       };

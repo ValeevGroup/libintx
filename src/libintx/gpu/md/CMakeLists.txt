@@ -1,5 +1,12 @@
-enable_language(CUDA)
-find_package(CUDAToolkit)
+if (LIBINTX_HIP)
+  set_source_files_properties(
+    basis.cu
+    md3.kernel.cu
+    md4.kernel.cu
+    PROPERTIES
+    LANGUAGE HIP
+    )
+endif()
 
 math(EXPR lmax2 "2*${LIBINTX_MAX_L}")
 
@@ -11,7 +18,9 @@ foreach (KET RANGE ${lmax2})
     target_compile_definitions(
       ${target}
       PRIVATE
-      LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET=${BRA}\\,${KET}
+      LIBINTX_GPU_MD_MD4_KERNEL_BRA=${BRA}
+      LIBINTX_GPU_MD_MD4_KERNEL_KET=${KET}
+      LIBINTX_GPU_MAX_SHMEM=${LIBINTX_GPU_MAX_SHMEM}
       )
     list(APPEND libintx.gpu_md_eri4_sources $<TARGET_OBJECTS:${target}>)
   endforeach()
@@ -22,7 +31,9 @@ foreach (KET RANGE ${lmax2})
     target_compile_definitions(
       ${target}
       PRIVATE
-      LIBINTX_GPU_MD_MD3_KERNEL_X_KET=${X}\\,${KET}
+      LIBINTX_GPU_MD_MD3_KERNEL_X=${X}
+      LIBINTX_GPU_MD_MD3_KERNEL_KET=${KET}
+      LIBINTX_GPU_MAX_SHMEM=${LIBINTX_GPU_MAX_SHMEM}
       )
     list(APPEND libintx.gpu_md_eri3_sources $<TARGET_OBJECTS:${target}>)
   endforeach()

@@ -241,11 +241,11 @@ namespace libintx::md {
     foreach2(
       std::make_index_sequence<a.size()>(),
       std::make_index_sequence<b.size()>(),
-      [&](auto &&i, auto &&j) {
+      [&](auto i, auto j) {
         double v = 0;
         foreach(
           ip,
-          [&](auto &&ip) {
+          [&](auto ip) {
             constexpr double c = ab_p.data[ip.value][j.value][i.value];
             if constexpr (c) {
               v += c*C(p[ip]);

@@ -5,7 +5,7 @@
 
 namespace boys {
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
   __device__ __host__
 #endif
   inline double asymptotic(double x, int m) {
@@ -25,7 +25,7 @@ namespace boys {
   }
 
   template<int N>
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
   __device__ __host__
 #endif
   inline void asymptotic(double x, int m, double (&F)[N]) {

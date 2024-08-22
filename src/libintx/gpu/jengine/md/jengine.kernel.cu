@@ -1,10 +1,15 @@
+#define HIP_ENABLE_WARP_SYNC_BUILTINS
+
+// this must come first to resolve HIP device asserts
+#include "libintx/gpu/api/runtime.h"
+
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/boys.h"
 #include "libintx/engine/md/r1.h"
 
-#include "libintx/gpu/api/kernel.h"
 #include "libintx/gpu/api/thread_group.h"
+#include <bitset>
 
 namespace libintx::gpu::jengine::md {
 namespace {
@@ -16,6 +21,24 @@ namespace {
   //   }
   //   return v;
   // }
+
+  namespace kernel {
+    template<int maxThreads, int minBlocks, class F, class ... Args>
+    __global__ __launch_bounds__(maxThreads,minBlocks)
+      void launch(F f, Args ... args) {
+      f(args...);
+    }
+  }
+
+  __device__
+  inline auto ballot(int predicate) {
+#ifdef __CUDACC__
+    constexpr uint32_t mask = ~uint32_t{0};
+#else
+    constexpr uint64_t mask = ~uint64_t{0};
+#endif
+    return __ballot_sync(mask, predicate);
+  }
 
   namespace r1 = libintx::md::r1;
 
@@ -40,7 +63,7 @@ namespace {
       dim3 block = { NW };
       //shmem += nbra()*8;
       //printf("DFJ<%i,%i>\n", Bra, Ket);
-      gpu::kernel::launch<32,2><<<grid,block,0,stream>>>(
+      kernel::launch<32,2><<<grid,block,0,stream>>>(
         DFJ{},
         std::integral_constant<int,Step>{},
         boys, NQ, P, Q,
@@ -143,10 +166,11 @@ namespace {
             //printf("%i: keep=%i\n", threadIdx.x, keep);
           }
           //kb += min(NQ-K,NW);
-          uint32_t mask = __ballot_sync(0xFFFFFFFF, keep);
+          auto mask = ballot(keep);
+          using mask_t = decltype(mask);
           if (keep) {
             auto before = (uint64_t(mask) << (NW-threadIdx.x));
-            auto idx = __popc(uint32_t(before))+kb;
+            auto idx = __popc(mask_t(before))+kb;
             qk[idx].exponent = exponent;
             qk[idx].r = center;
             ik[idx] = K+threadIdx.x;
@@ -273,10 +297,11 @@ namespace {
             //printf("%i: keep=%i\n", threadIdx.x, keep);
           }
           //kb += min(NQ-K,NW);
-          uint32_t mask = __ballot_sync(0xFFFFFFFF, keep);
+          auto mask = ballot(keep);
+          using mask_t = decltype(mask);
           if (keep) {
             auto before = (uint64_t(mask) << (NW-threadIdx.x));
-            auto idx = __popc(uint32_t(before))+kb;
+            auto idx = __popc(mask_t(before))+kb;
             qk[idx].exponent = exponent;
             qk[idx].r = center;
             ik[idx] = K+threadIdx.x;
@@ -379,6 +404,13 @@ void libintx::gpu::jengine::md::df_jengine_kernel(
   );
 
 LIBINTX_GPU_MD_JENGINE_KERNEL(
-  LIBINTX_GPU_MD_JENGINE_KERNEL_BRA_KET,1,libintx::gpu::Boys);
+  LIBINTX_GPU_MD_JENGINE_KERNEL_BRA,
+  LIBINTX_GPU_MD_JENGINE_KERNEL_KET,
+  1,libintx::gpu::Boys
+);
+
 LIBINTX_GPU_MD_JENGINE_KERNEL(
-  LIBINTX_GPU_MD_JENGINE_KERNEL_BRA_KET,2,libintx::gpu::Boys);
+  LIBINTX_GPU_MD_JENGINE_KERNEL_BRA,
+  LIBINTX_GPU_MD_JENGINE_KERNEL_KET,
+  2,libintx::gpu::Boys
+);

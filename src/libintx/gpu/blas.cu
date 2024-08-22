@@ -1,7 +1,10 @@
 #include "libintx/gpu/blas.h"
+#include "libintx/gpu/api/runtime.h"
 
+#ifdef __CUDACC__
 //#include "cublas_v2.h"
 #include "cutlass/gemm/device/gemm_batched.h"
+#endif
 
 namespace libintx::gpu {
 
@@ -38,9 +41,9 @@ namespace libintx::gpu {
     gpuStream_t stream)
   {
     if (!M || !N) return;
-    constexpr int DimX = 16;
+    constexpr uint DimX = 16;
     constexpr size_t batches = 1;
-    dim3 g = { (M+DimX-1)/DimX, (N+DimX-1)/DimX, batches };
+    dim3 g = { uint((M+DimX-1)/DimX), uint((N+DimX-1)/DimX), batches };
     dim3 b = { DimX, 4 };
     transpose<DimX><<<g,b,0,stream>>>(M, N, A, ldA, T, ldT);
   }
@@ -85,13 +88,25 @@ namespace libintx::gpu {
   {
     if (!M || !N) return;
     constexpr int Tile = 16;
-    dim3 g = { (M+Tile-1)/Tile, (N+Tile-1)/Tile, batches };
+    dim3 g = { uint((M+Tile-1)/Tile), uint((N+Tile-1)/Tile), uint(batches) };
     dim3 b = { Tile, 4 };
     batch_transpose<Tile><<<g,b,0,stream>>>(M, N, A, ldA, T, ldT);
   }
 
+#ifdef __CUDACC__
 
-  template<typename LayoutA, typename LayoutB, typename LayoutC>
+  template<Order order>
+  auto layout() {
+    if constexpr (order == RowMajor) return cutlass::layout::RowMajor{};
+    if constexpr (order == ColumnMajor) return cutlass::layout::ColumnMajor{};
+  };
+
+  template<Order order>
+  using layout_t = decltype(layout<order>());
+
+#endif
+
+  template<Order LayoutA, Order LayoutB, Order LayoutC>
   void batch_gemm(
     int M, int N, int K,
     double alpha,
@@ -103,14 +118,16 @@ namespace libintx::gpu {
     gpuStream_t stream)
   {
 
+#ifdef __CUDACC__
+
     using namespace cutlass::gemm;
     using cutlass::TensorRef;
     using cutlass::gemm::GemmShape;
 
     using Gemm = cutlass::gemm::device::GemmBatched<
-      double, LayoutA,
-      double, LayoutB,
-      double, LayoutC,
+      double, layout_t<LayoutA>,
+      double, layout_t<LayoutB>,
+      double, layout_t<LayoutC>,
       double,
       cutlass::arch::OpClassSimt,
       cutlass::arch::Sm70,
@@ -124,10 +141,10 @@ namespace libintx::gpu {
       typename Gemm::Arguments{
         GemmCoord{M, N, K},
         //TensorRef<const double,RowMajor>{PX, K*bra.N}, K*N,
-        TensorRef<const double,LayoutA>{A, ldA}, strideA,
-        TensorRef<const double,LayoutB>{B, ldB}, strideB,
-        TensorRef<const double,LayoutC>{C, ldC}, strideC,
-        TensorRef<double, LayoutC>{C, ldC}, strideC,
+        TensorRef<const double,layout_t<LayoutA>>{A, ldA}, strideA,
+        TensorRef<const double,layout_t<LayoutB>>{B, ldB}, strideB,
+        TensorRef<const double,layout_t<LayoutC>>{C, ldC}, strideC,
+        TensorRef<double, layout_t<LayoutC>>{C, ldC}, strideC,
         typename Gemm::EpilogueOutputOp::Params{alpha, beta},
         (int)batches
       },
@@ -137,6 +154,8 @@ namespace libintx::gpu {
     if (status != cutlass::Status::kSuccess) {
       throw std::runtime_error("cuda::gemm error");
     }
+
+#endif
 
   }
 

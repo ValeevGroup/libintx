@@ -104,12 +104,11 @@ namespace libintx::gpu::md::kernel {
     }
   };
 
-
-  LIBINTX_GPU_DEVICE
+  LIBINTX_GPU_CONSTANT
   constexpr auto orbitals2 = hermite::orbitals<2*LMAX>;
 
-  LIBINTX_GPU_DEVICE
-  constexpr auto orbitals1 = std::tuple{
+  LIBINTX_GPU_CONSTANT
+  constexpr auto orbitals1 = pair{
     hermite::orbitals1<XMAX,0>,
     hermite::orbitals1<XMAX,1>
   };
@@ -122,7 +121,8 @@ namespace libintx::gpu::md::kernel {
 
   template<int X>
   constexpr auto& orbitals(const Basis1<X>&) {
-    return std::get<X%2>(orbitals1);
+    if constexpr (X%2 == 0) return orbitals1.first;
+    if constexpr (X%2 == 1) return orbitals1.second;
   }
 
   // use unrolled hermite to pure code or matrix one
@@ -184,8 +184,8 @@ namespace libintx::gpu::md::kernel {
       auto &p_orbitals = orbitals(bra);
       auto &q_orbitals = orbitals(ket);
 
-      static constexpr int C = ket.First;
-      static constexpr int D = ket.Second;
+      static constexpr int C = Ket::First;
+      static constexpr int D = Ket::Second;
 
       constexpr ThreadBlock thread_block;
       const auto& thread_rank = thread_block.thread_rank();
@@ -314,7 +314,7 @@ namespace libintx::gpu::md::kernel {
         }
         else if constexpr (Bra::Centers == 1) {
 
-          static constexpr int X = bra.L;
+          static constexpr int X = Bra::L;
           double inv_2_p = shmem.abs[threadIdx.x].inv_2_exp;
 
           for (int icd = 0; icd < NCD; ++icd) {
@@ -352,8 +352,8 @@ namespace libintx::gpu::md::kernel {
         }
         else if constexpr (Bra::Centers == 2) {
 
-          static constexpr int A = bra.First;
-          static constexpr int B = bra.Second;
+          static constexpr int A = Bra::First;
+          static constexpr int B = Bra::Second;
 
           auto&& [Eab] = args;
 
@@ -692,7 +692,7 @@ namespace libintx::gpu::md::kernel {
 
           static constexpr int A = Bra::First;
           static constexpr int B = Bra::Second;
-          constexpr int NAB = bra.nbf;
+          constexpr int NAB = Bra::nbf;
 
           auto& [Eab] = args;
 

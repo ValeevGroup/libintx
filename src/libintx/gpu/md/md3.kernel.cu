@@ -1,20 +1,30 @@
 // -*-c++-*-
 
+// this must come first to resolve HIP device asserts
+#include "libintx/gpu/api/runtime.h"
+
 #include "libintx/gpu/md/md3.h"
 #include "libintx/gpu/md/md3.kernel.h"
 #include "libintx/gpu/boys.h"
+#include "libintx/gpu/blas.h"
 #include "libintx/utility.h"
 
 #pragma nv_diag_suppress 2361
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wc++11-narrowing"
+#endif
+
 namespace libintx::gpu::md {
 
-#ifndef LIBINTX_GPU_MD_MD3_KERNEL_X_KET
-#error LIBINTX_GPU_MD_MD3_KERNEL_X_KET undefined
+  constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
+
+#if !(defined(LIBINTX_GPU_MD_MD3_KERNEL_X) && defined(LIBINTX_GPU_MD_MD3_KERNEL_KET))
+#error LIBINTX_GPU_MD_MD3_KERNEL_X/KET undefined
 #endif
 
   template
-  void ERI3::compute<LIBINTX_GPU_MD_MD3_KERNEL_X_KET>(
+  void ERI3::compute<LIBINTX_GPU_MD_MD3_KERNEL_X,LIBINTX_GPU_MD_MD3_KERNEL_KET>(
     const Basis1&,
     const Basis2&,
     TensorRef<double,2>,
@@ -67,7 +77,7 @@ namespace libintx::gpu::md {
         (uint)(x.N+thread_block.x-1)/thread_block.x,
         (uint)(cd.N+thread_block.z-1)/thread_block.z
       };
-      launch<<<grid,thread_block,shmem,stream>>>(
+      kernel::launch<<<grid,thread_block,shmem,stream>>>(
         x_cd_kernel_x(), x, cd, gpu::boys(), std::tuple{}, XCD
       );
       //printf("v0:xz\n");
@@ -80,7 +90,7 @@ namespace libintx::gpu::md {
         (uint)(cd.N)
       };
       for (int kx = 0; kx < bra.K; ++kx) {
-        launch<<<grid,thread_block,shmem,stream>>>(
+        kernel::launch<<<grid,thread_block,shmem,stream>>>(
           x_cd_kernel(), x, kx, cd, gpu::boys(), std::tuple{}, XCD
         );
       }
@@ -129,7 +139,7 @@ namespace libintx::gpu::md {
         );
       }
       // [i,x,cd,kl] = [q,i,x,kl]'*H(cd,q,kl)'
-      batch_gemm<RowMajor, RowMajor, ColumnMajor>(
+      gpu::batch_gemm<RowMajor, RowMajor, ColumnMajor>(
         NX*x.N, NCD, cd.nherm,
         math::sqrt_4_pi5, // alpha
         qx.data(), NQ, NQ*NX*x.N,
@@ -160,7 +170,7 @@ namespace libintx::gpu::md {
           constexpr auto v2 = (
             (X == 3 && (npure(C)*npure(D) > 5*7)) ||
             (X > 3 && (npure(C)*npure(D) > 5*5))
-          );
+         );
           if constexpr (v2) {
             this->compute_v2<X,C,D>(x, ket, XCD, stream);
           }

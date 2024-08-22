@@ -61,7 +61,7 @@ struct alignas(32) Gaussian : Shell {
     }
   };
 
-  array<Primitive,KMAX> prims = { };
+  array<Primitive,KMAX> prims = {};
   int K = 0;
 
   //LIBINTX_GPU_ENABLED
@@ -140,13 +140,6 @@ inline bool operator==(const Gaussian &lhs, const Gaussian &rhs) {
   }
   return true;
 }
-
-struct Gaussian2 {
-  Gaussian first, second;
-  struct {
-    array<double,3> first, second;
-  } r;
-};
 
 template<typename Shell>
 using Basis = std::vector< std::tuple<Shell,array<double,3> > >;

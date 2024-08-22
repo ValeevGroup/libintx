@@ -6,13 +6,7 @@
 #include <algorithm>
 #include <cassert>
 
-struct CUstream_st;
-
-namespace libintx {
-
-  typedef CUstream_st* gpuStream_t;
-
-}
+#include "libintx/gpu/api/forward.h"
 
 namespace libintx::gpu {
 

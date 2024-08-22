@@ -1,0 +1,9 @@
+#ifndef LIBINTX_GPU_API_CONFIG_H
+#define LIBINTX_GPU_API_CONFIG_H
+
+// automatically generated from libintx/gpu/api/config.h.in
+
+#cmakedefine LIBINTX_GPU_API_CUDA
+#cmakedefine LIBINTX_GPU_API_HIP
+
+#endif /* LIBINTX_GPU_API_CONFIG_H */

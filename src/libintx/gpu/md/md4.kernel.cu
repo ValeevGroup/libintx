@@ -1,11 +1,12 @@
 // -*-c++-*-
 
-#include "libintx/gpu/forward.h"
+// this must come first to resolve HIP device asserts
+#include "libintx/gpu/api/runtime.h"
+
 #include "libintx/gpu/md/md4.h"
 #include "libintx/gpu/md/md4.kernel.h"
 #include "libintx/gpu/boys.h"
 
-#include "libintx/gpu/api/kernel.h"
 #include "libintx/gpu/blas.h"
 #include "libintx/utility.h"
 
@@ -15,12 +16,14 @@
 
 namespace libintx::gpu::md {
 
-#ifndef LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET
-#error LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET undefined
+  constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
+
+#if !(defined(LIBINTX_GPU_MD_MD4_KERNEL_BRA) && defined(LIBINTX_GPU_MD_MD4_KERNEL_KET))
+#error LIBINTX_GPU_MD_MD4_KERNEL_BRA/KET undefined
 #endif
 
   template
-  void ERI4::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA_KET>(
+  void ERI4::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA,LIBINTX_GPU_MD_MD4_KERNEL_KET>(
     const Basis2&,
     const Basis2&,
     TensorRef<double,2>,
@@ -60,7 +63,7 @@ namespace libintx::gpu::md {
 
     if constexpr (!std::is_same_v<kernel_xy,void>) {
       typename kernel_xy::ThreadBlock thread_block;
-      static_assert(bra.alignment%thread_block.x == 0);
+      static_assert(md::Basis2::alignment%thread_block.x == 0);
       dim3 grid = {
         (uint)(ab.N+thread_block.x-1)/thread_block.x,
         (uint)(cd.N+thread_block.z-1)/thread_block.z
@@ -79,7 +82,7 @@ namespace libintx::gpu::md {
           stream
         );
       }
-      launch<<<grid,thread_block,shmem,stream>>>(
+      kernel::launch<<<grid,thread_block,shmem,stream>>>(
         kernel_xy(), ab, cd, gpu::boys(), std::tuple{ab_p}, ABCD
       );
       return std::true_type();
@@ -103,7 +106,7 @@ namespace libintx::gpu::md {
           grid.x,
           stream
         );
-        launch<<<grid,thread_block,shmem,stream>>>(
+        kernel::launch<<<grid,thread_block,shmem,stream>>>(
           kernel_xz(), ab, kab, cd, gpu::boys(), std::tuple{ab_p}, ABCD
         );
       }
@@ -170,7 +173,7 @@ namespace libintx::gpu::md {
         (uint)(NCD*cd.N+DimY-1)/DimY
       };
 
-      static_assert(ket.alignment%DimY == 0);
+      static_assert(md::Basis2::alignment%DimY == 0);
       size_t nkl_aligned = cd.N + DimY-cd.N%DimY;
       size_t p_cd_size = DimX*NP*NCD*nkl_aligned*grid0.x;
 
@@ -232,7 +235,7 @@ namespace libintx::gpu::md {
       for (int kp = 0; kp < bra.K; ++kp) {
 
         if constexpr (kernel::test<p_cd_kernel>(800,MaxShmem)) {
-          launch<<<grid0,thread_block,0,stream>>>(
+          kernel::launch<<<grid0,thread_block,0,stream>>>(
             p_cd_kernel(), ab, kp, Basis2<C,D>(cd), gpu::boys(), std::tuple{}, pCD
           );
         }
@@ -268,7 +271,7 @@ namespace libintx::gpu::md {
           buffer1,
           { DimX, 1+nherm2(Bra-1)*NAB, grid1.x }
         };
-        static_assert(bra.alignment%DimX == 0);
+        static_assert(md::Basis2::alignment%DimX == 0);
         gpu::batch_transpose(
           (1+nherm2(Bra-1)*NAB), DimX,
           ab.gdata(0,kp)-1, ab.stride,
@@ -277,7 +280,7 @@ namespace libintx::gpu::md {
           stream
         );
 
-        launch<<<grid1,thread_block,0,stream>>>(
+        kernel::launch<<<grid1,thread_block,0,stream>>>(
           kernel1(),
           bra.N, NCD*cd.N,
           batched_ab_p,

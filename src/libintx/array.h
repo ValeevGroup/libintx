@@ -7,7 +7,7 @@
 #include <cstddef>
 #include <assert.h>
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
 #define ARRAY_GPU_ENABLED __host__ __device__
 #else
 #define ARRAY_GPU_ENABLED

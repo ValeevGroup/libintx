@@ -1,7 +1,13 @@
 #ifndef LIBINTX_GPU_API_THREAD_GROUP_H
 #define LIBINTX_GPU_API_THREAD_GROUP_H
 
+#ifdef __CUDACC__
 #include <cooperative_groups.h>
+#endif
+
+#ifdef __HIPCC__
+#include <hip/hip_cooperative_groups.h>
+#endif
 
 namespace libintx::gpu {
 
@@ -14,7 +20,7 @@ namespace libintx::gpu {
     static constexpr int x = X;
     static constexpr int y = Y;
     static constexpr int z = Z;
-    __device__ static constexpr int size() { return x*y*z; }
+    static constexpr int size() { return x*y*z; }
     __device__ static auto thread_rank() {
       return this_thread_block().thread_rank();
     }
@@ -30,12 +36,14 @@ namespace libintx::gpu {
   };
 
   struct this_warp {
-    __device__ static constexpr int size() { return 32; }
+    static constexpr int size() { return 32; }
     __device__ static auto thread_rank() {
       return this_thread_block().thread_rank()%32;
     }
     __device__ static void sync() {
+#ifdef __CUDACC__
       __syncwarp();
+#endif
     }
   };
 

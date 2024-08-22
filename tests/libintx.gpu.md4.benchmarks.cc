@@ -20,7 +20,7 @@ const Double<3> rs[] = {
 auto run(
   int A, int B, int C, int D,
   std::vector<Index2> Ks,
-  int Nij, int Nkl)
+  size_t Nij, size_t Nkl)
 {
 
   Basis<Gaussian> basis;

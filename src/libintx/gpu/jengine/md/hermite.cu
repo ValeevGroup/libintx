@@ -1,6 +1,5 @@
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/api/api.h"
-#include "libintx/gpu/api/kernel.h"
 #include "libintx/gpu/api/thread_group.h"
 #include "libintx/orbital.h"
 #include "libintx/pure.h"

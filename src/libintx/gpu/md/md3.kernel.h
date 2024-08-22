@@ -354,7 +354,7 @@ namespace libintx::gpu::md::kernel {
         std::make_index_sequence<ncart(X)>(),
         [&](auto ix) {
           constexpr auto x = std::get<ix.value>(cart::shell<X>());
-          auto h = [&](auto&& ... p) {
+          auto h = [&](auto ... p) {
             constexpr int idx = herm::index1(p.value...);
             return r[idx];
           };
