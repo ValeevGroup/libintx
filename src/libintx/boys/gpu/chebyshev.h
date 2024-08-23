@@ -14,8 +14,7 @@ namespace boys::gpu {
 
     constexpr static double Delta = double(MaxT)/Segments;
 
-    explicit Chebyshev(int device) {
-      libintx::gpu::current_device current_device(device);
+    explicit Chebyshev() {
       shared_table_ = libintx::gpu::device::make_shared<double[]>((Order+1)*M*Segments);
       table_ = shared_table_.get();
       auto table = boys::chebyshev_interpolation_table(Order, M, MaxT, Segments);

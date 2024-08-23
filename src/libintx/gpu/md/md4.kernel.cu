@@ -3,10 +3,10 @@
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/md/md4.h"
 #include "libintx/gpu/md/md4.kernel.h"
+#include "libintx/gpu/boys.h"
 
 #include "libintx/gpu/api/kernel.h"
 #include "libintx/gpu/blas.h"
-#include "libintx/boys/gpu/chebyshev.h"
 #include "libintx/utility.h"
 
 #include "libintx/config.h"

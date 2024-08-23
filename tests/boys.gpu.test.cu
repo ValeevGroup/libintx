@@ -1,9 +1,13 @@
+// -*-c++-*-
+
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
 #include "libintx/boys/gpu/chebyshev.h"
-#include <cuda/api_wrappers.hpp>
-//#include <cuda/api/memory.hpp>
+#include "libintx/gpu/api/api.h"
+
+#include <cooperative_groups.h>
+
 
 template<class Chebyshev>
 __global__
@@ -32,14 +36,13 @@ void test(int grid) {
 
   typedef boys::gpu::Chebyshev<Order,M,117,Segments> Chebyshev;
 
-  auto current_device = cuda::device::current::get();
-  auto ptr = cuda::memory::device::make_unique<double[]>(current_device, grid*block.y*block.z);
+  auto ptr = libintx::gpu::device::make_shared<double[]>(grid*block.y*block.z);
 
-  auto chebyshev = Chebyshev(current_device);
+  auto chebyshev = Chebyshev();
 
   for (size_t i = 0; i < 5; ++i) {
     test<<<grid,block>>>(chebyshev, ptr.get());
-    current_device.synchronize();
+    libintx::gpu::stream::synchronize();
     // test_cooperative_groups<<<grid,block>>>(chebyshev, ptr.get());
     // current_device.synchronize();
   }
@@ -51,7 +54,7 @@ void test(int grid) {
   //   ptr.get()
   // );
 
-  current_device.synchronize();
+  libintx::gpu::stream::synchronize();
 
 }
 

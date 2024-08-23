@@ -2,7 +2,7 @@
 
 #include "libintx/gpu/md/md3.h"
 #include "libintx/gpu/md/md3.kernel.h"
-#include "libintx/boys/gpu/chebyshev.h"
+#include "libintx/gpu/boys.h"
 #include "libintx/utility.h"
 
 #pragma nv_diag_suppress 2361

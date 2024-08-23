@@ -1,5 +1,4 @@
-#include "libintx/gpu/forward.h"
-#include "libintx/boys/gpu/chebyshev.h"
+#include "libintx/gpu/boys.h"
 #include "libintx/gpu/api/api.h"
 
 #include <mutex>
@@ -8,18 +7,15 @@
 namespace libintx::gpu {
 
   const Boys& boys() {
-    return *boys(gpu::current_device::get());
-  }
-
-  std::shared_ptr<const Boys> boys(int device) {
+    int device = gpu::current_device::get();
     static std::mutex mutex;
     static std::map<int, std::shared_ptr<const Boys> > boys;
     std::unique_lock<std::mutex> lock(mutex);
     auto &b = boys[device];
     if (!b) {
-      b = std::make_unique<Boys>(device);
+      b = std::make_unique<Boys>();
     }
-    return b;
+    return *b;
   }
 
 }

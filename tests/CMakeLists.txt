@@ -8,9 +8,10 @@ add_executable(boys.test EXCLUDE_FROM_ALL boys.test.cc)
 target_link_libraries(boys.test libboys)
 add_test(NAME boys COMMAND boys.test)
 
-if (LIBINTX_ENABLE_CUDA)
+if (LIBINTX_CUDA)
+  enable_language(CUDA)
   add_executable(boys.gpu.test EXCLUDE_FROM_ALL boys.gpu.test.cu)
-  target_link_libraries(boys.gpu.test libboys)
+  target_link_libraries(boys.gpu.test libboys libintx.gpu)
   add_test(NAME boys.gpu COMMAND boys.gpu.test)
 endif()
 
