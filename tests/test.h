@@ -9,6 +9,7 @@
 #include <random>
 #include <ostream>
 #include <ctime>
+#include <algorithm>
 
 #ifdef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
@@ -34,7 +35,7 @@ namespace libintx::test {
     mutable std::default_random_engine g_;
   };
 
-  auto& default_random_engine() {
+  inline auto& default_random_engine() {
     static std::default_random_engine g;
     return g;
   }
@@ -121,7 +122,7 @@ namespace libintx::test {
     );
   }
 
-  auto basis1(std::tuple<int> L, std::tuple<int> K, size_t N) {
+  inline auto basis1(std::tuple<int> L, std::tuple<int> K, size_t N) {
     Basis<Gaussian> basis;
     std::vector<Index1> idx;
     bool pure = true;
@@ -134,7 +135,7 @@ namespace libintx::test {
     return std::tuple{basis,idx};
   }
 
-  auto basis2(std::pair<int,int> L, std::pair<int,int> K, size_t N) {
+  inline auto basis2(std::pair<int,int> L, std::pair<int,int> K, size_t N) {
     Basis<Gaussian> basis;
     std::vector<Index2> idx;
     bool pure = true;

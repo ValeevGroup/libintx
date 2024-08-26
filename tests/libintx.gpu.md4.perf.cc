@@ -2,9 +2,8 @@
 #include "libintx/gpu/api/api.h"
 #include "libintx/utility.h"
 #include "test.h"
+#include "reference.h"
 #include <iostream>
-
-#include "libintx/reference.h"
 
 using namespace libintx;
 using namespace libintx::gpu;
@@ -37,8 +36,6 @@ auto run(
     std::vector<double> ratio;
   } md;
 
-  std::vector<double> csv[2];
-
   for (auto K : Ks) {
 
     printf("# K={%i,%i}: ", K.first, K.second);
@@ -61,27 +58,16 @@ auto run(
 
     printf("T(MD)=%f ", 1/md.time);
     printf("Int/s=%4.2e ", (Nij*Nkl)*md.time);
-    double tref = reference::time(Nij*Nkl, bra[0], bra[1], ket[0], ket[1]);
+
+#ifdef LIBINTX_TEST_REFERENCE
+    double tref = reference::time(Nij*Nkl, shell(bra[0]), shell(bra[1]), shell(ket[0]), shell(ket[1]));
     printf("T(Ref)=%f ", tref);
     printf("T(Ref/MD)=%f ", tref*md.time);
+#endif
+
     printf("\n");
 
-    csv[0].push_back((Nij*Nkl)*md.time);
-    csv[1].push_back(tref*md.time);
-
   } // Ks
-
-  printf("(%i%i|%i%i),Int/s,", A, B, C, D);
-  for (auto e : csv[0]) {
-    printf("%4.2e,", e);
-  }
-  printf("\n");
-
-  printf("(%i%i|%i%i),T(Ref/MD),", A, B, C, D);
-  for (auto e : csv[1]) {
-    printf("%i,", int(e));
-  }
-  printf("\n");
 
 
 }
