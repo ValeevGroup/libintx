@@ -15,28 +15,31 @@ Other CMake parameters:
 - LIBINTX_MAX_K - maximum primitives
 - LIBINTX_MAX_L - maximum angular momentum
 - LIBINTX_MAX_X - maximum auxillary angular momentum
-- LIBINTX_CUDA_MAX_SHMEM - maximum CUDA shared memory per *threadblock*
+- LIBINTX_GPU_MAX_SHMEM - maximum GPU shared memory per *threadblock*
 
 ## Building
 - configure: \
     `cd libintx` \
     `cmake -B ./build` \
     `cd ./build` \
-  with cuda: \
-    `cmake -DLIBINTX_ENABLE_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=70 .` \
-  with libint2: \
+  with CUDA: \
+    `cmake -DLIBINTX_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=70 .` \
+  with HIP: \
+    `export PATH=$PATH:/opt/rocm/bin # or wherever hipcc lives`
+    `cmake -DLIBINTX_HIP=1 .` \
+  with libint2 as perf reference: \
     `cmake -DLIBINTX_LIBINT2=ON .`
 - build: \
     `cmake --build .`
 - 3-center tests and benchmarks: \
     `cmake --build . --target libintx.gpu.md3.test` \
     `./tests/libintx.gpu.md3.test`
-    `cmake --build . --target libintx.gpu.md3.benchmarks` \
+    `cmake --build . --target libintx.gpu.md3.perf` \
     `./tests/libintx.gpu.md3.benchmarks`
 - 4-center tests and benchmarks: \
     `cmake --build . --target libintx.gpu.md4.test` \
     `./tests/libintx.gpu.md4.test`
-    `cmake --build . --target libintx.gpu.md4.benchmarks` \
+    `cmake --build . --target libintx.gpu.md4.perf` \
     `./tests/libintx.gpu.md4.benchmarks`
 
 # Python
