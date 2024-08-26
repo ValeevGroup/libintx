@@ -13,7 +13,7 @@ math(EXPR lmax2 "2*${LIBINTX_MAX_L}")
 foreach (KET RANGE ${lmax2})
 
   foreach (BRA RANGE ${lmax2})
-    set(target libintx.gpu.md.eri4.kernel.${BRA}_${KET})
+    set(target libintx.gpu.md4.kernel.${BRA}_${KET})
     add_library(${target} OBJECT EXCLUDE_FROM_ALL md4.kernel.cu)
     target_compile_definitions(
       ${target}
@@ -26,7 +26,7 @@ foreach (KET RANGE ${lmax2})
   endforeach()
 
   foreach (X RANGE ${LIBINTX_MAX_X})
-    set(target libintx.gpu.md.eri3.kernel.${X}_${KET})
+    set(target libintx.gpu.md3.kernel.${X}_${KET})
     add_library(${target} OBJECT EXCLUDE_FROM_ALL md3.kernel.cu)
     target_compile_definitions(
       ${target}
@@ -48,28 +48,28 @@ add_library(
 set_target_properties(libintx.gpu.md.basis PROPERTIES OUTPUT_NAME intx.gpu.md.basis)
 
 add_library(
-  libintx.gpu.md.eri3
+  libintx.gpu.md3
   EXCLUDE_FROM_ALL
   md3.cc
   ${libintx.gpu_md_eri3_sources}
   )
-set_target_properties(libintx.gpu.md.eri3 PROPERTIES OUTPUT_NAME intx.gpu.md.eri3)
-target_link_libraries(libintx.gpu.md.eri3 libintx.gpu)
-target_link_libraries(libintx.gpu.md.eri3 libintx.gpu.md.basis)
+set_target_properties(libintx.gpu.md3 PROPERTIES OUTPUT_NAME intx.gpu.md3)
+target_link_libraries(libintx.gpu.md3 libintx.gpu)
+target_link_libraries(libintx.gpu.md3 libintx.gpu.md.basis)
 #target_link_libraries(libintx.gpu.md CUDA::cublas)
 
 add_library(
-  libintx.gpu.md.eri4
+  libintx.gpu.md4
   EXCLUDE_FROM_ALL
   md4.cc
   ${libintx.gpu_md_eri4_sources}
   )
-set_target_properties(libintx.gpu.md.eri4 PROPERTIES OUTPUT_NAME intx.gpu.md.eri4)
-target_link_libraries(libintx.gpu.md.eri4 libintx.gpu)
-target_link_libraries(libintx.gpu.md.eri4 libintx.gpu.md.basis)
+set_target_properties(libintx.gpu.md4 PROPERTIES OUTPUT_NAME intx.gpu.md4)
+target_link_libraries(libintx.gpu.md4 libintx.gpu)
+target_link_libraries(libintx.gpu.md4 libintx.gpu.md.basis)
 #target_link_libraries(libintx.gpu.md CUDA::cublas)
 
 install(TARGETS libintx.gpu.md.basis)
-install(TARGETS libintx.gpu.md.eri3)
-install(TARGETS libintx.gpu.md.eri4)
+install(TARGETS libintx.gpu.md3)
+install(TARGETS libintx.gpu.md4)
 install(FILES engine.h DESTINATION libintx.gpu/md)

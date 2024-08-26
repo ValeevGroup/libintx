@@ -26,15 +26,15 @@ if (LIBINTX_CUDA)
 endif()
 
 foreach (n 3 4)
-  if (NOT TARGET libintx.gpu.md.eri${n})
+  if (NOT TARGET libintx.gpu.md${n})
     continue()
   endif()
   # tests
   add_executable(libintx.gpu.md${n}.test EXCLUDE_FROM_ALL libintx.gpu.md${n}.test.cc)
-  target_link_libraries(libintx.gpu.md${n}.test libintx.gpu.md.eri${n})
+  target_link_libraries(libintx.gpu.md${n}.test libintx.gpu.md${n})
   # perf benchmarks
   add_executable(libintx.gpu.md${n}.perf EXCLUDE_FROM_ALL libintx.gpu.md${n}.perf.cc)
-  target_link_libraries(libintx.gpu.md${n}.perf libintx.gpu.md.eri${n})
+  target_link_libraries(libintx.gpu.md${n}.perf libintx.gpu.md${n})
   if (TARGET libintx.test.reference)
     target_link_libraries(libintx.gpu.md${n}.perf libintx.test.reference)
   endif()
