@@ -4,7 +4,7 @@
 #include "libintx/boys/boys.h"
 #include "libintx/boys/asymptotic.h"
 #include "libintx/boys/reference.h"
-#include "libintx/interpolate/chebyshev.h"
+#include "libintx/math/interpolate/chebyshev.h"
 
 namespace boys {
 

@@ -2,7 +2,7 @@
 #include "test.h"
 
 #include "libintx/boys/reference.h"
-#include "libintx/interpolate/chebyshev.h"
+#include "libintx/math/interpolate/chebyshev.h"
 
 TEST_CASE("chebyshev interpolation") {
   using namespace boys;

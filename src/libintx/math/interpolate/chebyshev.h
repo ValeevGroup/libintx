@@ -1,5 +1,5 @@
-#ifndef BOYS_INTERPOLATE_H
-#define BOYS_INTERPOLATE_H
+#ifndef LIBINTX_MATH_INTERPOLATE_CHEBYSHEV_H
+#define LIBINTX_MATH_INTERPOLATE_CHEBYSHEV_H
 
 #include "libintx/boys/reference.h"
 #include <Eigen/Dense>
@@ -103,4 +103,4 @@ namespace boys {
 
 }
 
-#endif /* BOYS_INTERPOLATE_H */
+#endif /* LIBINTX_MATH_INTERPOLATE_CHEBYSHEV_H */
