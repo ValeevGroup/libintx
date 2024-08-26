@@ -15,18 +15,6 @@ if (LIBINTX_CUDA)
   add_test(NAME boys.gpu COMMAND boys.gpu.test)
 endif()
 
-add_executable(libintx.benchmarks EXCLUDE_FROM_ALL libintx.benchmarks.cc)
-target_link_libraries(libintx.benchmarks libintx.os)
-if (TARGET libintx.libint2)
-  add_definitions(-DLIBINTX_LIBINT2)
-  set(libintx_test_reference libintx.libint2)
-  target_link_libraries(libintx.benchmarks libintx.libint2)
-endif()
-
-if (NOT libintx_test_reference)
-  set(libintx_test_reference libintx.rysq)
-endif()
-
 if (TARGET libintx.gpu.md.eri3)
   # benchmarks
   add_executable(libintx.gpu.md3.benchmarks EXCLUDE_FROM_ALL libintx.gpu.md3.benchmarks.cc)

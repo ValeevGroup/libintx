@@ -1,11 +1,10 @@
 #include "libintx/gpu/jengine/md/jengine.h"
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/boys.h"
-#include "libintx/engine/md/hermite.h"
+#include "libintx/integral/md/hermite.h"
 
 #include "libintx/utility.h"
 #include "libintx/thread_pool.h"
-#include "libintx/engine.h"
 
 #include "libintx/array.h"
 #include "libintx/shell.h"
@@ -33,9 +32,6 @@ namespace libintx::gpu::jengine::md {
     float cutoff,
     Stream &s)
   {
-    auto kernel_factory = [&](auto p, auto q) {
-      return &df_jengine_kernel<p.value, q.value, Step, Boys>;
-    };
     using Kernel = std::function<void(
       const Boys &boys,
       int NP, const Primitive2 *P,
@@ -44,7 +40,12 @@ namespace libintx::gpu::jengine::md {
       float cutoff,
       Stream &s
     )>;
-    auto kernel = make_ab_x_kernel<Kernel>(kernel_factory, p, q);
+    static auto kernel_table = make_array<Kernel,2*LMAX+1,XMAX+1>(
+      [](auto p, auto q) {
+        return &df_jengine_kernel<p.value, q.value, Step, Boys>;
+      }
+    );
+    auto kernel = kernel_table[p][q];
     assert(kernel);
     kernel(boys, NP, P, NQ, Q, input, output, cutoff, s);
   }

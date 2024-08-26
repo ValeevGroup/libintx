@@ -3,6 +3,7 @@
 #include "libintx/gpu/md/basis.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"
+#include <functional>
 
 namespace libintx::gpu::md {
 

@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/engine/md/reference.h"
+#include "libintx/integral/md/reference.h"
 #include "libintx/pure.transform.h"
 
 #include "libintx/gpu/api/api.h"

@@ -1,7 +1,7 @@
 #ifndef LIBINTX_GPU_MD_ENGINE_H
 #define LIBINTX_GPU_MD_ENGINE_H
 
-#include "libintx/engine.h"
+#include "libintx/integral/engine.h"
 #include "libintx/shell.h"
 #include "libintx/gpu/forward.h"
 

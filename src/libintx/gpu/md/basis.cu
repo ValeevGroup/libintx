@@ -6,7 +6,7 @@
 #include "libintx/gpu/md/basis.h"
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/api/thread_group.h"
-#include "libintx/engine/md/hermite.h"
+#include "libintx/integral/md/hermite.h"
 #include "libintx/pure.transform.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"

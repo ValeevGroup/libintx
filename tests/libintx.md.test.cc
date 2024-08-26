@@ -1,9 +1,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/engine/md/hermite.h"
-#include "libintx/engine/md/r1.h"
-#include "libintx/engine/md/reference.h"
+#include "libintx/integral/md/hermite.h"
+#include "libintx/integral/md/r1.h"
+#include "libintx/integral/md/reference.h"
 #include "libintx/boys/chebyshev.h"
 
 using namespace libintx;
@@ -87,6 +87,6 @@ TEST_CASE("r1") {
     CHECK(r.value == u);
   };
 
-  r1::visit<r1::DepthFirst>(visitor, PQ, s);
+  r1::visit<L,r1::DepthFirst>(visitor, PQ, s);
 
 }

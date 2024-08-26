@@ -2,8 +2,10 @@
 #define LIBINTX_GPU_MD_MD3_H
 
 #include "libintx/gpu/forward.h"
-#include "libintx/engine.h"
+#include "libintx/integral/engine.h"
+#include "libintx/shell.h"
 #include "libintx/tensor.h"
+#include <memory>
 
 namespace libintx::gpu::md {
 

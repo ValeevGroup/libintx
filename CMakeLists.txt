@@ -44,13 +44,11 @@ if (LIBINTX_CUDA OR LIBINTX_HIP)
   add_subdirectory(src/libintx/gpu)
 endif()
 
-add_subdirectory(src/libintx/engine/rysq/)
-
-option(LIBINTX_LIBINT2 "" OFF)
-if (LIBINTX_LIBINT2)
-  find_package(Libint2 REQUIRED)
-  add_subdirectory(src/libintx/engine/libint2)
-endif()
+# option(LIBINTX_LIBINT2 "" OFF)
+# if (LIBINTX_LIBINT2)
+#   find_package(Libint2 REQUIRED)
+#   add_subdirectory(src/libintx/engine/libint2)
+# endif()
 
 option(LIBINTX_PYTHON "Python bindings" OFF)
 if (LIBINTX_PYTHON)
