@@ -10,7 +10,9 @@ if (LIBINTX_CUDA)
   else()
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   endif()
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -expt-relaxed-constexpr")
+
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -expt-relaxed-constexpr --resource-usage")
+  add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<NOT:$<CONFIG:Release>>>:-src-in-ptx;-lineinfo>")
 
   enable_language(CUDA)
   find_package(CUDAToolkit 12 REQUIRED)
@@ -29,6 +31,8 @@ if (LIBINTX_HIP)
   #message("*** " ${hip_FOUND})
   set(LIBINTX_GPU_API_HIP ON)
   set(libintx_gpu_runtime hip::host)
+
+  set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -Rpass-analysis=kernel-resource-usage")
 
   set_source_files_properties(
     blas.cu
