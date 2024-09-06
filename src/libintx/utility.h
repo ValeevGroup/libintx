@@ -96,6 +96,35 @@ namespace libintx {
     );
   }
 
+  template<typename T, T First, T ... Ts>
+  constexpr void jump_table(std::integer_sequence<T,First,Ts...>, auto label, auto &&f) {
+    if (First == label) {
+      f(std::integral_constant<T,First>{});
+      return;
+    }
+    if constexpr (sizeof...(Ts)) {
+      jump_table(std::integer_sequence<T,Ts...>{}, label, f);
+    }
+  }
+
+  template<typename T, T ... First, T ... Second>
+  constexpr void jump_table(
+    std::integer_sequence<T,First...>,
+    std::integer_sequence<T,Second...>,
+    auto first, auto second,
+    auto &&f)
+  {
+    jump_table(
+      std::make_integer_sequence<T,sizeof...(First)*sizeof...(Second)>{},
+      first + second*sizeof...(First),
+      [&](auto Label) {
+        constexpr std::integral_constant<T,Label%sizeof...(First)> first;
+        constexpr std::integral_constant<T,Label/sizeof...(First)> second;
+        f(first,second);
+      }
+    );
+  }
+
 }
 
 #define libintx_assert(EXPR)                            \
