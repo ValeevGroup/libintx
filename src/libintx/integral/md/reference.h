@@ -14,6 +14,12 @@ namespace libintx::md::reference {
   using double3 = double[3];
   using libintx::Orbital;
 
+  constexpr auto orbital(int idx) {
+    constexpr auto orbitals = hermite::orbitals2<max(XMAX,2*LMAX)+2*LMAX>;
+    assert(idx < orbitals.size());
+    return orbitals[idx];
+  }
+
   LIBINTX_GPU_ENABLED
   inline double E(int i, int j, int k, double a, double b, double R) {
     auto p = a + b;
@@ -82,7 +88,7 @@ namespace libintx::md::reference {
     }
 
     for (int i = 0; i < nherm2(L); ++i) {
-      auto [x,y,z] = hermite::orbital(i);
+      auto [x,y,z] = reference::orbital(i);
       r1[i] = md::reference::R(x, y, z, 0, s.data(), PQ.data);
     }
 
@@ -91,8 +97,8 @@ namespace libintx::md::reference {
   void compute_p_q(int Bra, int Ket, const auto &r1, auto &pq) {
     for (int ip = 0; ip < nherm2(Bra); ++ip) {
       for (int iq = 0; iq < nherm2(Ket); ++iq) {
-        auto p = hermite::orbital(ip);
-        auto q = hermite::orbital(iq);
+        auto p = reference::orbital(ip);
+        auto q = reference::orbital(iq);
         pq(ip,iq) = r1[hermite::index2(p+q)];
       }
     }
@@ -138,21 +144,21 @@ namespace libintx::md::reference {
           compute_r1(Bra+Ket, alpha, P-Q, r1);
           for (size_t i = 0; i < r1.size(); ++i) {
             r1[i] *= K;
-            printf("ref: r[%i]=%f\n", i, r1[i]);
+            //printf("ref: r[%i]=%f\n", i, r1[i]);
           }
         }
 
         for (auto d : cartesian::shell(shell(D).L)) {
           for (auto c : cartesian::shell(shell(C).L)) {
             for (int iq = 0; iq < nherm2(Ket); ++iq) {
-              auto q =  hermite::orbital(iq);
+              auto q =  reference::orbital(iq);
               double e = 1;
               for (int i = 0; i < 3; ++i) {
                 e *= E(c[i], d[i], q[i], exp(C,kc), exp(D,kd), CD[i]);
               }
               for (int ip = 0; ip < nherm2(Bra); ++ip) {
-                auto p = hermite::orbital(ip);
-                auto q = hermite::orbital(iq);
+                auto p = reference::orbital(ip);
+                auto q = reference::orbital(iq);
                 double phase = (q.L()%2 == 0 ? +1 : -1);
                 double r = r1[hermite::index2(p+q)];
                 //printf("ref: r=%f\n", K*r);
@@ -216,14 +222,14 @@ namespace libintx::md::reference {
                   for (auto a : cartesian::shell(shell(A).L)) {
                     double v = 0;
                     for (int iq = 0; iq < nherm2(Ket); ++iq) {
-                      auto q =  hermite::orbital(iq);
+                      auto q =  reference::orbital(iq);
                       double Eq = 1;
                       for (int ix = 0; ix < 3; ++ix) {
                         Eq *= E(c[ix], d[ix], q[ix], exp(C,kc), exp(D,kd), CD[ix]);
                       }
                       double phase = (q.L()%2 == 0 ? +1 : -1);
                       for (int ip = 0; ip < nherm2(Bra); ++ip) {
-                        auto p = hermite::orbital(ip);
+                        auto p = reference::orbital(ip);
                         double Ep = 1;
                         for (int ix = 0; ix < 3; ++ix) {
                           Ep *= E(a[ix], b[ix], p[ix], exp(A,ka), exp(B,kb), AB[ix]);

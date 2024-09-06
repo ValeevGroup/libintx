@@ -105,7 +105,7 @@ namespace libintx::gpu::md::kernel {
   };
 
   LIBINTX_GPU_CONSTANT
-  constexpr auto orbitals2 = hermite::orbitals<2*LMAX>;
+  constexpr auto orbitals2 = hermite::orbitals2<2*LMAX>;
 
   LIBINTX_GPU_CONSTANT
   constexpr auto orbitals1 = pair{
@@ -128,8 +128,8 @@ namespace libintx::gpu::md::kernel {
   // use unrolled hermite to pure code or matrix one
   inline
   constexpr bool hermite_to_pure_too_complicated(int A, int B) {
-    // [ab| > [gd|
-    return (std::max(A,B) >= 4 && std::min(A,B) >= 2);
+    // [ab| > [ff|
+    return (npure(A,B) > npure(3,3));
   }
 
   // (ij,ab,cd,kl) kernel base {ij->DimX,kl->DimY}
@@ -267,9 +267,9 @@ namespace libintx::gpu::md::kernel {
             Ck *= -2*alpha;
           }
 
-          namespace r1 = libintx::md::r1;
           auto &Ecd = shmem.cds[threadIdx.y].gdata;
 
+          namespace r1 = libintx::md::r1;
           double r[nherm2(L)] = {};
           r1::compute<L>(PQ, s, r);
 
@@ -277,12 +277,12 @@ namespace libintx::gpu::md::kernel {
           for (int ip = 0; ip < NP; ++ip) {
             auto p = p_orbitals[ip];
             hermite_to_pure<C,D>(
+              [&](auto &&q) {
+                return r[index2(p+q)];
+              },
               [&](auto c, auto d, auto u) {
                 constexpr int phase = ((C+D)%2 == 0 ? +1 : -1);
                 pCD[ip][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
-              },
-              [&](auto &&q) {
-                return r[index2(p+q)];
               }
             );
           }
@@ -300,7 +300,6 @@ namespace libintx::gpu::md::kernel {
                 pCD[ip][icd] += pq*Ecd[icd + iq*NCD];
               }
             }
-
           }
 
         } // kcd
@@ -336,14 +335,14 @@ namespace libintx::gpu::md::kernel {
             );
 
             cartesian_to_pure<X>(
+              [&](auto x) {
+                return pCD[herm::index1(x)][icd];
+              },
               [&](auto x, auto u) {
                 BraKet(
                   threadIdx.x + ij + index(x)*bra.N,
                   icd + (threadIdx.y + kl)*NCD
                 ) = u + xcd[index(x)];
-              },
-              [&](auto x) {
-                return pCD[herm::index1(x)][icd];
               }
             );
 
@@ -591,13 +590,13 @@ namespace libintx::gpu::md::kernel {
           constexpr int phase = ((C+D)%2 == 0 ?  +1 : -1);
           if constexpr (!hermite_to_pure_too_complicated(C,D)) {
             hermite_to_pure<C,D>(
-              [&](auto &&c, auto &&d, auto u) {
-                V[iy][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
-              },
               [&](auto &&q) {
                 return R[herm::index2(p+q)][threadIdx.x];
+              },
+              [&](auto &&c, auto &&d, auto u) {
+                V[iy][index(c) + index(d)*npure(C)] += phase*u*cd.inv_2_exp;
               }
-            ) ;
+            );
           }
           else {
 #pragma unroll
@@ -609,7 +608,7 @@ namespace libintx::gpu::md::kernel {
                 V[iy][icd] += pq*ket.pure_transform[icd+iq*NCD];
               }
             }
-          } // hermite_to_pure_unroll(C,D)
+          } // hermite_to_pure_too_complicated(C,D)
 
         };
 
@@ -677,12 +676,12 @@ namespace libintx::gpu::md::kernel {
               [&](auto p) -> double& { return U[cart::index(p)]; }
             );
             cartesian_to_pure<X>(
-              [&](auto &&x, auto v) {
-                int ix = index(x);
-                BraKet(threadIdx.x + ij + ix*bra.N, (icd+iy) + kl*NCD) = v + V[ix];
-              },
               [&](auto x) {
                 return U[cart::index(x)];
+              },
+              [&](auto x, auto v) {
+                int ix = index(x);
+                BraKet(threadIdx.x + ij + ix*bra.N, (icd+iy) + kl*NCD) = v + V[ix];
               }
             );
           }

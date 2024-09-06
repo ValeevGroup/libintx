@@ -3,6 +3,7 @@
 #include "libintx/gpu/md/md.kernel.h"
 #include "libintx/gpu/api/thread_group.h"
 
+#include "libintx/integral/md/r1.h"
 #include "libintx/integral/md/r1/recurrence.h"
 #include "libintx/math.h"
 
@@ -10,6 +11,12 @@ namespace libintx::gpu::md::kernel {
 
   namespace cart = libintx::cartesian;
   namespace herm = libintx::hermite;
+
+  LIBINTX_GPU_DEVICE
+  constexpr libintx::md::r1::Recurrence<
+    LIBINTX_GPU_MD_MD4_KERNEL_BRA +
+    LIBINTX_GPU_MD_MD4_KERNEL_KET
+    > r1_recurrence_table;
 
   // [ij,ab,cd,kl) kernel {ij->DimX,p->DimZ}
   template<
@@ -188,7 +195,7 @@ namespace libintx::gpu::md::kernel {
 
     if constexpr (L > 0) {
       namespace r1 = libintx::md::r1;
-      r1::compute<L>(r1::recurrence, PQ, R, thread_block);
+      r1::compute<L>(r1_recurrence_table, PQ, R, thread_block);
       thread_block.sync();
     }
 
@@ -268,7 +275,7 @@ namespace libintx::gpu::md::kernel {
       const auto &p_orbitals = orbitals(bra);
       const auto &q_orbitals = orbitals(ket);
 
-      constexpr int NP = bra.nherm;
+      constexpr auto NP = Bra::nherm;
       constexpr ThreadBlock thread_block;
       //static_assert(thread_block.y == 1);
 
@@ -320,16 +327,28 @@ namespace libintx::gpu::md::kernel {
             r[i] = R1(threadIdx.x, index2(p+q), blockIdx.x, kl, k);
           }
 
-          hermite_to_pure<Ket::First,Ket::Second>(
-            [&](auto c, auto d, auto u) {
-              V[index(c) + index(d)*NC] += inv_2_q*u;
-            },
-            [&](auto q) {
-              assert(index2(p+q) < NH);
-              return r[cartesian::index(q)];
-              //return R1(threadIdx.x, index2(p+q), blockIdx.x, kl, k);
+          if constexpr (NCD <= 49) {
+            hermite_to_pure<Ket::First,Ket::Second>(
+              [&](auto q) {
+                assert(index2(p+q) < NH);
+                return r[cartesian::index(q)];
+                //return R1(threadIdx.x, index2(p+q), blockIdx.x, kl, k);
+              },
+              [&](auto c, auto d, auto u) {
+                V[index(c) + index(d)*NC] += inv_2_q*u;
+              }
+            );
+          }
+          else {
+#pragma unroll
+            for (int iq = 0; iq < ncart(Ket::First+Ket::Second); ++iq) {
+#pragma unroll
+              for (int icd = 0; icd < NCD; ++icd) {
+                double Ecd = inv_2_q*ket.pure_transform[icd+iq*NCD];
+                V[icd] += r[iq+NQ]*Ecd;
+              }
             }
-          );
+          }
 
         }
 
@@ -408,7 +427,7 @@ namespace libintx::gpu::md::kernel {
 
       if (ij < Nij && kl < Nkl) {
         double C = ABp(threadIdx.x,0,blockIdx.x);
-        if constexpr (!hermite_to_pure_too_complicated(Bra::First,Bra::Second)) {
+        if constexpr (hermite_to_pure_too_complicated(Bra::First,Bra::Second)) {
           //decltype (Registers::p) p = {};
           double r[ncart(Bra::L)] = {}; // exclude from regs for now
           for (int ip = 0; ip < ncart(Bra::L); ip += 1) {
@@ -416,12 +435,12 @@ namespace libintx::gpu::md::kernel {
             //printf("pX(%i,%i,%i,%i)=%f\n", threadIdx.x, ip+NP, kl, blockIdx.x, p[ip]);
           }
           hermite_to_pure<Bra::First,Bra::Second>(
+            [&](auto &&p) {
+              return r[cart::index(p)];
+            },
             [&](auto &&i, auto &&j, auto &&u) {
               int iab = index(i) + index(j)*NA;
               V[iab] += C*u;
-            },
-            [&](auto &&p) {
-              return r[cart::index(p)];
             }
           );
         }
@@ -574,7 +593,8 @@ namespace libintx::gpu::md::kernel {
 
           if constexpr (L > 0) {
             namespace r1 = libintx::md::r1;
-            r1::compute<L>(r1::recurrence, PQ, shmem[k].R, thread_block);
+            constexpr r1::Recurrence<L> recurrence;
+            r1::compute<L>(recurrence, PQ, shmem[k].R, thread_block);
           }
 
         } // k

@@ -20,54 +20,13 @@ namespace libintx::gpu::md {
   namespace herm = hermite;
 
   __device__
-  constexpr auto orbitals = hermite::orbitals<2*LMAX>;
+  constexpr auto orbitals = hermite::orbitals2<2*LMAX>;
 
   struct Gaussian2 {
     Gaussian first, second;
     struct {
       array<double,3> first, second;
     } r;
-  };
-
-  template<int A, int B>
-  struct pure_transform_term {
-    constexpr pure_transform_term() {
-      pure_transform_term<A,0> pure_transform_a;
-      pure_transform_term<B,0> pure_transform_b;
-      for (int jcart = 0; jcart < ncart(B); ++jcart) {
-        for (int icart = 0; icart < ncart(A); ++icart) {
-          int ip = cart::index(
-            cart::orbital<A>(icart) +
-            cart::orbital<B>(jcart)
-          );
-          for (int jpure = 0; jpure < npure(B); ++jpure) {
-            for (int ipure = 0; ipure < npure(A); ++ipure) {
-              auto C = (
-                pure_transform_a.data[icart][ipure]*
-                pure_transform_b.data[jcart][jpure]
-              );
-              this->data[ip][jpure][ipure] += C;
-            }
-          }
-        }
-      }
-    }
-    double data[ncart(A+B)][npure(B)][npure(A)] = {};
-  };
-
-  template<int L>
-  struct pure_transform_term<L,0> {
-    constexpr pure_transform_term() {
-      for (int ipure = 0; ipure < npure(L); ++ipure) {
-        for (int icart = 0; icart < ncart(L); ++icart) {
-          this->data[icart][ipure] = pure::coefficient(
-            pure::orbital(L,ipure),
-            cart::orbital(L,icart)
-          );
-        }
-      }
-    }
-    double data[ncart(L)][npure(L)] = {};
   };
 
 
@@ -232,9 +191,9 @@ namespace libintx::gpu::md {
                 auto p = orbitals[ip];
                 v[j] = E(a,b,p);
               }
-              pure::transform<B>(
-                [&](auto j, auto v) { h(i,index(j),threadIdx.y) = v; },
-                [&](auto j) { return v[index(j)]; }
+              pure::cartesian_to_pure<B>(
+                [&](auto j) { return v[index(j)]; },
+                [&](auto j, auto v) { h(i,index(j),threadIdx.y) = v; }
               );
             }
             thread_block.sync();
@@ -253,12 +212,12 @@ namespace libintx::gpu::md {
 #define h(i,j,p) h[(i) + (j)*NA + (p)*NB*NA]
             if (threadIdx.x < NB && ip < NP) {
               int j = threadIdx.x;
-              pure::transform<A>(
+              pure::cartesian_to_pure<A>(
+                [&](auto i) { return v[index(i)]; },
                 [&](auto i, auto v) {
                   //printf("%i,%i,%i %f\n", (int)index(i), (int)j, (int)threadIdx.y, v);
                   h(index(i),j,threadIdx.y) = v;
-                },
-                [&](auto i) { return v[index(i)]; }
+                }
               );
             }
             thread_block.sync();
@@ -328,7 +287,7 @@ namespace libintx::gpu::md {
       //ssert(false);
       //printf("BLOCK<%i,%i,%i>\n", Block::x, Block::y, Block::z);
       make_basis<Block,A,B,Pure><<<grid,Block(),0,stream>>>(ab.data(), H.data(), extent, k_stride);
-      constexpr pure_transform_term<A,B> pure_transform;
+      constexpr libintx::md::pure_transform<A,B> pure_transform;
       gpu::memcpy(
         pure_transform_ptr,
         pure_transform.data,

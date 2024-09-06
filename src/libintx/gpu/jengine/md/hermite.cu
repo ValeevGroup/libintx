@@ -1,12 +1,158 @@
+// this must come first to resolve HIP device asserts
+#include "libintx/gpu/api/runtime.h"
+
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/api/thread_group.h"
 #include "libintx/orbital.h"
-#include "libintx/pure.h"
+#include "libintx/pure.transform.h"
 #include <iostream>
 
 namespace libintx::gpu::jengine::md {
 namespace {
+
+  LIBINTX_GPU_CONSTANT
+  constexpr auto pure_transform = pure::make_transform(std::make_index_sequence<max(XMAX,LMAX)+1>());
+
+  __device__
+  void cartesian_to_pure(int A, double *G, auto &&thread_group) {
+    assert(npure(A) <= thread_group.size());
+    auto cartesian_to_pure = [&](auto &&transform) {
+      double a = 0;
+      int ia = thread_group.thread_rank();
+      if (ia < npure(A)) {
+        a = transform.cartesian_to_pure(ia, G);
+      }
+      thread_group.sync();
+      if (ia < npure(A)) G[ia] = a;
+    };
+    pure_transform.apply(cartesian_to_pure, A);
+    thread_group.sync();
+  }
+
+  __device__
+  void pure_to_cartesian(int A, double *G, auto &&thread_group) {
+    assert(ncart(A) <= thread_group.size());
+    auto pure_to_cartesian = [&](auto &&transform) {
+      double a = 0;
+      int ia = thread_group.thread_rank();
+      if (ia < ncart(A)) {
+        a = transform.pure_to_cartesian(ia, G);
+      }
+      thread_group.sync();
+      if (ia < ncart(A)) G[ia] = a;
+    };
+    pure_transform.apply(pure_to_cartesian, A);
+    thread_group.sync();
+  }
+
+  __device__
+  void cartesian_to_pure(const Shell &A, const Shell &B, double *T, auto &&g){
+    auto rank = g.thread_rank();
+    int na = nbf(A);
+    int nb = nbf(B);
+    // T[A,B] -> T[A',B]
+    if (A.pure) {
+      g.sync();
+      assert(ncart(B) <= g.size());
+      auto cartesian_to_pure = [&](const auto &transform) {
+        auto A = transform.L;
+        na = npure(A);
+        double p[npure(A)] = {};
+        auto *U = T+rank;
+        if (rank < nb) {
+          transform.cartesian_to_pure(
+            [&](auto &&i) { return U[index(i)*nb]; },
+            [&](auto &&i, auto v) { p[index(i)] = v; }
+          );
+        }
+        g.sync();
+        if (rank < nb) {
+          for (size_t i = 0; i < std::size(p); ++i) {
+            T[rank+i*nb] = p[i];
+          }
+        }
+      };
+      pure_transform.apply(cartesian_to_pure, A.L);
+    }
+    // T[A',B] -> T[A',B']
+    if (B.pure) {
+      g.sync();
+      auto cartesian_to_pure = [&](auto &&transform) {
+        auto B = transform.L;
+        nb = npure(B);
+        auto *U = T+rank*ncart(B);
+        double p[npure(B)] = {};
+        if (rank < na) {
+          transform.cartesian_to_pure(
+            [&](auto &&i) { return U[index(i)]; },
+            [&](auto &&i, auto v) { p[index(i)] = v; }
+          );
+        }
+        g.sync();
+        if (rank < na) {
+          for (size_t i = 0; i < std::size(p); ++i) {
+            T[i+rank*npure(B)] = p[i];
+          }
+        }
+      };
+      pure_transform.apply(cartesian_to_pure, B.L);
+    }
+    g.sync();
+  }
+
+  __device__
+  void pure_to_cartesian(const Shell &A, const Shell &B, double *T, auto &&g) {
+    auto rank = g.thread_rank();
+    int na = nbf(A);
+    int nb = nbf(B);
+    if (!A.pure) {
+      g.sync();
+      auto pure_to_cartesian = [&](auto &&transform) {
+        auto A = transform.L;
+        na = ncart(A);
+        double p[npure(A)];
+#define T(i) T[rank + i*nb]
+        if (rank < nb) {
+#pragma unroll
+          for (size_t i = 0; i < std::size(p); ++i) {
+            p[i] = T(i);
+          }
+        }
+        g.sync();
+        if (rank < na) {
+          transform.pure_to_cartesian(
+            [&](auto &&i) { return p[index(i)]; },
+            [&](auto &&i, auto v) { T(index(i)) = v; }
+          );
+        }
+#undef T
+      };
+      pure_transform.apply(pure_to_cartesian, A.L);
+    }
+    if (!B.pure) {
+      g.sync();
+      auto pure_to_cartesian = [&](auto &&transform) {
+        auto B = transform.L;
+        double p[npure(B)];
+        if (rank < na) {
+#pragma unroll
+          for (size_t i = 0; i < std::size(p); ++i) {
+            p[i] = T[i+rank*npure(B)];
+          }
+        }
+        g.sync();
+        if (rank < na) {
+          transform.pure_to_cartesian(
+            [&](auto &&i) { return p[index(i)]; },
+            [&](auto &&i, auto v) { T[index(i) + rank*ncart(B)] = v; }
+          );
+        }
+      };
+      pure_transform.apply(pure_to_cartesian, B.L);
+    }
+    g.sync();
+  }
 
   struct E2 {
 
@@ -84,10 +230,10 @@ namespace {
 
   struct cartesian_to_hermite {
 
-    template<typename Hermitian>
+    template<typename Hermite>
     __device__
     static void apply(
-      const Hermitian &hermite,
+      const Hermite &hermite,
       int A, double a, int B, double b,
       const Center &AB,
       double C, const double *G, double *H,
@@ -115,10 +261,10 @@ namespace {
 
   struct hermite_to_cartesian {
 
-    template<typename Hermitian>
+    template<typename Hermite>
     __device__
     static void apply(
-      const Hermitian &hermite,
+      const Hermite &hermite,
       int A, double a, int B, double b,
       const Center &AB,
       double C, const double *H, double *G,
@@ -144,29 +290,25 @@ namespace {
 
   };
 
-  struct Hermitian1 {
-
-    static constexpr int XMAX_CART = ncart(XMAX);
-    static constexpr int XMAX_HERM = nherm1(XMAX);
+  struct Hermite1 {
 
     struct Memory {
       double E[3*(XMAX+1)*(XMAX+1)];
-      double G[XMAX_CART];
+      double G[ncart(XMAX)];
     };
 
     const int P, nherm;
-    Orbital orbitals_[XMAX_HERM];
+    Orbital orbitals_[nherm1(XMAX)];
 
-    explicit Hermitian1(int P)
+    explicit Hermite1(int P)
       : P(P), nherm(nherm1(P))
     {
-      for (int p = 0, k = 0; p <= P; ++p) {
-        if (P%2 != p%2) continue;
-        int np = ncart(p);
-        for (int i = 0; i < np; ++i) {
-          // std::cout << "orbitals_ " << k << "=" << p << "/" << i << std::endl;
-          orbitals_[k++] = cartesian::orbital(p,i);
-        }
+      constexpr auto orbitals = hermite::orbitals2<XMAX>;
+      int k = 0;
+      for (auto p : orbitals) {
+        if (p.L()%2 != P%2) continue;
+        assert(k < nherm1(XMAX));
+        orbitals_[k++] = p;
       }
     }
 
@@ -205,7 +347,6 @@ namespace {
         //   }
         // }
         cartesian_to_pure(A.L, shmem.G, thread_block);
-        thread_block.sync();
       }
       for (size_t i = thread_block.thread_rank(); i < nbf(A); i += thread_block.size()) {
         atomicAdd(&G[i+idx.kbf], shmem.G[i]);
@@ -250,10 +391,17 @@ namespace {
       double *dst)
     {
       auto thread_block = this_thread_block();
-      __shared__ Index1 idx;
+      __shared__ union static_shmem {
+        struct {
+          Index1 idx;
+          Shell A;
+        };
+        __device__ static_shmem() {}
+      } static_shmem;
+      auto &idx = static_shmem.idx;
       memcpy1(&index1[blockIdx.x], &idx, thread_block);
       thread_block.sync();
-      __shared__ Shell A;
+      auto &A = static_shmem.A;
       memcpy1(&basis[idx.shell], &A, thread_block);
       thread_block.sync();
       this->transform(T{}, idx, A, src, dst);
@@ -262,19 +410,19 @@ namespace {
   };
 
 
-  struct Hermitian2 {
+  struct Hermite2 {
 
     int P;
     int nherm;
 
-    explicit Hermitian2(int P)
+    explicit Hermite2(int P)
       : P(P), nherm(nherm2(P))
     {
     }
 
     __device__
     static const auto& orbitals() {
-      return cartesian::orbital_list;
+      return cartesian::orbitals2;
     }
 
     __device__
@@ -288,13 +436,23 @@ namespace {
 
       auto thread_block = this_thread_block();
 
-      __shared__ Index2 idx;
-      memcpy1(&index2[blockIdx.x], &idx, thread_block);
+      __shared__ union static_shmem {
+        struct {
+          Index2 ij;
+          Shell A,B;
+          Center AB;
+        };
+        __device__ static_shmem() {}
+      } static_shmem;
+
+      auto &ij = static_shmem.ij;
+      memcpy1(&index2[blockIdx.x], &ij, thread_block);
       __syncthreads();
 
-      __shared__ Shell A,B;
-      memcpy1(&basis[idx.first], &A, thread_block);
-      memcpy1(&basis[idx.second], &B, thread_block);
+      auto &A = static_shmem.A;
+      auto &B = static_shmem.B;
+      memcpy1(&basis[ij.first], &A, thread_block);
+      memcpy1(&basis[ij.second], &B, thread_block);
       __syncthreads();
 
       __shared__ Center AB;
@@ -308,7 +466,7 @@ namespace {
       double *shmem_G = shmem;
       fill(nab, shmem_G, 0.0, thread_block);
 
-      for (int ki = 0, kij = idx.kprim; ki < A.K; ++ki) {
+      for (int ki = 0, kij = ij.kprim; ki < A.K; ++ki) {
         for (int kj = 0; kj < B.K; ++kj, ++kij) {
 
           auto& [ai,Ci] = A.prims[ki];
@@ -316,7 +474,7 @@ namespace {
             // P = (AB| overlap
           double Kab = std::exp(-(ai*aj)/(ai+aj)*norm(AB));
           Kab *= math::sqrt_4_pi5;
-          double sij = (idx.first == idx.second ? 1 : 2);
+          double sij = (ij.first == ij.second ? 1 : 2);
           // shmem values
           double a = ai;
           double b = aj;
@@ -336,35 +494,41 @@ namespace {
         } // kj
       } // ki
 
-      libintx::cartesian_to_pure(
-        {A.pure,B.pure},
-        A.L, B.L,
-        shmem_G, thread_block
-      );
-      memcpy(nbf(A)*nbf(B), shmem_G, &G[idx.kbf], thread_block);
+      cartesian_to_pure(A, B, shmem_G, thread_block);
+      memcpy(nbf(A)*nbf(B), shmem_G, &G[ij.kbf], thread_block);
 
     }
 
     __device__
     void transform(
       cartesian_to_hermite,
-      const Index2 *ijs,
+      const Index2 *index2,
       const Shell *basis, Primitive2 *P,
       const double *G, double *H)
     {
 
       auto thread_block = this_thread_block();
 
-      __shared__ Index2 ij;
-      memcpy1(&ijs[blockIdx.x], &ij, thread_block);
+      __shared__ union static_shmem {
+        struct {
+          Index2 ij;
+          Shell A,B;
+          Center AB;
+        };
+        __device__ static_shmem() {}
+      } static_shmem;
+
+      auto &ij = static_shmem.ij;
+      memcpy1(&index2[blockIdx.x], &ij, thread_block);
       __syncthreads();
 
-      __shared__ Shell A,B;
+      auto &A = static_shmem.A;
+      auto &B = static_shmem.B;
       memcpy1(&basis[ij.first], &A, thread_block);
       memcpy1(&basis[ij.second], &B, thread_block);
       __syncthreads();
 
-      __shared__ Center AB;
+      auto &AB = static_shmem.AB;
       if (threadIdx.x == 0) AB = A.r-B.r;
       __syncthreads();
 
@@ -375,11 +539,7 @@ namespace {
       if (G) {
         shmem_G = shmem;
         memcpy(nbf(A)*nbf(B), &G[ij.kbf], shmem_G, thread_block);
-        libintx::pure_to_cartesian(
-          {A.pure,B.pure},
-          A.L, B.L,
-          shmem_G, thread_block
-        );
+        pure_to_cartesian(A, B, shmem_G, thread_block);
       }
 
       int nab = ncart(A)*ncart(B);
@@ -435,71 +595,12 @@ namespace {
     h.transform(T{}, args...);
   }
 
-  // __device__
-  // void cartesian_to_hermite_basis(
-  //   int p,
-  //   const Shell &A, const Shell &B,
-  //   float max,
-  //   double s, Primitive2 *P)
-  // {
-
-  //   auto thread_block = this_thread_block();
-
-  //   __shared__ Center AB;
-  //   if (threadIdx.x == 0) AB = A.r-B.r;
-  //   __syncthreads();
-
-  //   for (int kij = thread_block.thread_rank(); kij < A.K*B.K; kij += thread_block.size()) {
-
-  //     int ki = kij/B.K;
-  //     int kj = kij%B.K;
-
-  //     auto [ai,Ci] = A.prims[ki];
-  //     auto [aj,Cj] = B.prims[kj];
-  //     // P = (AB| overlap
-  //     double Kab = exp(-(ai*aj)/(ai+aj)*norm(AB));
-  //     double C = s*Ci*Cj*Kab;
-  //     Primitive2 p1;
-  //     p1.exp = { ai, aj };
-  //     p1.r = { A.r, B.r };
-  //     p1.norm = max;
-  //     p1.C = C;
-
-  //     P[kij] = p1;
-
-  //   } // kij
-
-  // }
-
-  // __global__
-  // void cartesian_to_hermite_basis(
-  //   int p, const Index2 *ijs,
-  //   const Shell *basis,
-  //   Primitive2 *P)
-  // {
-
-  //   auto thread_block = this_thread_block();
-
-  //   __shared__ Index2 ij;
-  //   memcpy1(&ijs[blockIdx.x], &ij, thread_block);
-  //   __syncthreads();
-
-  //   __shared__ Shell A,B;
-  //   memcpy1(&basis[ij.first], &A, thread_block);
-  //   memcpy1(&basis[ij.second], &B, thread_block);
-  //   __syncthreads();
-
-  //   double s = 1;
-  //   s *= math::sqrt_4_pi5;
-  //   s *= ((ij.first == ij.second ? 1 : 2));
-  //   cartesian_to_hermite_basis(p, A, B, ij.norm, s, P+ij.kprim);
-
-  // }
-
 }
 }
 
 namespace libintx::gpu::jengine::md {
+
+  constexpr int num_threads = 32*((ncart(max(XMAX,LMAX))+31)/32);
 
   //__global__
   void cartesian_to_hermite_2(
@@ -520,8 +621,8 @@ namespace libintx::gpu::jengine::md {
       ncart(A)*ncart(B)*8
     );
     //printf("shmem=%i\n", shmem);
-    transform<cartesian_to_hermite><<<nij,32,shmem,stream>>>(
-      Hermitian2{P},
+    transform<cartesian_to_hermite><<<nij,num_threads,shmem,stream>>>(
+      Hermite2{P},
       ijs, basis, Ps, G, H
     );
   }
@@ -541,8 +642,8 @@ namespace libintx::gpu::jengine::md {
       ncart(A)*ncart(B)*8
     );
     //printf("shmem=%i\n", shmem);
-    transform<hermite_to_cartesian><<<N,32,shmem,stream>>>(
-      Hermitian2{P},
+    transform<hermite_to_cartesian><<<N,num_threads,shmem,stream>>>(
+      Hermite2{P},
       index2, basis, H, G
     );
   }
@@ -553,8 +654,8 @@ namespace libintx::gpu::jengine::md {
     const Shell *basis,
     const double* G, double* H)
   {
-    transform<cartesian_to_hermite><<<n,32>>>(
-      Hermitian1{p},
+    transform<cartesian_to_hermite><<<n,num_threads>>>(
+      Hermite1{p},
       index1, basis, G, H
     );
   }
@@ -565,8 +666,8 @@ namespace libintx::gpu::jengine::md {
     const Shell *basis,
     const double* H, double* G)
   {
-    transform<hermite_to_cartesian><<<n,32>>>(
-      Hermitian1{p},
+    transform<hermite_to_cartesian><<<n,num_threads>>>(
+      Hermite1{p},
       index1, basis, H, G
     );
   }

@@ -71,99 +71,6 @@ namespace libintx::md {
     }
   };
 
-  inline double E(int i, int k, double a) {
-    assert(a);
-    if ((k < 0) or (k > i)) return 0;
-    if (i == 0 && k == 0) {
-      //printf("R=%f E(0)=%f\n", R, std::exp(-q*R*R));
-      //printf("E(%i,%i)=%f\n", i, k, 1);
-      return 1;//std::exp(-q*R*R); // K_AB
-    }
-    // decrement index i
-    assert(i);
-    auto v = (
-      (1/(2*a))*E(i-1,k-1,a) +
-      (k+1)*E(i-1,k+1,a)
-    );
-    //printf("E(%i,%i)=%f\n", i, k, v);
-    return v;
-  }
-
-  inline void hermite_to_cartesian(
-    int A, double a,
-    double h, const double *H,
-    double c, double *C)
-  {
-    assert(a);
-    for (int i = 0; i < ncart(A); ++i) {
-      auto [l,m,n] = cartesian::orbital(A,i).lmn;
-      double v = 0;
-      const double *Hk = H;
-      for (int Ak = A%2; Ak <= A; Ak += 2) {
-        for (int k = 0; k < ncart(Ak); ++k) {
-          auto [x,y,z] = cartesian::orbital(Ak,k).lmn;
-          double e = 1;
-          e *= E(l, x, a);
-          e *= E(m, y, a);
-          e *= E(n, z, a);
-          v += e*(*Hk++);
-        }
-      }
-      //printf("h=%f, v=%f, c=%f\n", h, v, c);
-      C[i] = h*v + (c ? c*C[i] : 0);
-    }
-  }
-
-  inline void cartesian_to_hermite(
-    int A, double a, const double (&R)[3],
-    const double *C, double *H)
-  {
-    //printf("cartesian_to_hermite\n");
-    //printf("R=%f,%f,%f\n", R[0], R[1], R[2]);
-    for (int Ak = A%2; Ak <= A; Ak += 2) {
-      for (int k = 0; k < ncart(Ak); ++k, ++H) {
-        auto [x,y,z] = cartesian::orbital(Ak,k).lmn;
-        for (int i = 0; i < ncart(A); ++i) {
-          auto [l,m,n] = cartesian::orbital(A,i).lmn;
-          double e = 1;
-          e *= E(l, x, a);
-          e *= E(m, y, a);
-          e *= E(n, z, a);
-          *H += e*C[i];
-        }
-      }
-    }
-  }
-
-  inline void cartesian_to_hermite(
-    int A, int B,
-    double a, double b,
-    const double *R,
-    double c, const double *C,
-    double *H)
-  {
-    //printf("hermite_to_cartesian\n");
-    //printf("A=%i, B=%i\n", A, B);
-    //std::fill(H, H+shell::cartsum(A+B), 0.0);
-
-    E2<LMAX> E(A,B,a,b,R);
-
-    for (int k = 0; k < ncartsum(A+B); ++k) {
-      auto Pk = cartesian::orbital_list[k];
-      for (int i = 0, ij = 0; i < ncart(A); ++i) {
-        for (int j = 0; j < ncart(B); ++j, ++ij) {
-          auto Ai = cartesian::orbital(A,i);
-          auto Bj = cartesian::orbital(B,j);
-          double Cij = c*C[ij];
-          double e = E(Ai,Bj,Pk);
-          H[k] += e*Cij;
-          //printf("C=%f, e=%f, H=%f\n", C[ij], e, H[k]);
-        }
-      }
-    }
-  }
-
-
   template<int Ax, int Ay, int Az, int Px = 0, int Py = 0, int Pz = 0>
   LIBINTX_GPU_ENABLED
   double hermite_to_cartesian(auto &h, double inv_2p) {
@@ -195,7 +102,7 @@ namespace libintx::md {
     foreach(
       std::make_index_sequence<ncart(X)>(),
       [&](auto ix) {
-        constexpr auto x = std::get<ix.value>(cartesian::shell<X>());
+        constexpr auto x = std::get<ix.value>(cartesian::orbitals<X>());
         auto h = [&](auto&& ... p) {
           return P(Orbital{(uint8_t)p.value...});
         };
@@ -210,8 +117,8 @@ namespace libintx::md {
     constexpr pure_transform() {
       constexpr pure::Transform<A> pure_transform_a;
       constexpr pure::Transform<B> pure_transform_b;
-      constexpr auto a = cartesian::shell<A>();
-      constexpr auto b = cartesian::shell<B>();
+      constexpr auto a = cartesian::orbitals<A>();
+      constexpr auto b = cartesian::orbitals<B>();
       for (int jcart = 0; jcart < b.size(); ++jcart) {
         for (int icart = 0; icart < a.size(); ++icart) {
           int ip = cartesian::index(a[icart]+b[jcart]);
@@ -232,10 +139,10 @@ namespace libintx::md {
 
   template<int A, int B>
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void hermite_to_pure(auto &&P, auto &&C) {
-    constexpr auto a = pure::shell<A>();
-    constexpr auto b = pure::shell<B>();
-    constexpr auto p = cartesian::shell<A+B>();
+  void hermite_to_pure(auto &&S, auto &&T) {
+    constexpr auto a = pure::orbitals<A>();
+    constexpr auto b = pure::orbitals<B>();
+    constexpr auto p = cartesian::orbitals<A+B>();
     constexpr auto ab_p = pure_transform<A,B>();
     constexpr auto ip = std::make_index_sequence<p.size()>();
     foreach2(
@@ -246,13 +153,13 @@ namespace libintx::md {
         foreach(
           ip,
           [&](auto ip) {
-            constexpr double c = ab_p.data[ip.value][j.value][i.value];
+            constexpr double c = ab_p.data[ip][j][i];
             if constexpr (c) {
-              v += c*C(p[ip]);
+              v += c*S(p[ip]);
             }
           }
         );
-        P(a[i],b[j],v);
+        T(a[i],b[j],v);
       }
     );
   }

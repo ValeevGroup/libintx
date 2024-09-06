@@ -1,5 +1,9 @@
 // -*-c++-*-
 
+#if !(defined(LIBINTX_GPU_MD_MD4_KERNEL_BRA) && defined(LIBINTX_GPU_MD_MD4_KERNEL_KET))
+#error LIBINTX_GPU_MD_MD4_KERNEL_BRA/KET undefined
+#endif
+
 // this must come first to resolve HIP device asserts
 #include "libintx/gpu/api/runtime.h"
 
@@ -17,10 +21,6 @@
 namespace libintx::gpu::md {
 
   constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
-
-#if !(defined(LIBINTX_GPU_MD_MD4_KERNEL_BRA) && defined(LIBINTX_GPU_MD_MD4_KERNEL_KET))
-#error LIBINTX_GPU_MD_MD4_KERNEL_BRA/KET undefined
-#endif
 
   template
   void ERI4::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA,LIBINTX_GPU_MD_MD4_KERNEL_KET>(
@@ -149,7 +149,7 @@ namespace libintx::gpu::md {
     auto thread_block = gpu::thread_block<DimX,DimY>();
 
     using kernel0 = kernel::md4_v1_r1_p_cd_kernel<Basis2<A+B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
-    using kernel1 = kernel::md4_v1_ab_cd_kernel<Basis2<A,B>, Basis2<C,D>, DimX,DimY, MaxShmem>;
+    using kernel1 = kernel::md4_v1_ab_cd_kernel<Basis2<A,B>, void, DimX,DimY, MaxShmem>;
 
     constexpr bool viable = {
       kernel::test<kernel0>(800,MaxShmem) &&
@@ -217,9 +217,9 @@ namespace libintx::gpu::md {
       size_t min_memory = (buffer0_size + buffer1_size)*sizeof(double);
 
       if (this->max_memory && (min_memory > this->max_memory)) {
-        throw std::runtime_error(
+        throw gpu::runtime_error(
           str(
-            "libintx.ERI4 requires at least ", min_memory, " bytes, "
+            "libintx.gpu.md4 requires at least ", min_memory, " bytes, "
             "max_memory=", this->max_memory, " bytes"
           )
         );

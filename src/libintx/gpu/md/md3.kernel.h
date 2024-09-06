@@ -18,6 +18,12 @@ namespace libintx::gpu::md::kernel {
 
   using libintx::pure::cartesian_to_pure;
 
+  LIBINTX_GPU_DEVICE
+  constexpr libintx::md::r1::Recurrence<
+    LIBINTX_GPU_MD_MD3_KERNEL_X +
+    LIBINTX_GPU_MD_MD3_KERNEL_KET
+    > r1_recurrence_table;
+
   template<
     typename Bra, typename Ket,
     int DimX, int DimY, int DimZ,
@@ -238,12 +244,12 @@ namespace libintx::gpu::md::kernel {
           [&](auto &&p) -> double& { return U[cart::index(p)]; }
         );
         cartesian_to_pure<X>(
+          [&](auto x) {
+            return U[cart::index(x)];
+          },
           [&](auto &&x, auto v) {
             int ix = index(x);
             BraKet(threadIdx.x + ij + ix*bra.N, icd + kl*NCD) = v + V[ix];
-          },
-          [&](auto x) {
-            return U[cart::index(x)];
           }
         );
       } // icd_batch
@@ -327,7 +333,7 @@ namespace libintx::gpu::md::kernel {
 
     if constexpr (L > 0) {
       namespace r1 = libintx::md::r1;
-      r1::compute<L>(r1::recurrence, PQ, R, thread_block);
+      r1::compute<L>(r1_recurrence_table, PQ, R, thread_block);
       thread_block.sync();
     }
 
@@ -353,7 +359,7 @@ namespace libintx::gpu::md::kernel {
       foreach(
         std::make_index_sequence<ncart(X)>(),
         [&](auto ix) {
-          constexpr auto x = std::get<ix.value>(cart::shell<X>());
+          constexpr auto x = std::get<ix.value>(cart::orbitals<X>());
           auto h = [&](auto ... p) {
             constexpr int idx = herm::index1(p.value...);
             return r[idx];
@@ -363,11 +369,11 @@ namespace libintx::gpu::md::kernel {
       );
 
       cartesian_to_pure<X>(
-        [&](auto x, auto u) {
-          QX(iq, ij, index(x), kl) = phase*u + v[index(x)];
-        },
         [&](auto x) {
           return r[herm::index1(x)];
+        },
+        [&](auto x, auto u) {
+          QX(iq, ij, index(x), kl) = phase*u + v[index(x)];
         }
       );
 

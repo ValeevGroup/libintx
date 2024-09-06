@@ -2,269 +2,127 @@
 #define LIBINTX_PURE_TRANSFORM_H
 
 #include "libintx/pure.h"
+#include "libintx/utility.h"
 #include <tuple>
 
 namespace libintx::pure {
 
-  template<int ... Args>
-  struct tuple;
-
-  template<int L, int M>
-  struct tuple<L,M> {
-    std::integral_constant<int16_t,L> l;
-    std::integral_constant<int16_t,M> m;
-    //std::tuple< std::integral_constant<int,Args> ... >
-  };
-
-  template<int X, int Y, int Z>
-  struct tuple<X,Y,Z> {
-    std::integral_constant<int,X> x;
-    std::integral_constant<int,Y> y;
-    std::integral_constant<int,Z> z;
-    //std::tuple< std::integral_constant<int,Args> ... >
-  };
-
-  template<int L, int M, int LX, int LY, int LZ>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  constexpr auto coefficient(tuple<L,M>, tuple<LX,LY,LZ>) {
-    return Coefficient<L,M,LX,LY,LZ>{};
-  }
-
-#define Tuple(...) tuple<__VA_ARGS__>()
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<0>, F &&f) {
-    f(Tuple(0,0), Tuple(0,0,0));
-  }
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<1>, F &&f) {
-    f(Tuple(1,-1), Tuple(0,1,0));
-    f(Tuple(1,0), Tuple(0,0,1));
-    f(Tuple(1,1), Tuple(1,0,0));
-  }
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<2>, F &&f) {
-    f(Tuple(2,-2), Tuple(1,1,0));
-    f(Tuple(2,-1), Tuple(0,1,1));
-    f(Tuple(2,0), Tuple(2,0,0), Tuple(0,2,0), Tuple(0,0,2));
-    f(Tuple(2,1), Tuple(1,0,1));
-    f(Tuple(2,2), Tuple(2,0,0), Tuple(0,2,0));
-  }
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<3>, F &&f) {
-    f(Tuple(3,-3), Tuple(2,1,0), Tuple(0,3,0));
-    f(Tuple(3,-2), Tuple(1,1,1));
-    f(Tuple(3,-1), Tuple(2,1,0), Tuple(0,3,0), Tuple(0,1,2));
-    f(Tuple(3,0), Tuple(2,0,1), Tuple(0,2,1), Tuple(0,0,3));
-    f(Tuple(3,1), Tuple(3,0,0), Tuple(1,2,0), Tuple(1,0,2));
-    f(Tuple(3,2), Tuple(2,0,1), Tuple(0,2,1));
-    f(Tuple(3,3), Tuple(3,0,0), Tuple(1,2,0));
-  }
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<4>, F &&f) {
-    f(Tuple(4,-4), Tuple(3,1,0), Tuple(1,3,0));
-    f(Tuple(4,-3), Tuple(2,1,1), Tuple(0,3,1));
-    f(Tuple(4,-2), Tuple(3,1,0), Tuple(1,3,0), Tuple(1,1,2));
-    f(Tuple(4,-1), Tuple(2,1,1), Tuple(0,3,1), Tuple(0,1,3));
-    f(Tuple(4,0), Tuple(4,0,0), Tuple(2,2,0), Tuple(2,0,2), Tuple(0,4,0), Tuple(0,2,2), Tuple(0,0,4));
-    f(Tuple(4,1), Tuple(3,0,1), Tuple(1,2,1), Tuple(1,0,3));
-    f(Tuple(4,2), Tuple(4,0,0), Tuple(2,0,2), Tuple(0,4,0), Tuple(0,2,2));
-    f(Tuple(4,3), Tuple(3,0,1), Tuple(1,2,1));
-    f(Tuple(4,4), Tuple(4,0,0), Tuple(2,2,0), Tuple(0,4,0));
-  }
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<5>, F &&f) {
-    f(Tuple(5,-5), Tuple(4,1,0), Tuple(2,3,0), Tuple(0,5,0));
-    f(Tuple(5,-4), Tuple(3,1,1), Tuple(1,3,1));
-    f(Tuple(5,-3), Tuple(4,1,0), Tuple(2,3,0), Tuple(2,1,2), Tuple(0,5,0), Tuple(0,3,2));
-    f(Tuple(5,-2), Tuple(3,1,1), Tuple(1,3,1), Tuple(1,1,3));
-    f(Tuple(5,-1), Tuple(4,1,0), Tuple(2,3,0), Tuple(2,1,2), Tuple(0,5,0), Tuple(0,3,2), Tuple(0,1,4));
-    f(Tuple(5,0), Tuple(4,0,1), Tuple(2,2,1), Tuple(2,0,3), Tuple(0,4,1), Tuple(0,2,3), Tuple(0,0,5));
-    f(Tuple(5,1), Tuple(5,0,0), Tuple(3,2,0), Tuple(3,0,2), Tuple(1,4,0), Tuple(1,2,2), Tuple(1,0,4));
-    f(Tuple(5,2), Tuple(4,0,1), Tuple(2,0,3), Tuple(0,4,1), Tuple(0,2,3));
-    f(Tuple(5,3), Tuple(5,0,0), Tuple(3,2,0), Tuple(3,0,2), Tuple(1,4,0), Tuple(1,2,2));
-    f(Tuple(5,4), Tuple(4,0,1), Tuple(2,2,1), Tuple(0,4,1));
-    f(Tuple(5,5), Tuple(5,0,0), Tuple(3,2,0), Tuple(1,4,0));
-  }
-
-  template<typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<6>, F &&f) {
-    f(Tuple(6,-6), Tuple(5,1,0), Tuple(3,3,0), Tuple(1,5,0));
-    f(Tuple(6,-5), Tuple(4,1,1), Tuple(2,3,1), Tuple(0,5,1));
-    f(Tuple(6,-4), Tuple(5,1,0), Tuple(3,1,2), Tuple(1,5,0), Tuple(1,3,2));
-    f(Tuple(6,-3), Tuple(4,1,1), Tuple(2,3,1), Tuple(2,1,3), Tuple(0,5,1), Tuple(0,3,3));
-    f(Tuple(6,-2), Tuple(5,1,0), Tuple(3,3,0), Tuple(3,1,2), Tuple(1,5,0), Tuple(1,3,2), Tuple(1,1,4));
-    f(Tuple(6,-1), Tuple(4,1,1), Tuple(2,3,1), Tuple(2,1,3), Tuple(0,5,1), Tuple(0,3,3), Tuple(0,1,5));
-    f(Tuple(6,0), Tuple(6,0,0), Tuple(4,2,0), Tuple(4,0,2), Tuple(2,4,0), Tuple(2,2,2), Tuple(2,0,4), Tuple(0,6,0), Tuple(0,4,2), Tuple(0,2,4), Tuple(0,0,6));
-    f(Tuple(6,1), Tuple(5,0,1), Tuple(3,2,1), Tuple(3,0,3), Tuple(1,4,1), Tuple(1,2,3), Tuple(1,0,5));
-    f(Tuple(6,2), Tuple(6,0,0), Tuple(4,2,0), Tuple(4,0,2), Tuple(2,4,0), Tuple(2,0,4), Tuple(0,6,0), Tuple(0,4,2), Tuple(0,2,4));
-    f(Tuple(6,3), Tuple(5,0,1), Tuple(3,2,1), Tuple(3,0,3), Tuple(1,4,1), Tuple(1,2,3));
-    f(Tuple(6,4), Tuple(6,0,0), Tuple(4,2,0), Tuple(4,0,2), Tuple(2,4,0), Tuple(2,2,2), Tuple(0,6,0), Tuple(0,4,2));
-    f(Tuple(6,5), Tuple(5,0,1), Tuple(3,2,1), Tuple(1,4,1));
-    f(Tuple(6,6), Tuple(6,0,0), Tuple(4,2,0), Tuple(2,4,0), Tuple(0,6,0));
-  }
-
-  template<size_t L, typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<L>, F &&f) {
-    constexpr auto C = cartesian::shell<L>();
-    constexpr auto P = pure::shell<L>();
-    auto ijk = std::apply(
-      [](auto ... idx) {
-        return std::tuple{
-          Tuple(C[idx][0], C[idx][1], C[idx][2])...
-        };
-      },
-      integer_sequence_tuple(std::make_index_sequence<C.size()>())
-    );
-    foreach(
-      std::make_index_sequence<P.size()>(),
-      [&](auto idx) {
-        std::apply(
-          [&](auto ... ijk) {
-            f(Tuple(P[idx.value].l,P[idx.value].m), ijk...);
-          },
-          ijk
-        );
-      }
-    );
-  }
-
-#undef Tuple
-
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  double eval(auto f, auto cart) {
-    auto [i,j,k] = cart;
-    return f(cartesian::Orbital{i,j,k});
-  }
-
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  double eval(auto f, auto i, auto j) {
-    auto [xi,yi,zi] = i;
-    auto [xj,yj,zj] = j;
-    return f(
-      cartesian::Orbital{xi,yi,zi},
-      cartesian::Orbital{xj,yj,zj}
-    );
-  }
-
-  template<size_t A, size_t B>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(std::index_sequence<A,B>, auto &&f, auto &&c) {
-    using Pure = pure::Orbital;
-    transform(
-      std::index_sequence<A>{},
-      [&](auto &&a, auto&& ... is) {
-        transform(
-          std::index_sequence<B>{},
-          [=,is=std::tuple{is...}](auto &&b, auto&& ... js) {
-            auto G = [=](auto &&j) {
-              double bj = coefficient(b,j);
-              return std::apply(
-                [=](auto ... is) {
-                  return bj*((coefficient(a,is)*eval(c,is,j)) + ... );
-                },
-                is
-              );
-            };
-            double v = (G(js) + ...);
-            f(Pure{a.l,a.m}, Pure{b.l,b.m}, v);
-          }
-        );
-      }
-    );
-  }
-
-  template<int A, typename F>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(F &&f, auto &&C) {
-    using Pure = pure::Orbital;
-    auto g = [&](auto &&lm, auto &&r) {
-      auto c = coefficient(lm,r);
-      if constexpr (c.value) return c.value*eval(C,r);
-      else return 0;
-    };
-    transform(
-      std::index_sequence<A>{},
-      [&](auto &&lm, auto&& ... r) {
-        auto [l,m] = lm;
-        f(Pure{l,m}, (g(lm,r) + ...));
-      }
-    );
-  }
-
-  template<int A, int B, typename F, typename C>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(F &&f, C &&c) {
-    transform(std::index_sequence<A,B>{}, f, c);
-  }
-
-  template<int A, typename T>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void transform(T *v) {
-    double u[npure(A)];
-    auto c = [&](auto &&i) { return v[index(i)]; };
-    auto f = [&](auto &&i, auto &&v) { u[index(i)] = v; };
-    transform(std::index_sequence<A>{}, f, c);
-    //#pragma unroll
-    for (int i = 0; i < npure(A); ++i) {
-      v[i] = u[i];
-    }
-  }
-
   template<int ...>
   struct Transform;
 
-  template<int L>
-  struct Transform<L> {
+  template<int _L>
+  struct Transform<_L> {
+    constexpr static std::integral_constant<int,_L> L = {};
     constexpr Transform() {
+      constexpr auto p = pure::orbitals<L>();
+      constexpr auto c = cartesian::orbitals<L>();
       for (int ipure = 0; ipure < npure(L); ++ipure) {
         for (int icart = 0; icart < ncart(L); ++icart) {
-          this->data[icart][ipure] = pure::coefficient(
-            pure::orbital(L,ipure),
-            cartesian::orbital(L,icart)
-          );
+          this->data[icart][ipure] = pure::coefficient(p[ipure], c[icart]);
         }
       }
     }
     double data[ncart(L)][npure(L)] = {};
+  public:
+    LIBINTX_GPU_ENABLED
+    double cartesian_to_pure(int ipure, auto *V) const {
+      assert(ipure < npure(L));
+      double v = 0;
+      for (int i = 0; i < ncart(L); ++i) {
+        v += V[i]*data[i][ipure];
+      }
+      return v;
+    }
+    LIBINTX_GPU_ENABLED
+    double pure_to_cartesian(int icart, auto *V) const {
+      assert(icart < ncart(L));
+      double v = 0;
+      for (int i = 0; i < npure(L); ++i) {
+        v += V[i]*data[icart][i];
+      }
+      return v;
+    }
+    LIBINTX_GPU_ENABLED
+    constexpr void apply(auto &&F, int l) const {
+      assert(L == l);
+      F(*this);
+    }
+
+  public:
+
+    LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+    static void cartesian_to_pure(auto &&S, auto &&T) {
+      constexpr auto p = pure::orbitals<L>();
+      constexpr auto c = cartesian::orbitals<L>();
+      constexpr auto p_c = Transform<L>();
+      foreach(
+        std::make_index_sequence<p.size()>(),
+        [&](auto ip) {
+          double v = 0;
+          foreach(
+            std::make_index_sequence<c.size()>(),
+            [&](auto ic) {
+              constexpr double coeff = p_c.data[ic.value][ip.value];
+              if constexpr (coeff) {
+                v += coeff*S(c[ic]);
+              }
+            }
+          );
+          T(p[ip],v);
+        }
+      );
+    }
+
+    LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+    static void pure_to_cartesian(auto &&S, auto &&T) {
+      constexpr auto p = pure::orbitals<L>();
+      constexpr auto c = cartesian::orbitals<L>();
+      constexpr auto p_c = Transform<L>();
+      foreach(
+        std::make_index_sequence<c.size()>(),
+        [&](auto ic) {
+          double v = 0;
+          foreach(
+            std::make_index_sequence<p.size()>(),
+            [&](auto ip) {
+              constexpr double coeff = p_c.data[ic.value][ip.value];
+              if constexpr (coeff) {
+                v += coeff*S(p[ip]);
+              }
+            }
+          );
+          T(c[ic],v);
+        }
+      );
+    }
+
   };
 
 
+  template<int ... Ls>
+  struct Transform : Transform<Ls>... {
+    constexpr Transform() = default;
+    constexpr void apply(auto &&F, int l) const {
+      jump_table(
+        std::index_sequence<Ls...>{},
+        l,
+        [&](auto L) {
+          const auto *transform = static_cast<const Transform<L.value>*>(this);
+          F(*transform);
+        }
+      );
+    }
+  };
+
+  template<std::size_t ... Ls>
+  constexpr auto make_transform(std::index_sequence<Ls...>) {
+    return Transform<Ls...>{};
+  }
+
   template<int L>
   LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
-  void cartesian_to_pure(auto &&P, auto &&C) {
-    constexpr auto a = pure::shell<L>();
-    constexpr auto c = cartesian::shell<L>();
-    constexpr auto a_c = Transform<L>();
-    foreach(
-      std::make_index_sequence<a.size()>(),
-      [&](auto ia) {
-        double v = 0;
-        foreach(
-          std::make_index_sequence<c.size()>(),
-          [&](auto ic) {
-            constexpr double coeff = a_c.data[ic.value][ia.value];
-            if constexpr (coeff) {
-              v += coeff*C(c[ic]);
-            }
-          }
-        );
-        P(a[ia],v);
-      }
-    );
+  void cartesian_to_pure(auto &&C, auto &&P) {
+    Transform<L>::cartesian_to_pure(C,P);
   }
 
 }
@@ -278,8 +136,8 @@ namespace libintx::pure::reference {
         auto a = pure::orbital(A,ia);
         auto b = pure::orbital(B,ib);
         double v = 0;
-        for (auto q : cartesian::shell(B)) {
-          for (auto p : cartesian::shell(A)) {
+        for (auto q : cartesian::orbitals(B)) {
+          for (auto p : cartesian::orbitals(A)) {
             auto ap = coefficient(a,p);
             auto bq = coefficient(b,q);
             v += ap*bq*Cart(index(p), index(q));
@@ -302,12 +160,12 @@ namespace libintx::pure::reference {
             auto c = pure::orbital(C,ic);
             auto d = pure::orbital(D,id);
             double v = 0;
-            for (auto s : cartesian::shell(D)) {
-              for (auto r : cartesian::shell(C)) {
+            for (auto s : cartesian::orbitals(D)) {
+              for (auto r : cartesian::orbitals(C)) {
                 auto cr = coefficient(c,r);
                 auto ds = coefficient(d,s);
-                for (auto q : cartesian::shell(B)) {
-                  for (auto p : cartesian::shell(A)) {
+                for (auto q : cartesian::orbitals(B)) {
+                  for (auto p : cartesian::orbitals(A)) {
                     auto ap = coefficient(a,p);
                     auto bq = coefficient(b,q);
                     v += ap*bq*cr*ds*Cart(index(p), index(q), index(r), index(s));

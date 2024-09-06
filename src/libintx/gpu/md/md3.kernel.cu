@@ -1,5 +1,9 @@
 // -*-c++-*-
 
+#if !(defined(LIBINTX_GPU_MD_MD3_KERNEL_X) && defined(LIBINTX_GPU_MD_MD3_KERNEL_KET))
+#error LIBINTX_GPU_MD_MD3_KERNEL_X/KET undefined
+#endif
+
 // this must come first to resolve HIP device asserts
 #include "libintx/gpu/api/runtime.h"
 
@@ -18,10 +22,6 @@
 namespace libintx::gpu::md {
 
   constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
-
-#if !(defined(LIBINTX_GPU_MD_MD3_KERNEL_X) && defined(LIBINTX_GPU_MD_MD3_KERNEL_KET))
-#error LIBINTX_GPU_MD_MD3_KERNEL_X/KET undefined
-#endif
 
   template
   void ERI3::compute<LIBINTX_GPU_MD_MD3_KERNEL_X,LIBINTX_GPU_MD_MD3_KERNEL_KET>(

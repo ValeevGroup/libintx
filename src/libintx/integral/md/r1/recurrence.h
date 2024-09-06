@@ -31,7 +31,7 @@ namespace libintx::md::r1 {
     static constexpr auto make_table() {
       using cartesian::Orbital;
       using cartesian::index;
-      constexpr auto orbitals = hermite::orbitals<L>;
+      constexpr auto orbitals = hermite::orbitals2<L>;
       array<Index,ncartsum(L)> table = {};
       for (int i = 1; i < ncartsum(L); ++i) {
         auto p = orbitals[i];
@@ -52,10 +52,6 @@ namespace libintx::md::r1 {
     }
 
   };
-
-  LIBINTX_GPU_DEVICE
-  //constexpr Recurrence<libintx::LMAX*4> recurrence;
-  constexpr const Recurrence<2*LMAX+std::max(2*LMAX,XMAX)> recurrence;
 
   template<int L, int Max, typename G>
   LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
