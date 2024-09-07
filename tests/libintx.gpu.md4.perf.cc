@@ -77,42 +77,25 @@ auto run(
 
 int main(int argc, char **argv) {
 
-  int load = 128;
-  if (argc > 1) load = std::atoi(argv[1]);
+  auto dims = test::parse_args<2>(argc,argv,6000);
 
   std::vector<Index2> Ks = {
     {1,1}, {1,5}, {5,5}
   };
 
-  auto N = [&](int L) {
-    int p = 1;
-    for (int l = 1; l <= L; ++l) {
-      p *= (l%2 ? 1 : 2);
-    }
-    return (8*load)/p;
-  };
-
-  // for (int a = 0; a <= LMAX; ++a) {
-  //   for (int b = 0; b <= LMAX; ++b) {
-  //     RUN(a,b,a,b, Ks, N(a), N(b));
-  //   }
-  // }
-
-  std::vector<int> loadv = { load*128, load*16, load*8, load*4, load*2, load*1, load*1 };
+  // (x,x,x,x)
+  for (int l = 0; l <= LMAX; ++l) {
+    RUN(l,l,l,l, Ks, dims[0]/npure(l,l), dims[1]/npure(l,l));
+  }
 
   // (x,x,s,s)
   for (int l = 1; l <= LMAX; ++l) {
-    RUN(l,l,0,0, Ks, 8*loadv.at(l), loadv.at(0));
+    RUN(l,l,0,0, Ks, dims[0]/npure(l,l), dims[1]);
   }
 
   // (x,s,x,s)
   for (int l = 1; l <= LMAX; ++l) {
-    RUN(l,0,l,0, Ks, 4*loadv.at(l), 4*loadv.at(l));
-  }
-
-  // (x,x,x,x)
-  for (int l = 0; l <= LMAX; ++l) {
-    RUN(l,l,l,l, Ks, loadv.at(l), loadv.at(l));
+    RUN(l,0,l,0, Ks, dims[0]/npure(l), dims[1]/npure(l));
   }
 
 }

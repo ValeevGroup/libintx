@@ -166,6 +166,16 @@ namespace libintx::test {
     }
   }
 
+  template<int N>
+  auto parse_args(int argc, char **argv, int default_value) {
+    std::array<int,N> args;
+    for (int iarg = 0; iarg < 2; ++iarg) {
+      args[iarg] = default_value;
+      if (argc > 1+iarg) args[iarg] = std::atoi(argv[1+iarg]);
+    }
+    return args;
+  }
+
 }
 
 // namespace libintx::reference {

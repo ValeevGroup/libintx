@@ -64,41 +64,24 @@ auto run(
 #define RUN(X,C,D,...)                                  \
   if (test::enabled(X,C,D)) run(X,C,D,__VA_ARGS__);
 
-int main() {
+int main(int argc, char **argv) {
 
-  int m = 3*3*5*7*16;
-  int n = 4096;
+  auto dims = test::parse_args<2>(argc,argv,6000);
 
   std::vector<Index2> Ks = {
     {1,1}, {1,5}, {5,5}
   };
 
-  auto N = [](int L) {
-    int p = 1;
-    for (int l = 1; l <= L; ++l) {
-      p *= (l%2 ? 1 : 2);
-    }
-    return (2*1024)/p;
-  };
+  for (int l = 0; l <= LMAX; ++l) {
+    RUN(l,l,l,Ks, dims[0]/npure(l), dims[1]/npure(l,l));
+  }
 
   for (int x = 1; x <= LMAX; ++x) {
-    RUN(x,0,0,Ks, m/npure(x), n);
+    RUN(x,0,0,Ks, dims[0]/npure(x), dims[1]);
   }
 
   for (int l = 1; l <= LMAX; ++l) {
-    RUN(0,l,l,Ks, n, m/npure(l,l));
+    RUN(0,l,l,Ks, dims[0], dims[1]/npure(l,l));
   }
-
-  for (int l = 0; l <= LMAX; ++l) {
-    RUN(l,l,l,Ks, m/npure(l), n/npure(l,l));
-  }
-
-  // for (int x = 0; x <= XMAX; ++x) {
-  //   for (int c = 0; c <= LMAX; ++c) {
-  //     for (int d = 0; d <= c; ++d) {
-  //       RUN(x,c,d,Ks, 2*N(x), N(c));
-  //     }
-  //   }
-  // }
 
 }
