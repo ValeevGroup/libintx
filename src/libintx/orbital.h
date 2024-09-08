@@ -18,20 +18,6 @@ namespace libintx::cartesian {
 
 }
 
-namespace libintx {
-
-  template<typename It>
-  struct orbital_range {
-    constexpr orbital_range(It begin, It end)
-      : begin_(begin), end_(end) {}
-    constexpr It begin() const { return begin_; }
-    constexpr It end() const { return end_; }
-  private:
-    It begin_, end_;
-  };
-
-}
-
 namespace std {
 
   template<>
@@ -53,15 +39,16 @@ constexpr inline int ncart(int L) {
   return ((L+1)*(L+2))/2;
 }
 
+template<typename ... Args>
+LIBINTX_GPU_ENABLED
+constexpr inline int ncart(int L, Args ...  Ls) {
+  return ncart(L)*(ncart(Ls) * ...);
+}
+
 LIBINTX_GPU_ENABLED
 constexpr inline int ncartsum(int L) {
   //assert(L >= -1);
   return ((L+1)*(L+2)*(L+3))/6;
-}
-
-LIBINTX_GPU_ENABLED
-constexpr inline int ncart(int M, int L) {
-  return ncartsum(L) - (M ? ncartsum(M-1) : 0);
 }
 
 template<typename Index = int>
@@ -86,13 +73,12 @@ constexpr int index(Index i, Index j, Index k) {
 
 struct alignas(4) Orbital {
 
-  struct Axis {
-    int axis;
-    int value = 1;
-    LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-    constexpr operator int() const {
-      return axis;
-    }
+  constexpr static Orbital Axis(int axis, uint8_t value = 1) {
+    return {
+      axis == 0 ? value : uint8_t(0),
+      axis == 1 ? value : uint8_t(0),
+      axis == 2 ? value : uint8_t(0)
+    };
   };
 
   uint8_t lmn[3] = { 0xFF, 0xFF, 0xFF };
@@ -117,20 +103,6 @@ struct alignas(4) Orbital {
   LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr const auto& operator[](int k) const {
     return lmn[k];
-  }
-
-  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-  constexpr Orbital operator-(const Axis &x) const {
-    Orbital p = *this;
-    p.lmn[x] -= x.value;
-    return p;
-  }
-
-  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-  constexpr Orbital operator+(const Axis &x) const {
-    Orbital p = *this;
-    p.lmn[x] += x.value;
-    return p;
   }
 
 };
@@ -171,33 +143,43 @@ constexpr bool operator<=(const Orbital &p, const Orbital &q) {
   return ((p[0] <= q[0]) && (p[1] <= q[1]) && (p[2] <= q[2]));
 }
 
-template<int L, typename T = Orbital>
-constexpr auto orbitals() {
-  std::array<T,ncart(L)> orbitals = {};
-  for (uint8_t k = 0; k <= L; ++k) {
-    for (uint8_t j = 0; j <= L-k; ++j) {
-      uint8_t i = L - (j+k);
-      //printf("%i,%i,%i\n", i, j, k);
-      orbitals[index(i,j,k)] = T{{i,j,k}};
+template<typename Orbital = libintx::cartesian::Orbital, size_t ... Ls>
+constexpr auto make_orbitals(std::index_sequence<Ls...>) {
+  constexpr int N = (ncart(Ls) + ...);
+  std::array<Orbital,N> orbitals = {};
+  size_t idx = 0;
+  for (int l : { Ls...}) {
+    for (uint8_t k = 0; k <= l; ++k) {
+      for (uint8_t j = 0; j <= l-k; ++j) {
+        uint8_t i = l - (j+k);
+        auto orbital = Orbital{{i,j,k}};
+        orbitals[idx+index(orbital)] = orbital;
+      }
     }
+    idx += ncart(l);
   }
   return orbitals;
 }
 
+template<int L, typename T = Orbital>
+constexpr auto orbitals() {
+  return make_orbitals<T>(std::index_sequence<L>());
+}
+
 template<int L = 0, size_t Idx>
 constexpr Orbital orbital(std::integral_constant<size_t,Idx> = {}) {
-  if constexpr ((int)Idx >= ncart(L)) {
-    return orbital<L+1,Idx-ncart(L)>();
+  for (int l = L; ; ++l) {
+    for (uint8_t k = 0; k <= l; ++k) {
+      for (uint8_t j = 0; j <= l-k; ++j) {
+        uint8_t i = l - (j+k);
+        auto orbital = Orbital{{i,j,k}};
+        if (index<L>(orbital) == Idx) return orbital;
+      }
+    }
   }
-  return orbitals<L>()[Idx];
 }
 
-template<size_t ... Idx>
-constexpr auto make_orbitals(std::index_sequence<Idx...>) {
-  return array{ orbital<0,Idx>()... };
-}
-
-  //LIBINTX_GPU_ENABLED
+//LIBINTX_GPU_ENABLED
 inline double pow(const double *r3, const Orbital &p) {
   double r = 1;
   for (int i = 0; i < 3; ++i) {
@@ -206,13 +188,9 @@ inline double pow(const double *r3, const Orbital &p) {
   return r;
 }
 
-template<int L>
-constexpr auto index_sequence = std::make_index_sequence<ncartsum(L)>();
-
 LIBINTX_GPU_CONSTANT
-constexpr auto orbitals2 = make_array<Orbital>(
-  [](auto idx) { return orbital(idx); },
-  index_sequence<std::max(XMAX,2*LMAX)>
+constexpr auto orbitals2 = make_orbitals(
+  std::make_index_sequence<std::max(XMAX,2*LMAX)+1>()
 );
 
 LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
@@ -232,36 +210,10 @@ constexpr const Orbital& orbital(int L, int idx) {
   return begin(L)[idx];
 }
 
-// template<int L>
-// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-// constexpr const Orbital& orbital(int idx) {
-//   return begin(L)[idx];
-// }
-
-// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-// constexpr const Orbital& orbital(int idx) {
-//   assert(idx < (int)orbital_list.size());
-//   return orbital_list[idx];
-// }
-
 template<typename T = Orbital>
 constexpr auto orbitals(int L) {
-  return orbital_range<const T*>(
-    begin(L), end(L)
-  );
+  return range<const T*>(begin(L), end(L));
 }
-
-// template<typename T = Orbital>
-// constexpr auto range(int first, int last) {
-//   return orbital_range<const T*>(
-//     begin(first), begin(first)+last
-//   );
-// }
-
-// template<typename T = Orbital>
-// constexpr auto range(int last) {
-//   return range(0,last);
-// }
 
 }
 
@@ -312,13 +264,13 @@ constexpr auto orbitals() {
 
 namespace libintx::hermite {
 
-LIBINTX_GPU_ENABLED
-constexpr inline int nherm2(int L) {
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
+constexpr int nherm2(int L) {
   return cartesian::ncartsum(L);
 }
 
-LIBINTX_GPU_ENABLED
-constexpr inline int nherm1(int L) {
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
+constexpr int nherm1(int L) {
   int n = 0;
   for (int i = L; i >= 0; i -= 2) {
     n += cartesian::ncart(i);
@@ -327,13 +279,13 @@ constexpr inline int nherm1(int L) {
 }
 
 template<class Orbital>
-LIBINTX_GPU_ENABLED
-constexpr inline auto index2(const Orbital &h) {
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
+constexpr auto index2(const Orbital &h) {
   return cartesian::index<0>(h);
 }
 
 template<typename Tx, typename Ty, typename Tz>
-LIBINTX_GPU_ENABLED
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr auto index1(const Tx &lx, const Ty &ly, const Tz &lz) {
   int L = lx + ly + lz;
   int idx = 0;
@@ -344,19 +296,16 @@ constexpr auto index1(const Tx &lx, const Ty &ly, const Tz &lz) {
 }
 
 template<class Orbital>
-LIBINTX_GPU_ENABLED
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr auto index1(const Orbital &h) {
   return index1(h[0], h[1], h[2]);
 }
 
-// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-// constexpr auto orbitals(int L) {
-//   return orbital_range(cartesian::begin(0), cartesian::end(L));
-// }
-
 template<int L>
 LIBINTX_GPU_CONSTANT
-constexpr auto orbitals2 = cartesian::make_orbitals(cartesian::index_sequence<L>);
+constexpr auto orbitals2 = cartesian::make_orbitals(
+  std::make_index_sequence<L+1>()
+);
 
 template<int L, int Parity>
 LIBINTX_GPU_CONSTANT
@@ -372,13 +321,10 @@ constexpr auto orbitals1 = []() {
   return s;
  }();
 
-// template<int L = std::max(XMAX+2*LMAX,4*LMAX)>
-// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-// constexpr const auto& orbital(int idx) {
-//   constexpr auto orbitals = hermite::orbitals<L>;
-//   assert(idx < orbitals.size());
-//   return orbitals[idx];
-// }
+template<class Orbital>
+inline constexpr auto phase(const Orbital &p) {
+  return (p.L()%2 ? -1 : +1);
+}
 
 } // libintx::hermite
 

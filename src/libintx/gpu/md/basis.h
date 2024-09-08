@@ -10,7 +10,7 @@ namespace libintx::gpu::md {
   struct alignas(8) Hermite {
     double exp;
     double C;
-    Double<3> r;
+    array<double,3> r;
     double inv_2_exp;
 
     LIBINTX_GPU_ENABLED

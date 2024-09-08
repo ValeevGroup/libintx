@@ -83,7 +83,6 @@ namespace libintx::md::reference {
 
     for (int m = 0; m <= L; ++m) {
       double Fm = boys::Reference().compute(alpha*norm(PQ), m);
-      //printf("md.reference F[%i]=%f\n", m, Fm);
       s[m] = Fm*pow(-2*alpha,m);
     }
 

@@ -7,7 +7,7 @@
 
 namespace libintx::gpu::jengine::md {
 
-  using Center = Double<3>;
+  using Center = array<double,3>;
 
   struct alignas(64) Shell {
     // LIBINTX_GPU_ENABLED Shell() {}

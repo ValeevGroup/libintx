@@ -39,8 +39,8 @@ namespace libintx::md::r1 {
           if (!p[x]) continue;
           int n = p[x]-1;
           // [A+2] = X*[A+1] + n*[A+0]
-          auto A0 = (n ? p - Orbital::Axis{x,2} : Orbital{0,0,0});
-          auto A1 = p - Orbital::Axis{x,1};
+          auto A0 = (n ? p - Orbital::Axis(x,2) : Orbital{0,0,0});
+          auto A1 = p - Orbital::Axis(x,1);
           table[i] = {
             uint32_t(n), uint32_t(index<0>(A0)),
             uint32_t(x), uint32_t(index<0>(A1))
