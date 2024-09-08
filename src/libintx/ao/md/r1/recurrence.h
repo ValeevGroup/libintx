@@ -4,7 +4,10 @@
 #include "libintx/forward.h"
 #include "libintx/math.h"
 #include "libintx/orbital.h"
+
+#if defined(__CUDACC__) || defined(__HIPCC__)
 #include "libintx/gpu/api/intrinsics.h"
+#endif
 
 namespace libintx::md::r1 {
 
@@ -25,7 +28,11 @@ namespace libintx::md::r1 {
 
     LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
     constexpr auto operator[](int idx) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
       return gpu::ldg(this->table+idx);
+#else
+      return this->table[idx];
+#endif
     }
 
     static constexpr auto make_table() {
@@ -53,6 +60,31 @@ namespace libintx::md::r1 {
 
   };
 
+  template<int L, int Max, typename T>
+  LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
+  void compute(
+    const Recurrence<Max> &recurrence,
+    const array<T,3> &PQ,
+    T* __restrict__ r1)
+  {
+    static_assert(L <= Max);
+    for (int l = 1; l <= L; l += 1) {
+      int nl = nherm2(l)-1;
+      // [A+2] = X[A+1] + n[A+0];
+      T v[nherm2(L)];
+      auto* __restrict__ r1_l = (r1+L-l+1);
+      for (int k = 0; k < nl; ++k) {
+        const auto& [n,idx0,ix,idx1] = recurrence[1+k];
+        v[k] = PQ[ix]*r1_l[idx1] + T(n)*r1_l[idx0];
+      }
+      for (int k = 0; k < nl; ++k) {
+        (r1_l)[k] = v[k];
+      }
+    }
+  }
+
+#if defined(__CUDACC__) || defined(__HIPCC__)
+
   template<int L, int Max, typename G>
   LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
   void compute(
@@ -76,14 +108,13 @@ namespace libintx::md::r1 {
     for (int k = 0; k < N; ++k) {
       int i = rank + k*num_threads;
       if (k+1 == N && i >= nherm2(L)-1) break;
-      auto idx1 = gpu::ldg(&recurrence.table[1+i]);
+      auto idx1 = recurrence[1+i];
       X[k] = PQ[idx1.x];
       n[k] = idx1.n;
       idx[k][0] = idx1.idx0;
       idx[k][1] = idx1.idx1;
     }
 
-#pragma unroll
     for (int l = 1; l <= L; l += 1) {
       int nl = nherm2(l)-1;
       int nk = (nl+num_threads-1)/num_threads;
@@ -110,6 +141,8 @@ namespace libintx::md::r1 {
     }
 
   }
+
+#endif
 
 }
 

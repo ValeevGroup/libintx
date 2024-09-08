@@ -364,7 +364,7 @@ namespace libintx::gpu::md::kernel {
             constexpr int idx = herm::index1(p.value...);
             return r[idx];
           };
-          r[herm::index1(x)] = hermite_to_cartesian<x[0],x[1],x[2]>(h, shmem.x.inv_2_exp);
+          r[herm::index1(x)] = hermite_to_cartesian<double,x[0],x[1],x[2]>(h, shmem.x.inv_2_exp);
         }
       );
 

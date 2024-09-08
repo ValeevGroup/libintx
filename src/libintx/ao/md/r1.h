@@ -13,11 +13,11 @@ using libintx::Orbital;
 
 template<int X, int Y, int Z, int M, typename T = double>
 struct R {
-  static constexpr Orbital orbital = {
+  static constexpr Orbital orbital = {{
     uint8_t(X),
     uint8_t(Y),
     uint8_t(Z)
-  };
+  }};
   static constexpr int L = X+Y+Z;
   static constexpr int index = hermite::index2(orbital);
   T value;
@@ -64,9 +64,9 @@ struct visitor {
 };
 
 
-template<int Axis, int I, int J, int K, int M, typename ... Rs>
+template<int Axis, int I, int J, int K, int M, typename T, typename ... Rs>
 LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-auto r1_plus_axis(const auto& PQ, R<I,J,K,M> r1, std::tuple<Rs...> rs) {
+auto r1_plus_axis(const auto& PQ, const R<I,J,K,M,T> &r1, const std::tuple<Rs...> &rs) {
   constexpr int X = (Axis == 0);
   constexpr int Y = (Axis == 1);
   constexpr int Z = (Axis == 2);
@@ -75,20 +75,20 @@ auto r1_plus_axis(const auto& PQ, R<I,J,K,M> r1, std::tuple<Rs...> rs) {
     (Axis == 1 ? J : 1)*
     (Axis == 2 ? K : 1)
   );
-  R<I+X,J+Y,K+Z,M-1> r;
+  R<I+X,J+Y,K+Z,M-1,T> r;
   r.value = PQ[Axis]*r1.value;
   if constexpr (C) {
-    using R2 = R<I-X,J-Y,K-Z,M>;
+    using R2 = R<I-X,J-Y,K-Z,M,T>;
     r.value += C*std::get<const R2&>(rs).value;
   }
   return r;
 }
 
-template<Order Order, int I, int J, int K, class F, typename ... R2, typename ... R1>
+template<Order Order, int I, int J, int K, typename T, class F, typename ... R2, typename ... R1>
 LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-void visit(F f, const auto& PQ,
-           std::tuple<R2...> r2,
-           const R<I,J,K,0> &r1_0,
+void visit(F &&f, const auto& PQ,
+           const std::tuple<R2...> &r2,
+           const R<I,J,K,0,T> &r1_0,
            const R1& ... r1)
 {
   static_assert(Order == Order::BreadthFirst || Order == Order::DepthFirst);
@@ -111,16 +111,16 @@ void visit(F f, const auto& PQ,
   }
 }
 
-template<Order Order, class F, int N, std::size_t ... Idx>
+template<Order Order, typename T, class F, int N, std::size_t ... Idx>
 LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-void visit(F f, const auto& PQ, const auto (&s)[N], std::index_sequence<Idx...>) {
-  visit<Order,0,0,0>(f, PQ, std::tuple<>{}, R<0,0,0,Idx>{ s[Idx] }...);
+void visit(F &&f, const auto& PQ, const T (&s)[N], std::index_sequence<Idx...>) {
+  visit<Order,0,0,0>(f, PQ, std::tuple<>{}, R<0,0,0,Idx,T>{ s[Idx] }...);
 }
 
-template<int L, Order Order, int N, class F>
+template<int L, Order Order = r1::Order::BreadthFirst, typename T, int N, class F>
 LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-void visit(F f, const auto& PQ, const auto (&s)[N]) {
-  visit<Order>(f, PQ, s, std::make_index_sequence<L+1>());
+void visit(F &&f, const auto& PQ, const T (&s)[N]) {
+  visit<Order,T>(f, PQ, s, std::make_index_sequence<L+1>());
 }
 
 template<int L, Order Order = Order::BreadthFirst>

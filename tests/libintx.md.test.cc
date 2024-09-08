@@ -6,87 +6,71 @@
 #include "libintx/ao/md/reference.h"
 #include "libintx/boys/chebyshev.h"
 
-using namespace libintx;
-using namespace libintx::md;
 using doctest::Approx;
+using libintx::foreach;
+using libintx::str;
+using namespace libintx::test;
 
-TEST_CASE("hermite") {
+namespace reference = libintx::md::reference;
+
+TEST_CASE("hermite.E2") {
 
   double a = 3.14;
   double b = 2.74;
-  double R[3] = { 1.29, -2.8, 3.4 };
+  libintx::array<double,3> R = { 1.29, -2.8, 3.4 };
 
-  E2<3> E(3,3,a,b,R);
-
-  // CHECK(reference::E(1,1,0,a,b,R[0]) == Approx(-0.028828110715203102));
-  // CHECK(reference::E(1,1,1,a,b,R[0]) == Approx(0.0006537302131611276));
-  // CHECK(reference::E(1,1,2,a,b,R[0]) == Approx(0.0006334595088770618));
-
-  // CHECK(reference::E(0,1,0,a,b,R[0]) == Approx(0.060349758358182674));
-  // CHECK(reference::E(0,1,1,a,b,R[0]) == Approx(0.007449483824394248));
-  // CHECK(reference::E(0,1,2,a,b,R[0]) == Approx(0.0));
-
-  // CHECK(reference::E(2,0,0,a,b,R[0]) == Approx(0.039105728741112955));
-  // CHECK(reference::E(2,0,1,a,b,R[0]) == Approx(-0.008956103920307448));
-  // CHECK(reference::E(2,0,2,a,b,R[0]) == Approx(0.0006334595088770618));
-
-  // CHECK(reference::E(3,3,0,a,b,R[0]) == Approx(-0.0039687691));
-  // CHECK(reference::E(3,3,1,a,b,R[0]) == Approx(0.0001359494));
-  // CHECK(reference::E(3,3,2,a,b,R[0]) == Approx(0.0001318959));
-
-  CHECK(reference::E(0,0,0,a,b,R[0]) == Approx(E(0,0,0,0)));
-  CHECK(reference::E(1,0,0,a,b,R[0]) == Approx(E(1,0,0,0)));
-  CHECK(reference::E(1,0,1,a,b,R[0]) == Approx(E(1,0,1,0)));
-  CHECK(reference::E(2,0,0,a,b,R[0]) == Approx(E(2,0,0,0)));
-  CHECK(reference::E(2,0,1,a,b,R[0]) == Approx(E(2,0,1,0)));
-  CHECK(reference::E(2,0,2,a,b,R[0]) == Approx(E(2,0,2,0)));
-  CHECK(reference::E(3,0,0,a,b,R[0]) == Approx(E(3,0,0,0)));
-  CHECK(reference::E(3,0,1,a,b,R[0]) == Approx(E(3,0,1,0)));
-  CHECK(reference::E(3,0,2,a,b,R[0]) == Approx(E(3,0,2,0)));
-  CHECK(reference::E(3,0,3,a,b,R[0]) == Approx(E(3,0,3,0)));
-
-  CHECK(reference::E(0,1,0,a,b,R[0]) == Approx(E(0,1,0,0)));
-  CHECK(reference::E(0,1,1,a,b,R[0]) == Approx(E(0,1,1,0)));
-  CHECK(reference::E(0,2,0,a,b,R[0]) == Approx(E(0,2,0,0)));
-  CHECK(reference::E(0,2,1,a,b,R[0]) == Approx(E(0,2,1,0)));
-  CHECK(reference::E(0,2,2,a,b,R[0]) == Approx(E(0,2,2,0)));
-
-  for (int i = 0; i <= 3; ++i) {
-    for (int j = 0; j <= 3; ++j) {
-      for (int k = 0; k <= 2*3; ++k) {
-        CAPTURE(i);
-        CAPTURE(j);
-        CAPTURE(k);
-        CHECK(reference::E(i,j,k,a,b,R[0]) == Approx(E(i,j,k,0)));
+  auto test = [&](auto A, auto B, auto P) {
+    libintx::md::E2<double,A,B,P> E(a,b,R);
+    for (size_t i = 0; i <= A; ++i) {
+      for (size_t j = 0; j <= B; ++j) {
+        for (size_t k = 0; k <= P; ++k) {
+          for (size_t ix = 0; ix < 3; ++ix) {
+            auto ref = reference::E(i,j,k,a,b,R[ix]);
+            CHECK(ReferenceValue(ref, 1e-10, A,B,P,i,j,k,ix) == E(i,j,k,ix));
+          }
+        }
       }
     }
-  }
+  };
+
+  constexpr int L = std::max(4,libintx::LMAX);
+  libintx::foreach2(
+    std::make_index_sequence<(L+1)*(L+1)>{},
+    std::make_index_sequence<2*L+1>{},
+    [&](auto AB, auto P) {
+      auto A = std::integral_constant<size_t, AB%(L+1)>{};
+      auto B = std::integral_constant<size_t, AB/(L+1)>{};
+      test(A,B,P);
+    }
+  );
 
 }
 
 TEST_CASE("r1") {
 
-  static boys::Chebyshev<7,40,117,117*7> boys;
+  constexpr int M = 4*std::max(3,libintx::LMAX);
 
-  constexpr int L = 3;
+  using namespace libintx::md;
+  static boys::Chebyshev<7,M+1,117,117*7> boys;
 
-  array<double,3> PQ = { 3, 1, 0 };
-
+  libintx::array<double,3> PQ = { 3, 1, 0 };
   double alpha = 3.56;
-  double s[L+1] = {};
 
-  boys.template compute<L+1>(alpha*norm(PQ), 0, s);
-
-  for (size_t m = 0; m <= L; ++m) {
-    s[m] *= pow(-2*alpha,m);
-  }
-
-  auto visitor = [&s,&PQ](auto r) {
-    auto [x,y,z] = r.orbital.lmn;
-    auto u = reference::R(x, y, z, 0, s, PQ.data);
-    CHECK(r.value == u);
-  };
-
-  r1::visit<L,r1::DepthFirst>(visitor, PQ, s);
+  libintx::foreach(
+    std::make_index_sequence<M+1>{},
+    [&](auto M) {
+      double s[M+1] = {};
+      boys.template compute<M>(alpha*norm(PQ), s);
+      for (size_t m = 0; m <= M; ++m) {
+        s[m] *= pow(-2*alpha,m);
+      }
+      auto visitor = [&s,&PQ](auto r) {
+        auto [x,y,z] = r.orbital.lmn;
+        auto u = reference::R(x, y, z, 0, s, PQ.data);
+        CHECK(r.value == u);
+      };
+      r1::visit<M>(visitor, PQ, s);
+    }
+  );
 
 }
