@@ -141,6 +141,12 @@ namespace libintx {
   LIBINTX_OPERATOR(Nuclear);
   LIBINTX_OPERATOR(Coulomb);
 
+  struct JEngine;
+
+}
+
+namespace libintx::ao {
+
   template<int ... Args>
   struct IntegralEngine;
 
@@ -149,8 +155,6 @@ namespace libintx {
   struct IntegralEngine<> {
     virtual ~IntegralEngine() = default;
   };
-
-  struct JEngine;
 
 }
 

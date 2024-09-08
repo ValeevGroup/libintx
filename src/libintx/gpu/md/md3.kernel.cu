@@ -7,7 +7,7 @@
 // this must come first to resolve HIP device asserts
 #include "libintx/gpu/api/runtime.h"
 
-#include "libintx/gpu/md/md3.h"
+#include "libintx/gpu/md/engine.h"
 #include "libintx/gpu/md/md3.kernel.h"
 #include "libintx/gpu/boys.h"
 #include "libintx/gpu/blas.h"
@@ -24,7 +24,7 @@ namespace libintx::gpu::md {
   constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
 
   template
-  void ERI3::compute<LIBINTX_GPU_MD_MD3_KERNEL_X,LIBINTX_GPU_MD_MD3_KERNEL_KET>(
+  void IntegralEngine<3>::compute<LIBINTX_GPU_MD_MD3_KERNEL_X,LIBINTX_GPU_MD_MD3_KERNEL_KET>(
     const Basis1&,
     const Basis2&,
     TensorRef<double,2>,
@@ -32,7 +32,7 @@ namespace libintx::gpu::md {
   );
 
   template<int X, int C, int D>
-  auto ERI3::compute_v0(
+  auto IntegralEngine<3>::compute_v0(
     const Basis1& bra,
     const Basis2& ket,
     TensorRef<double,2> XCD,
@@ -104,13 +104,13 @@ namespace libintx::gpu::md {
   }
 
   template<int X, int C, int D>
-  auto ERI3::compute_v2(
+  auto IntegralEngine<3>::compute_v2(
     const Basis1& bra,
     const Basis2& ket,
     TensorRef<double,2> XCD,
     gpuStream_t stream)
   {
-    //printf("ERI3::compute_v2<%i,%i,%i>\n", X,C,D);
+    //printf("IntegralEngine<3>::compute_v2<%i,%i,%i>\n", X,C,D);
 
     kernel::Basis1<X> x{bra.K, bra.N, bra.data};
     kernel::Basis2<C+D> cd(ket);
@@ -154,7 +154,7 @@ namespace libintx::gpu::md {
 
 
   template<int X, int Ket>
-  void ERI3::compute(
+  void IntegralEngine<3>::compute(
     const Basis1& x,
     const Basis2& ket,
     TensorRef<double,2> XCD,

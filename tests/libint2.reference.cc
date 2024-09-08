@@ -1,4 +1,5 @@
 #include "reference.h"
+#include "test.h"
 #include "libintx/shell.h"
 
 #include <libint2/cxxapi.h>
@@ -17,6 +18,15 @@ namespace libintx::reference {
 
   auto cast(const libintx::array<double,3> &r) {
     return std::array<double,3>{ r[0], r[1], r[2] };
+  }
+
+  auto make_point_charges(const std::any &params) {
+    const auto &rs = std::any_cast< std::vector< libintx::array<double,3> > >(params);
+    std::vector< std::pair<double,std::array<double,3> > > cs;
+    for (auto r : std::any_cast< std::vector< libintx::array<double,3> > >(rs)) {
+      cs.push_back({ 1, cast(r) });
+    }
+    return cs;
   }
 
   auto cast(const Gaussian &g) {
@@ -42,55 +52,93 @@ namespace libintx::reference {
     return s;
   }
 
-  template<::libint2::Operator Operator, ::libint2::BraKet BraKet>
-  void compute(size_t n, const auto& args, double *data, size_t nbf) {
+  template<::libint2::Operator Operator>
+  double time1(auto &&params, size_t n, const auto& ab, double *data, size_t nbf) {
     auto engine = ::libint2::Engine(Operator, 10, LIBINT_MAX_AM);
-    engine.set(BraKet);
+    engine.set(libint2::BraKet::x_x);
     engine.set_precision(precision);
+    engine.set_params(params);
+    auto &[a,b] = ab;
+    auto t = time::now();
     for (size_t i = 0; i < n; ++i) {
-      std::apply(
-        [&](auto&& ... args) {
-          engine.compute2<Operator, BraKet, 0>(args...);
-        },
-        args
-      );
+      engine.compute1(a,b);
       if (data) {
         std::copy(engine.results()[0], engine.results()[0]+nbf, data+i*nbf);
       }
     }
+    return time::since(t);
+  };
+
+  template<::libint2::Operator Operator, ::libint2::BraKet BraKet>
+  double time2(size_t n, auto &&A, auto &&B, auto &&C, auto &&D, auto *bra, auto *ket, double *data) {
+    auto engine = ::libint2::Engine(Operator, 10, LIBINT_MAX_AM);
+    engine.set(BraKet);
+    engine.set_precision(precision);
+    size_t nbf = A.size()*B.size()*C.size()*D.size();
+    auto t = time::now();
+    for (size_t i = 0; i < n; ++i) {
+      engine.compute2<Operator, BraKet, 0>(A,B,C,D,bra,ket);
+      if (data) {
+        std::copy(engine.results()[0], engine.results()[0]+nbf, data+i*nbf);
+      }
+    }
+    return time::since(t);
   };
 
 }
 
-void libintx::reference::compute(
+double libintx::reference::time(
+  Operator op, const std::any &params,
+  size_t n, const Gaussian& a, const Gaussian& b,
+  double *data)
+{
+  initialize();
+  size_t m = nbf(a)*nbf(b);
+  auto ab = std::tuple(cast(a), cast(b));
+  if (op == Overlap) {
+    return time1<::libint2::Operator::overlap>(nullptr, n, ab, data, m);
+  }
+  if (op == Kinetic) {
+    return time1<::libint2::Operator::kinetic>(nullptr, n, ab, data, m);
+  }
+  if (op == Nuclear) {
+    return time1<::libint2::Operator::nuclear>(make_point_charges(params), n, ab, data, m);
+  }
+  return 0;
+}
+
+double libintx::reference::time(
+  Operator op, const std::any &params,
   size_t n,
   const Gaussian& a, const Gaussian& c, const Gaussian& d,
   double *data)
 {
-  size_t m = nbf(a)*nbf(c)*nbf(d);
+  libintx_assert(op == Coulomb);
+  initialize();
   auto p = cast(a);
   auto q = ::libint2::Shell::unit();
   auto r = cast(c);
   auto s = cast(d);
   auto bra = ::libint2::ShellPair(p, q, std::log(precision));
   auto ket = ::libint2::ShellPair(r, s, std::log(precision));
-  auto args = std::tuple(p, q, r, s, &bra, &ket);
-  compute<::libint2::Operator::coulomb,::libint2::BraKet::xs_xx>(n, args, data, m);
+  return time2<::libint2::Operator::coulomb,::libint2::BraKet::xs_xx>(n, p, q, r, s, &bra, &ket, data);
 }
 
-void libintx::reference::compute(
+double libintx::reference::time(
+  Operator op, const std::any &params,
   size_t n,
   const Gaussian& a, const Gaussian& b,
   const Gaussian& c, const Gaussian& d,
   double *data)
 {
-  size_t m = nbf(a)*nbf(b)*nbf(c)*nbf(d);
+  //printf("K=%i,%i\n", a.K*b.K, c.K*d.K);
+  libintx_assert(op == Coulomb);
+  initialize();
   auto p = cast(a);
   auto q = cast(b);
   auto r = cast(c);
   auto s = cast(d);
   auto bra = ::libint2::ShellPair(p, q, std::log(precision));
   auto ket = ::libint2::ShellPair(r, s, std::log(precision));
-  auto args = std::tuple(p, q, r, s, &bra, &ket);
-  compute<::libint2::Operator::coulomb,::libint2::BraKet::xx_xx>(n, args, data, m);
+  return time2<::libint2::Operator::coulomb,::libint2::BraKet::xx_xx>(n, p, q, r, s, &bra, &ket, data);
 }

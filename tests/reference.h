@@ -1,25 +1,25 @@
-#include "libintx/forward.h"
-#include "test.h"
+#include "libintx/shell.h"
+#include <cstddef>
+#include <any>
 
 namespace libintx::reference {
 
-  void initialize();
+  double time(
+    Operator op, const std::any &params,
+    size_t n, const Gaussian& a, const Gaussian& b,
+    double *data = nullptr
+  );
 
-  void compute(size_t n, const Gaussian& x, const Gaussian& c, const Gaussian& d, double*);
-  void compute(size_t n, const Gaussian&, const Gaussian&, const Gaussian&, const Gaussian&, double*);
+  double time(
+    Operator op, const std::any &params,
+    size_t n, const Gaussian& a, const Gaussian& c, const Gaussian& d,
+    double *data = nullptr
+  );
 
-  inline double time(size_t n, const Gaussian& a, const Gaussian& c, const Gaussian& d, double *data = nullptr) {
-    initialize();
-    auto t = time::now();
-    compute(n,a,c,d,data);
-    return time::since(t);
-  }
-
-  inline double time(size_t n, const Gaussian& a, const Gaussian& b, const Gaussian& c, const Gaussian& d, double *data = nullptr) {
-    initialize();
-    auto t = time::now();
-    compute(n,a,b,c,d,data);
-    return time::since(t);
-  }
+  double time(
+    Operator op, const std::any &params,
+    size_t n, const Gaussian& a, const Gaussian& b, const Gaussian& c, const Gaussian& d,
+    double *data = nullptr
+  );
 
 }

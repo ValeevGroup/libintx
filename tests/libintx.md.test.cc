@@ -1,9 +1,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/integral/md/hermite.h"
-#include "libintx/integral/md/r1.h"
-#include "libintx/integral/md/reference.h"
+#include "libintx/ao/md/hermite.h"
+#include "libintx/ao/md/r1.h"
+#include "libintx/ao/md/reference.h"
 #include "libintx/boys/chebyshev.h"
 
 using namespace libintx;
@@ -70,7 +70,7 @@ TEST_CASE("r1") {
 
   constexpr int L = 3;
 
-  Double<3> PQ = { 3, 1, 0 };
+  array<double,3> PQ = { 3, 1, 0 };
 
   double alpha = 3.56;
   double s[L+1] = {};

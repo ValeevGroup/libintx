@@ -1,4 +1,3 @@
-#include "libintx/gpu/md/md3.h"
 #include "libintx/gpu/md/engine.h"
 #include "libintx/gpu/md/basis.h"
 #include "libintx/config.h"
@@ -7,13 +6,13 @@
 
 namespace libintx::gpu::md {
 
-  struct ERI3::Memory {
+  struct IntegralEngine<3>::Memory {
     device::vector<Hermite> p;
     device::vector<double> q;
     std::array<device::vector<double>,1> buffer;
   };
 
-  ERI3::ERI3(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream) {
+  IntegralEngine<3>::IntegralEngine(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream) {
     libintx_assert(!bra.empty());
     libintx_assert(!ket.empty());
     bra_ = bra;
@@ -22,22 +21,23 @@ namespace libintx::gpu::md {
     memory_.reset(new Memory);
   }
 
-  ERI3::~ERI3() {}
+  IntegralEngine<3>::~IntegralEngine() {}
 
-  void ERI3::compute(
+  void IntegralEngine<3>::compute(
+    Operator op,
     const std::vector<Index1> &bra,
     const std::vector<Index2> &ket,
     double *V,
-    std::array<size_t,2> dims)
+    const std::array<size_t,2> &dims)
   {
 
     using Kernel = std::function<void(
-      ERI3&, const Basis1&, const Basis2&, TensorRef<double,2>, gpuStream_t
+      IntegralEngine&, const Basis1&, const Basis2&, TensorRef<double,2>, gpuStream_t
     )>;
 
     static auto x_cd_kernels = make_array<Kernel,XMAX+1,2*LMAX+1>(
       [](auto x, auto cd) {
-        return &ERI3::compute<x,cd>;
+        return &IntegralEngine::compute<x,cd>;
       }
     );
 
@@ -50,21 +50,21 @@ namespace libintx::gpu::md {
   }
 
   template<int Idx>
-  double* ERI3::allocate(size_t size) {
+  double* IntegralEngine<3>::allocate(size_t size) {
     auto &v = std::get<Idx>(this->memory_->buffer);
     v.resize(size);
     return v.data();
   }
 
-  template double* ERI3::allocate<0>(size_t size);
+  template double* IntegralEngine<3>::allocate<0>(size_t size);
 
-  template<>
-  std::unique_ptr< IntegralEngine<1,2> > integral_engine<1,2>(
-    const Basis<Gaussian> &bra,
-    const Basis<Gaussian> &ket,
-    const gpuStream_t &stream)
-  {
-    return std::make_unique<ERI3>(bra, ket, stream);
-  }
+} // libintx::gpu::md
 
+template<>
+std::unique_ptr< libintx::gpu::IntegralEngine<3> > libintx::gpu::integral_engine(
+  const Basis<Gaussian> &bra,
+  const Basis<Gaussian> &ket,
+  const gpuStream_t &stream)
+{
+  return std::make_unique< gpu::md::IntegralEngine<3> >(bra, ket, stream);
 }

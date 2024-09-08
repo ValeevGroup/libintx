@@ -6,7 +6,7 @@
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/boys.h"
-#include "libintx/integral/md/r1.h"
+#include "libintx/ao/md/r1.h"
 
 #include "libintx/gpu/api/thread_group.h"
 #include <bitset>

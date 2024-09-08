@@ -1,9 +1,9 @@
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/md/basis.h"
 #include "libintx/gpu/md/md.kernel.h"
-#include "libintx/integral/md/r1.h"
-#include "libintx/integral/md/r1/recurrence.h"
-#include "libintx/integral/md/hermite.h"
+#include "libintx/ao/md/r1.h"
+#include "libintx/ao/md/r1/recurrence.h"
+#include "libintx/ao/md/hermite.h"
 #include "libintx/gpu/blas.h"
 #include "libintx/gpu/api/thread_group.h"
 

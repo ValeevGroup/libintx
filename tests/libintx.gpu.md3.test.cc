@@ -1,17 +1,17 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/integral/md/reference.h"
+#include "libintx/ao/md/reference.h"
 #include "libintx/pure.transform.h"
 
 #include "libintx/gpu/api/api.h"
-#include "libintx/gpu/md/engine.h"
+#include "libintx/gpu/engine.h"
 
 #include <unsupported/Eigen/CXX11/Tensor>
 
 using namespace libintx;
 
-void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
+void md_eri3_subcase(Operator op, int X, int C, int D, std::pair<int,int> K = {1,1}) {
 
   namespace gpu = libintx::gpu;
 
@@ -31,12 +31,12 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
   gpu::host::register_pointer(result.data(), result.size());
 
   gpuStream_t stream = 0;
-  auto md = libintx::gpu::md::eri<3>(bra, ket, stream);
-  md->compute(is, kls, result.data(), {(size_t)M*NX, (size_t)N*NC*ND});
+  auto md = libintx::gpu::integral_engine<3>(bra, ket, stream);
+  md->compute(op, is, kls, result.data(), {(size_t)M*NX, (size_t)N*NC*ND});
   gpu::stream::synchronize(stream);
 
-  for (size_t i = 0; i < bra.size(); ++i) {
-    for (size_t kl = 0; kl < kls.size(); ++kl) {
+  for (int i = 0; i < bra.size(); ++i) {
+    for (int kl = 0; kl < kls.size(); ++kl) {
 
       auto [k,l] = kls[kl];
       Eigen::Tensor<double,4> x_cd_ref(npure(X), 1, npure(C), npure(D));
@@ -72,13 +72,13 @@ void md_eri3_subcase(int X, int C, int D, std::pair<int,int> K = {1,1}) {
 
 }
 
-#define MD_ERI3_SUBCASE(X,C,D,Ks)                       \
-  if (test::enabled(X,C,D)) {                           \
-    SUBCASE(str("(X|CD)=(",X,"|",C,D,")").c_str()) {    \
-      for (auto K : Ks) {                               \
-        md_eri3_subcase(X,C,D,K);                       \
-      }                                                 \
-    }                                                   \
+#define MD_ERI3_SUBCASE(OP,X,C,D,Ks)                            \
+  if (test::enabled(X,C,D)) {                                   \
+    SUBCASE(str(#OP " (X|CD)=(",X,"|",C,D,")").c_str()) {       \
+      for (auto K : Ks) {                                       \
+        md_eri3_subcase(OP,X,C,D,K);                            \
+      }                                                         \
+    }                                                           \
   }
 
 TEST_CASE("gpu.md.eri3") {
@@ -90,7 +90,7 @@ TEST_CASE("gpu.md.eri3") {
   for (int id = 0; id <= LMAX; ++id) {
     for (int ic = 0; ic <= LMAX; ++ic) {
       for (int ix = 0; ix <= XMAX; ++ix) {
-        MD_ERI3_SUBCASE(ix,ic,id,Ks);
+        MD_ERI3_SUBCASE(Coulomb,ix,ic,id,Ks);
       }
     }
   }

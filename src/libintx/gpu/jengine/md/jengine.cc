@@ -1,7 +1,7 @@
 #include "libintx/gpu/jengine/md/jengine.h"
 #include "libintx/gpu/jengine/md/forward.h"
 #include "libintx/gpu/boys.h"
-#include "libintx/integral/md/hermite.h"
+#include "libintx/ao/md/hermite.h"
 
 #include "libintx/utility.h"
 #include "libintx/thread_pool.h"

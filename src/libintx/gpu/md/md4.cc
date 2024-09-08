@@ -1,4 +1,4 @@
-#include "libintx/gpu/md/md4.h"
+#include "libintx/gpu/md/engine.h"
 #include "libintx/gpu/md/basis.h"
 #include "libintx/config.h"
 #include "libintx/utility.h"
@@ -6,13 +6,13 @@
 
 namespace libintx::gpu::md {
 
-  struct ERI4::Memory {
+  struct IntegralEngine<4>::Memory {
     device::vector<double> p;
     device::vector<double> q;
     std::array<device::vector<double>,3> buffer;
   };
 
-  ERI4::ERI4(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream) {
+  IntegralEngine<4>::IntegralEngine(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream) {
     libintx_assert(!bra.empty());
     libintx_assert(!ket.empty());
     bra_ = bra;
@@ -21,22 +21,23 @@ namespace libintx::gpu::md {
     memory_.reset(new Memory);
   }
 
-  ERI4::~ERI4() {}
+  IntegralEngine<4>::~IntegralEngine() {}
 
-  void ERI4::compute(
+  void IntegralEngine<4>::compute(
+    Operator,
     const std::vector<Index2> &bra,
     const std::vector<Index2> &ket,
     double *V,
-    std::array<size_t,2> dims)
+    const std::array<size_t,2> &dims)
   {
 
     using Kernel = std::function<void(
-      ERI4&, const Basis2&, const Basis2&, TensorRef<double,2>, gpuStream_t
+      IntegralEngine&, const Basis2&, const Basis2&, TensorRef<double,2>, gpuStream_t
     )>;
 
     static auto ab_cd_kernels = make_array<Kernel,2*LMAX+1,2*LMAX+1>(
       [](auto ab, auto cd) {
-        return &ERI4::compute<ab,cd>;
+        return &IntegralEngine::compute<ab,cd>;
       }
     );
 
@@ -49,23 +50,23 @@ namespace libintx::gpu::md {
   }
 
   template<int Idx>
-  double* ERI4::allocate(size_t size) {
+  double* IntegralEngine<4>::allocate(size_t size) {
     auto &v = std::get<Idx>(this->memory_->buffer);
     v.resize(size);
     return v.data();
   }
 
-  template double* ERI4::allocate<0>(size_t size);
-  template double* ERI4::allocate<1>(size_t size);
-  template double* ERI4::allocate<2>(size_t size);
+  template double* IntegralEngine<4>::allocate<0>(size_t size);
+  template double* IntegralEngine<4>::allocate<1>(size_t size);
+  template double* IntegralEngine<4>::allocate<2>(size_t size);
 
-  template<>
-  std::unique_ptr< IntegralEngine<2,2> > integral_engine(
-    const Basis<Gaussian> &bra,
-    const Basis<Gaussian> &ket,
-    const gpuStream_t &stream)
-  {
-    return std::make_unique<ERI4>(bra, ket, stream);
-  }
+}
 
+template<>
+std::unique_ptr< libintx::gpu::IntegralEngine<4> > libintx::gpu::integral_engine(
+  const Basis<Gaussian> &bra,
+  const Basis<Gaussian> &ket,
+  const gpuStream_t &stream)
+{
+  return std::make_unique< gpu::md::IntegralEngine<4> >(bra, ket, stream);
 }

@@ -3,8 +3,8 @@
 #include "libintx/gpu/md/md.kernel.h"
 #include "libintx/gpu/api/thread_group.h"
 
-#include "libintx/integral/md/r1.h"
-#include "libintx/integral/md/r1/recurrence.h"
+#include "libintx/ao/md/r1.h"
+#include "libintx/ao/md/r1/recurrence.h"
 #include "libintx/math.h"
 
 namespace libintx::gpu::md::kernel {

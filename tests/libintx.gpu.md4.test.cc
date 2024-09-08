@@ -1,11 +1,11 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include "libintx/integral/md/reference.h"
+#include "libintx/ao/md/reference.h"
 #include "libintx/pure.transform.h"
 
 #include "libintx/gpu/api/api.h"
-#include "libintx/gpu/md/engine.h"
+#include "libintx/gpu/engine.h"
 
 #include <unsupported/Eigen/CXX11/Tensor>
 
@@ -32,12 +32,12 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
   gpu::host::register_pointer(result.data(), result.size());
 
   gpuStream_t stream = 0;
-  auto md = gpu::md::eri<4>(bra, ket, stream);
-  md->compute(ijs, kls, result.data(), {M*NA*NB, NC*ND*N});
+  auto md = gpu::integral_engine<4>(bra, ket, stream);
+  md->compute(Coulomb, ijs, kls, result.data(), {(size_t)M*NA*NB, (size_t)NC*ND*N});
   gpu::stream::synchronize(stream);
 
-  for (size_t ij = 0; ij < ijs.size(); ++ij) {
-    for (size_t kl = 0; kl < kls.size(); ++kl) {
+  for (int ij = 0; ij < ijs.size(); ++ij) {
+    for (int kl = 0; kl < kls.size(); ++kl) {
 
       auto [i,j] = ijs[ij];
       auto [k,l] = kls[kl];

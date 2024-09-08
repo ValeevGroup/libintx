@@ -7,7 +7,7 @@
 // this must come first to resolve HIP device asserts
 #include "libintx/gpu/api/runtime.h"
 
-#include "libintx/gpu/md/md4.h"
+#include "libintx/gpu/md/engine.h"
 #include "libintx/gpu/md/md4.kernel.h"
 #include "libintx/gpu/boys.h"
 
@@ -23,7 +23,7 @@ namespace libintx::gpu::md {
   constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
 
   template
-  void ERI4::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA,LIBINTX_GPU_MD_MD4_KERNEL_KET>(
+  void IntegralEngine<4>::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA,LIBINTX_GPU_MD_MD4_KERNEL_KET>(
     const Basis2&,
     const Basis2&,
     TensorRef<double,2>,
@@ -31,7 +31,7 @@ namespace libintx::gpu::md {
   );
 
   template<int A, int B, int C, int D>
-  auto ERI4::compute_v0(
+  auto IntegralEngine<4>::compute_v0(
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
@@ -44,7 +44,7 @@ namespace libintx::gpu::md {
     constexpr int shmem = 0;
     constexpr int NAB = npure(A,B);
 
-    //printf("ERI4::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
+    //printf("IntegralEngine<4>::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
     Bra ab(bra.K, bra.N, bra.data, bra.k_stride, bra.pure_transform);
     Ket cd(ket.K, ket.N, ket.data, ket.k_stride, ket.pure_transform);
 
@@ -122,7 +122,7 @@ namespace libintx::gpu::md {
 
 
   template<int A, int B, int C, int D>
-  auto ERI4::compute_v1(
+  auto IntegralEngine<4>::compute_v1(
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
@@ -140,7 +140,7 @@ namespace libintx::gpu::md {
     constexpr size_t NAB = npure(A,B);
     constexpr size_t NCD = npure(C,D);
 
-    //printf("ERI4::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
+    //printf("IntegralEngine<4>::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
     Basis2<Bra> ab(bra);
     Basis2<Ket> cd(ket);
 
@@ -157,7 +157,7 @@ namespace libintx::gpu::md {
     };
 
     // printf(
-    //   "ERI4::compute_v1 <%i,%i,%i,%i>: viable=(%i)\n",
+    //   "IntegralEngine<4>::compute_v1 <%i,%i,%i,%i>: viable=(%i)\n",
     //   A, B, C, D, viable
     // );
 
@@ -181,7 +181,7 @@ namespace libintx::gpu::md {
       size_t r1_size = (grid0.x*grid0.y)*(DimX*nherm2(Bra+Ket));
 
       // printf(
-      //   "ERI4::compute_v1<%i,%i,%i,%i>: K=%i, maxk=%i mem=%fGB\n",
+      //   "IntegralEngine<4>::compute_v1<%i,%i,%i,%i>: K=%i, maxk=%i mem=%fGB\n",
       //   A, B, C, D,
       //   ket.K, maxk,
       //   (r1_size*maxk + p_cd_buffer.size())*(sizeof(double)/1e9)
@@ -303,13 +303,13 @@ namespace libintx::gpu::md {
 
 
   template<int A, int B, int C, int D>
-  auto ERI4::compute_v2(
+  auto IntegralEngine<4>::compute_v2(
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,
     gpuStream_t stream)
   {
-    //printf("ERI4::compute_v2<%i,%i,%i,%i>\n", A,B,C,D);
+    //printf("IntegralEngine<4>::compute_v2<%i,%i,%i,%i>\n", A,B,C,D);
     using kernel::Basis2;
 
     Basis2<A+B> ab(bra);
@@ -440,7 +440,7 @@ namespace libintx::gpu::md {
   }
 
   template<int Bra, int Ket>
-  void ERI4::compute(
+  void IntegralEngine<4>::compute(
     const Basis2& bra,
     const Basis2& ket,
     TensorRef<double,2> ABCD,

@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
-#include "libintx/engine.h"
+#include "libintx/ao/engine.h"
 #include "libintx/gpu/md/engine.h"
 
 namespace py = pybind11;
@@ -30,9 +30,8 @@ namespace libintx::python {
     for (auto [a,C] : ps) {
       prims.push_back({a,C});
     }
-    Gaussian g(L,prims);
     auto [r0,r1,r2] = r;
-    return std::tuple< Gaussian,array<double,3> >{ g, {r0,r1,r2} };
+    return Gaussian(L,{r0,r1,r2},prims);
   }
 
   auto basis_cast(const std::vector<PyGaussian> &pybasis) {
@@ -43,7 +42,9 @@ namespace libintx::python {
     return basis;
   }
 
-  namespace eri {
+  namespace ao {
+
+    using libintx::ao::IntegralEngine;
 
     auto engine(
       int centers,
@@ -51,18 +52,18 @@ namespace libintx::python {
       const std::vector<PyGaussian> &ket,
       std::ptrdiff_t stream)
     {
-      using libintx::gpu::md::integral_engine;
+      using libintx::gpu::integral_engine;
       std::unique_ptr< IntegralEngine<> > eri;
       if (centers == 3) {
-        eri = integral_engine<1,2>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
+        eri = integral_engine<3>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
       }
       if (centers == 4) {
-        eri = integral_engine<2,2>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
+        eri = integral_engine<4>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
       }
       return py::cast(std::move(eri));
     }
 
-    template<typename Bra, typename Ket, int ... Args>
+    template<int Centers, typename Bra, typename Ket>
     void compute(
       IntegralEngine<> &engine,
       const std::vector<Bra> &bra,
@@ -70,9 +71,10 @@ namespace libintx::python {
       std::ptrdiff_t dst,
       const std::array<size_t,2> &dims)
     {
-      dynamic_cast<IntegralEngine<Args...>&>(engine)
-        .compute(bra, ket, reinterpret_cast<double*>(dst), dims);
+      dynamic_cast<IntegralEngine<Centers>&>(engine)
+        .compute(Coulomb, bra, ket, reinterpret_cast<double*>(dst), dims);
     };
+
 
   }
 
@@ -83,10 +85,10 @@ PYBIND11_MODULE(libintx, m) {
   // py::class_<libintx::Gaussian>(m, "Gaussian")
   //   .def(py::init(&libintx::python::make_gaussian));
 
-  py::class_< libintx::IntegralEngine<> >(m, "IntegralEngine")
+  py::class_< libintx::ao::IntegralEngine<> >(m, "IntegralEngine")
     .def(
       "compute",
-      &libintx::python::eri::compute<libintx::Index2, libintx::Index2, 2, 2>,
+      &libintx::python::ao::compute<4, libintx::Index2, libintx::Index2>,
       py::arg("bra"),
       py::arg("ket"),
       py::arg("dst"),
@@ -97,7 +99,7 @@ PYBIND11_MODULE(libintx, m) {
     )
     .def(
       "compute",
-      &libintx::python::eri::compute<libintx::Index1, libintx::Index2, 1, 2>,
+      &libintx::python::ao::compute<3, libintx::Index1, libintx::Index2>,
       py::arg("bra"),
       py::arg("ket"),
       py::arg("dst"),
@@ -108,17 +110,16 @@ PYBIND11_MODULE(libintx, m) {
     )
     ;
 
-
-
+#ifdef LIBINTX_GPU
   auto gpu = m.def_submodule("gpu");
-
   gpu.def(
-    "eri",
-    &libintx::python::eri::engine,
+    "aoeri",
+    &libintx::python::ao::engine,
     py::arg("centers"),
     py::arg("bra"),
     py::arg("ket"),
     py::arg("stream")=0
   );
+#endif
 
 }
