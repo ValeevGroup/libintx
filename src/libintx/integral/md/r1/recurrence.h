@@ -23,7 +23,7 @@ namespace libintx::md::r1 {
 
     constexpr Recurrence() = default;
 
-    LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
+    LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
     constexpr auto operator[](int idx) const {
       return gpu::ldg(this->table+idx);
     }
@@ -54,7 +54,7 @@ namespace libintx::md::r1 {
   };
 
   template<int L, int Max, typename G>
-  LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
   void compute(
     const Recurrence<Max> &recurrence,
     const array<double,3> &PQ,

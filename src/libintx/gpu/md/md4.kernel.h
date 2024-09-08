@@ -262,7 +262,7 @@ namespace libintx::gpu::md::kernel {
       return reinterpret_cast<Shmem*>(shmem);
     }
 
-    __device__ LIBINTX_GPU_FORCEINLINE
+    __device__ LIBINTX_ALWAYS_INLINE
     void operator()(
       const Bra &bra,
       const Ket &ket,
@@ -401,7 +401,7 @@ namespace libintx::gpu::md::kernel {
       //double p[ncart(A+B)]; exclude from reg count
     };
 
-    __device__ LIBINTX_GPU_FORCEINLINE
+    __device__ LIBINTX_ALWAYS_INLINE
     void operator()(
       size_t Nij, size_t Nkl,
       auto &&ABp,

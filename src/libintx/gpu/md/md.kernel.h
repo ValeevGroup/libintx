@@ -170,7 +170,7 @@ namespace libintx::gpu::md::kernel {
 
     template<typename ... Args>
     __device__
-    LIBINTX_GPU_FORCEINLINE
+    LIBINTX_ALWAYS_INLINE
     void operator()(
       const Bra &bra,
       const Ket &ket,
@@ -480,7 +480,7 @@ namespace libintx::gpu::md::kernel {
     };
 
     __device__
-    LIBINTX_GPU_FORCEINLINE
+    LIBINTX_ALWAYS_INLINE
     void operator()(
       const Bra &bra, const int &kab,
       const Ket &ket,

@@ -27,7 +27,7 @@ template<int P, int Q>
 struct visitor {
 
   template<typename F, class R>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr static void apply1(F &&f, const R &r) {
     //printf("%i,%i,%i\n", P, Q, r.L);
     apply<0>(f,r);
@@ -37,7 +37,7 @@ struct visitor {
   }
 
   template<int K, typename F, class R>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr static void apply(F &&f, const R &r) {
     constexpr bool valid = (
       K <= Q &&
@@ -48,7 +48,7 @@ struct visitor {
   }
 
   template<int QK, int Idx, typename F, class R>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr static void apply(F &&f, const R &r) {
     constexpr auto q = cartesian::orbital<QK,Idx>();
     if constexpr (q <= R::orbital) {
@@ -65,7 +65,7 @@ struct visitor {
 
 
 template<int Axis, int I, int J, int K, int M, typename ... Rs>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 auto r1_plus_axis(const auto& PQ, R<I,J,K,M> r1, std::tuple<Rs...> rs) {
   constexpr int X = (Axis == 0);
   constexpr int Y = (Axis == 1);
@@ -85,7 +85,7 @@ auto r1_plus_axis(const auto& PQ, R<I,J,K,M> r1, std::tuple<Rs...> rs) {
 }
 
 template<Order Order, int I, int J, int K, class F, typename ... R2, typename ... R1>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 void visit(F f, const auto& PQ,
            std::tuple<R2...> r2,
            const R<I,J,K,0> &r1_0,
@@ -112,19 +112,19 @@ void visit(F f, const auto& PQ,
 }
 
 template<Order Order, class F, int N, std::size_t ... Idx>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 void visit(F f, const auto& PQ, const auto (&s)[N], std::index_sequence<Idx...>) {
   visit<Order,0,0,0>(f, PQ, std::tuple<>{}, R<0,0,0,Idx>{ s[Idx] }...);
 }
 
 template<int L, Order Order, int N, class F>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 void visit(F f, const auto& PQ, const auto (&s)[N]) {
   visit<Order>(f, PQ, s, std::make_index_sequence<L+1>());
 }
 
 template<int L, Order Order = Order::BreadthFirst>
-LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
 void compute(const auto &PQ, const auto &s, auto* __restrict__ r1) {
   auto f = [&](auto r) constexpr {
     if constexpr (L >= r.L) r1[r.index] = r.value;
@@ -133,7 +133,7 @@ void compute(const auto &PQ, const auto &s, auto* __restrict__ r1) {
 }
 
 template<int L, Order Order = r1::Order::BreadthFirst>
-LIBINTX_GPU_DEVICE LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
 void compute1(const auto &PQ, const auto &s, auto* __restrict__ r1) {
   auto f = [&](auto r) constexpr {
     if constexpr (L == r.L) r1[r.index] = r.value;

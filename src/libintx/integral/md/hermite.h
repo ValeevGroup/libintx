@@ -138,7 +138,7 @@ namespace libintx::md {
   };
 
   template<int A, int B>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   void hermite_to_pure(auto &&S, auto &&T) {
     constexpr auto a = pure::orbitals<A>();
     constexpr auto b = pure::orbitals<B>();

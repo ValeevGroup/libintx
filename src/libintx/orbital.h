@@ -65,21 +65,21 @@ constexpr inline int ncart(int M, int L) {
 }
 
 template<typename Index = int>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr int index(Index i, Index j, Index k) {
   const auto jk = j+k;
   return (jk*(jk+1))/2 + k;
 }
 
 template<typename Index>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr int index(Index L) {
   return (L*(L+1)*(L+2))/6;
 }
 
 // orbital index relative to shell L
 template<int L, typename Index = int>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr int index(Index i, Index j, Index k) {
   return (index(i+j+k) + index(i,j,k) - index(L));
 }
@@ -89,7 +89,7 @@ struct alignas(4) Orbital {
   struct Axis {
     int axis;
     int value = 1;
-    LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+    LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
     constexpr operator int() const {
       return axis;
     }
@@ -104,29 +104,29 @@ struct alignas(4) Orbital {
   }
 
   template<size_t Idx>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr auto get() const {
     return lmn[Idx];
   }
 
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr auto& operator[](int k) {
     return lmn[k];
   }
 
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr const auto& operator[](int k) const {
     return lmn[k];
   }
 
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr Orbital operator-(const Axis &x) const {
     Orbital p = *this;
     p.lmn[x] -= x.value;
     return p;
   }
 
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   constexpr Orbital operator+(const Axis &x) const {
     Orbital p = *this;
     p.lmn[x] += x.value;
@@ -135,20 +135,20 @@ struct alignas(4) Orbital {
 
 };
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr int index(const Orbital &t) {
   auto [i,j,k] = t;
   return cartesian::index(i,j,k);
 }
 
 template<int L>
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr auto index(const Orbital &t) {
   const auto [i,j,k] = t;
   return cartesian::index<L>(i,j,k);
 }
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr Orbital operator+(const Orbital &p, const Orbital &q) {
   return Orbital{{
     uint8_t(p[0] + q[0]),
@@ -157,7 +157,7 @@ constexpr Orbital operator+(const Orbital &p, const Orbital &q) {
   }};
 }
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr Orbital operator-(const Orbital &p, const Orbital &q) {
   return Orbital{{
     uint8_t(p[0] - q[0]),
@@ -166,7 +166,7 @@ constexpr Orbital operator-(const Orbital &p, const Orbital &q) {
   }};
 }
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr bool operator<=(const Orbital &p, const Orbital &q) {
   return ((p[0] <= q[0]) && (p[1] <= q[1]) && (p[2] <= q[2]));
 }
@@ -215,30 +215,30 @@ constexpr auto orbitals2 = make_array<Orbital>(
   index_sequence<std::max(XMAX,2*LMAX)>
 );
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr const Orbital* begin(int L) {
   assert(index(L+1) <= (int)orbitals2.size());
   return &orbitals2[0]+index(L);
 }
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr const Orbital* end(int L) {
   assert(index(L+1) <= (int)orbitals2.size());
   return &orbitals2[0]+index(L+1);
 }
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr const Orbital& orbital(int L, int idx) {
   return begin(L)[idx];
 }
 
 // template<int L>
-// LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 // constexpr const Orbital& orbital(int idx) {
 //   return begin(L)[idx];
 // }
 
-// LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 // constexpr const Orbital& orbital(int idx) {
 //   assert(idx < (int)orbital_list.size());
 //   return orbital_list[idx];
@@ -349,7 +349,7 @@ constexpr auto index1(const Orbital &h) {
   return index1(h[0], h[1], h[2]);
 }
 
-// LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 // constexpr auto orbitals(int L) {
 //   return orbital_range(cartesian::begin(0), cartesian::end(L));
 // }
@@ -373,7 +373,7 @@ constexpr auto orbitals1 = []() {
  }();
 
 // template<int L = std::max(XMAX+2*LMAX,4*LMAX)>
-// LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+// LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 // constexpr const auto& orbital(int idx) {
 //   constexpr auto orbitals = hermite::orbitals<L>;
 //   assert(idx < orbitals.size());

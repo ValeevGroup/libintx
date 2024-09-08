@@ -76,7 +76,7 @@ constexpr inline double coefficient(int l, int m, int lx, int ly, int lz) {
 
 }
 
-LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
 constexpr double coefficient(const pure::Orbital &p, const cartesian::Orbital &c) {
   auto [l,m] = p;
   auto [x,y,z] = c;

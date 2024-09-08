@@ -50,7 +50,7 @@ namespace libintx::pure {
 
   public:
 
-    LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+    LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
     static void cartesian_to_pure(auto &&S, auto &&T) {
       constexpr auto p = pure::orbitals<L>();
       constexpr auto c = cartesian::orbitals<L>();
@@ -73,7 +73,7 @@ namespace libintx::pure {
       );
     }
 
-    LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+    LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
     static void pure_to_cartesian(auto &&S, auto &&T) {
       constexpr auto p = pure::orbitals<L>();
       constexpr auto c = cartesian::orbitals<L>();
@@ -120,7 +120,7 @@ namespace libintx::pure {
   }
 
   template<int L>
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   void cartesian_to_pure(auto &&C, auto &&P) {
     Transform<L>::cartesian_to_pure(C,P);
   }
@@ -129,7 +129,7 @@ namespace libintx::pure {
 
 namespace libintx::pure::reference {
 
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   void transform(int A, int B, const auto &Cart, auto &&Pure) {
     for (int ib = 0; ib < npure(B); ++ib) {
       for (int ia = 0; ia < npure(A); ++ia) {
@@ -149,7 +149,7 @@ namespace libintx::pure::reference {
     }
   }
 
-  LIBINTX_GPU_ENABLED LIBINTX_GPU_FORCEINLINE
+  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
   void transform(int A, int B, int C, int D, const auto &Cart, auto &&Pure) {
     for (int id = 0; id < npure(D); ++id) {
       for (int ic = 0; ic < npure(C); ++ic) {

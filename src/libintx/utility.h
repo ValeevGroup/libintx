@@ -73,13 +73,13 @@ namespace libintx {
   }
 
   template<typename F, typename T, T ... Is>
-  LIBINTX_GPU_FORCEINLINE
+  LIBINTX_ALWAYS_INLINE
   constexpr void foreach(const std::integer_sequence<T,Is...>&, F &&f) {
     ( f(std::integral_constant<T,Is>{}), ... );
 }
 
   template<typename F, typename T, T ... First, T ... Second>
-  LIBINTX_GPU_FORCEINLINE
+  LIBINTX_ALWAYS_INLINE
   constexpr void foreach2(
     std::integer_sequence<T,First...> first,
     std::integer_sequence<T,Second...> second,

@@ -14,9 +14,9 @@
 #endif
 
 #if defined(__CUDACC__)
-#define LIBINTX_GPU_FORCEINLINE __forceinline__
+#define LIBINTX_ALWAYS_INLINE __forceinline__
 #else
-#define LIBINTX_GPU_FORCEINLINE inline
+#define LIBINTX_ALWAYS_INLINE inline
 #endif
 
 namespace boys {
