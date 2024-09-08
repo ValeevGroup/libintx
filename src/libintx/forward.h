@@ -28,6 +28,8 @@ namespace boys {
 
 namespace libintx {
 
+  static constexpr struct None {} None;
+
   template<typename T, int N>
   struct array;
 
@@ -37,7 +39,7 @@ namespace libintx {
   struct Basis;
   //struct Gaussian;
 
-  template<typename First, typename Second>
+  template<typename First, typename Second = First>
   struct pair {
     First first;
     Second second;
@@ -97,6 +99,47 @@ namespace libintx {
   private:
     T begin_, end_;
   };
+
+  template<typename Bra, typename Ket = Bra>
+  struct BraKet {
+    Bra bra;
+    Ket ket;
+    // constexpr operator std::pair<First,Second>() const {
+    //   return { first, second };
+    // }
+  };
+
+  template<typename T = int>
+  struct Phase {
+    const T value;
+  };
+
+  enum class Parity {
+    Even,
+    Odd
+  };
+
+  enum class Operator {
+    Overlap,
+    Kinetic,
+    Nuclear,
+    Coulomb
+  };
+
+#define LIBINTX_OPERATOR(OPERATOR)                      \
+  static constexpr struct OPERATOR {                    \
+    struct Operator {                                   \
+      struct Parameters;                                \
+    };                                                  \
+    constexpr operator libintx::Operator() const {      \
+      return libintx::Operator::OPERATOR;               \
+    }                                                   \
+  } OPERATOR
+
+  LIBINTX_OPERATOR(Overlap);
+  LIBINTX_OPERATOR(Kinetic);
+  LIBINTX_OPERATOR(Nuclear);
+  LIBINTX_OPERATOR(Coulomb);
 
   template<int ... Args>
   struct IntegralEngine;
