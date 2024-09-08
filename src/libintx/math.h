@@ -11,8 +11,12 @@ namespace libintx::math {
   using std::sqrt;
 
   // from mpmath import mp; mp.dps=50; mp.sqrt(4*mp.power(mp.pi,5))
+  constexpr double pi = double{3.1415926535897932384626433832795028841971693993751068};
   constexpr double sqrt_4_pi5 = double{34.986836655249725692525643359743107557510223563488};
   constexpr double sqrt_pi3 = double{5.56832799683170784528481798212};
+
+  template<typename T>
+  constexpr auto infinity = std::numeric_limits<T>::infinity();
 
   /// df_Kminus1[k] = (k-1)!!
   static constexpr int64_t factorial2_Kminus1[31] = {
