@@ -60,7 +60,7 @@ auto run(
     printf("Int/s=%4.2e ", (Nij*Nkl)*md.time);
 
 #ifdef LIBINTX_TEST_REFERENCE
-    double tref = reference::time(Nij*Nkl, shell(bra[0]), shell(bra[1]), shell(ket[0]), shell(ket[1]));
+    double tref = reference::time(Nij*Nkl, bra[0], bra[1], ket[0], ket[1]);
     printf("T(Ref)=%f ", tref);
     printf("T(Ref/MD)=%f ", tref*md.time);
 #endif

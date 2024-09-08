@@ -18,8 +18,8 @@ namespace libintx::gpu::jengine::md {
     using libintx::JEngine::Screening;
 
     JEngine(
-      const std::vector< std::tuple< Gaussian, Double<3> > > &basis,
-      const std::vector< std::tuple< Gaussian, Double<3> > > &df_basis,
+      const Basis<Gaussian> &basis,
+      const Basis<Gaussian> &df_basis,
       std::function<void(double*)> v_transform,
       std::shared_ptr<const Screening> screening = nullptr
     );

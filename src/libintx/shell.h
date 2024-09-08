@@ -5,15 +5,27 @@
 #include "libintx/array.h"
 #include "libintx/math.h"
 #include "libintx/config.h"
+#include "libintx/utility.h"
 
 #include <cassert>
 #include <cstdint>
-#include <initializer_list>
-#include <strings.h> // ffs
 #include <vector>
 #include <stdexcept>
+#include <functional>
+
+namespace libintx::gto {
+
+  template<typename T>
+  struct Primitive;
+
+  template<typename Shell, typename T = double>
+  struct alignas(32) Gaussian;
+
+} // libintx::gto
 
 namespace libintx {
+
+using Gaussian = gto::Gaussian<Shell>;
 
 struct Shell {
   //using Orbital = shell::Orbital;
@@ -44,41 +56,143 @@ constexpr inline int nbf(const Shell &s) {
   return (s.pure ? npure(s) : ncart(s));
 }
 
+LIBINTX_GPU_ENABLED
+constexpr inline int nbf(const Shell &a, const Shell &b) {
+  return nbf(a)*nbf(b);
+}
+
+template<typename Shell>
+struct Basis {
+
+  Basis() = default;
+
+  // explicit Basis(const std::vector<Shell> &shells) {
+  //   this->assign(shells.begin(), shells.end());
+  // }
+
+  void push_back(const Shell &s) {
+    this->shells_.push_back(s);
+    using libintx::nbf;
+    int first = (int)this->nbf_;
+    int last = first + nbf(s);
+    ranges_.push_back({first,last});
+    this->nbf_ = (size_t)last;
+  }
+
+  auto empty() const { return shells_.empty(); }
+  auto size() const { return shells_.size(); }
+  auto nbf() const { return nbf_; }
+
+  auto begin() const { return shells_.begin(); }
+  auto end() const { return shells_.end(); }
+  const auto& operator[](size_t i) const { return shells_.at(i); }
+
+  const auto& ranges() const { return ranges_; }
+  auto range(size_t i) const { return ranges_.at(i); }
+
+  void erase(auto &&f) {
+    auto shells = std::move(shells_);
+    *this = Basis{};
+    erase_if(shells, f);
+    for (auto &s : shells) {
+      this->push_back(s);
+    }
+  }
+
+  auto max() const {
+    struct Max {
+      int L = -1;
+      int K = 0;
+    } max;
+    for (auto &s : this->shells_) {
+      max.L = std::max(max.L, s.L);
+      max.K = std::max(max.K, nprim(s));
+    }
+    return max;
+  }
+
+private:
+  std::vector<Shell> shells_;
+  size_t nbf_ = 0;
+  std::vector< libintx::range<int> > ranges_;
+
+};
+
+template<typename Shell = Gaussian, typename Z, typename R, typename ... Args>
+auto make_basis(
+  const std::vector< std::tuple<Z,R> > &atoms,
+  const auto &basis_set,
+  bool normalize = true)
+{
+  Basis<Shell> basis;
+  for (auto [z,r] : atoms) {
+    for (auto& [L,p] : basis_set.at(z)) {
+      auto& [ r0,r1,r2 ] = r;
+      Shell g(L, {r0,r1,r2}, p);
+      if (normalize) g = normalized<Shell>(g);
+      basis.push_back(g);
+    }
+  }
+  return basis;
+}
+
+template<typename T, typename Shell>
+std::vector<T> make_basis(
+  const Basis<Shell> &first,
+  const Basis<Shell> &second,
+  const std::vector<Index2> &idx)
+{
+  std::vector<T> v;
+  v.reserve(idx.size());
+  for (auto &[i,j] : idx) {
+    v.push_back(T{first[i], second[j] });
+  }
+  return v;
+}
+
+}
+
+namespace libintx::gto {
+
+template<typename T>
+struct Primitive {
+  T a = 1, C = NAN;
+};
+
+template<typename T, int KMAX>
+auto make_primitives(const std::vector< Primitive<T> > &v) {
+  if (v.size() > KMAX) {
+    throw std::domain_error("libintx::gto::make_primitives: K > KMAX");
+  }
+  libintx::static_vector<Primitive<T>,KMAX> primitives = {{ }, v.size() };
+  std::copy(v.begin(), v.end(), primitives.data);
+  return primitives;
+}
+
+
+template<typename Shell, typename T>
 struct alignas(32) Gaussian : Shell {
 
   constexpr static int KMAX = libintx::KMAX;
 
-  struct Primitive {
-    double a = 1, C = NAN;
-    template<int N>
-    static auto array(std::vector<Primitive> v) {
-      assert(v.size() <= N);
-      libintx::array<Primitive,N> primitives;
-      for (size_t k = 0; k < v.size(); ++k) {
-        primitives[k] = v[k];
-      }
-      return primitives;
-    }
-  };
+  using Primitive = gto::Primitive<T>;
 
-  array<Primitive,KMAX> prims = {};
+  array<T,3> r;
+  static_vector<Primitive,KMAX> prims = {};
   int K = 0;
 
   //LIBINTX_GPU_ENABLED
   Gaussian() = default;
 
-  Gaussian(int L, std::vector<Primitive> ps, bool pure = true)
-    : Shell({L,(int)pure}), K(ps.size())
+  Gaussian(int L, const array<T,3> &r, std::vector<Primitive> ps, bool pure = true)
+    : Shell({L,(int)pure}), r(r), prims(make_primitives<T,KMAX>(ps)), K(prims.size())
   {
-    if (ps.size() > KMAX) {
-      throw std::domain_error("libintx::Gaussian: K > KMAX");
-    }
-    std::copy(ps.begin(), ps.end(), prims.data);
   }
 
 };
 
-inline Gaussian::Primitive normalized(int L, Gaussian::Primitive p) {
+template<typename T>
+auto normalized(int L, Primitive<T> p) {
   using math::factorial2_Kminus1;
   using math::sqrt_pi3;
   using math::pow;
@@ -94,18 +208,20 @@ inline Gaussian::Primitive normalized(int L, Gaussian::Primitive p) {
     (sqrt_pi3 * factorial2_Kminus1[2*L] )
   );
   double C = f*p.C;
-  return Gaussian::Primitive{alpha, C };
+  return Primitive<T>{alpha, C };
 }
 
-inline Gaussian normalized(const Gaussian &s) {
-  std::vector<Gaussian::Primitive> prims(s.K);
+template<typename S, typename T>
+Gaussian<Shell,T> normalized(const Gaussian<Shell,T> &s) {
+  std::vector<Primitive<T>> prims(s.K);
   for (int i = 0; i < s.K; ++i) {
     prims[i] = normalized(s.L, s.prims[i]);
   }
-  return Gaussian(s.L, prims, s.pure);
+  return Gaussian<Shell,T>(s.L, s.r, prims, s.pure);
 }
 
-inline auto normalization_factor(const Gaussian &g) {
+template<typename S, typename T>
+auto normalization_factor(const Gaussian<Shell,T> &g) {
   using math::factorial2_Kminus1;
   using math::sqrt_pi3;
   using std::sqrt;
@@ -127,68 +243,58 @@ inline auto normalization_factor(const Gaussian &g) {
   return 1/sqrt(norm);
 }
 
-
-inline bool operator==(const Gaussian::Primitive &lhs, const Gaussian::Primitive &rhs) {
-  return (lhs.a == rhs.a && lhs.C == rhs.C);
-}
-
-inline bool operator==(const Gaussian &lhs, const Gaussian &rhs) {
-  if (!((const Shell&)lhs == (const Shell&)rhs)) return false;
-  if (lhs.K != rhs.K) return false;
-  for (int k = 0; k < lhs.K; ++k) {
-    if (!(lhs.prims[k] == rhs.prims[k])) return false;
-  }
-  return true;
-}
-
 template<typename Shell>
-using Basis = std::vector< std::tuple<Shell,array<double,3> > >;
-
-template<typename Shell>
-LIBINTX_GPU_ENABLED
-constexpr auto& shell(const std::tuple< Shell,array<double,3> > &g) {
-  return std::get<0>(g);
-}
-
-LIBINTX_GPU_ENABLED
-inline constexpr auto& exp(const std::tuple< Gaussian, array<double,3> > &g, int k) {
-  return shell(g).prims[k].a;
+constexpr auto orbitals(const Shell &g) {
+  return cartesian::orbitals(g.L);
 }
 
 template<typename Shell>
 LIBINTX_GPU_ENABLED
-constexpr auto& center(const std::tuple< Shell,array<double,3> > &g) {
-  return std::get<1>(g);
+inline constexpr auto nprim(const Shell &g) {
+  return g.K;
 }
 
 template<typename Shell>
-int nbf(const std::tuple< Shell,array<double,3> > &g) {
-  return nbf(std::get<0>(g));
+LIBINTX_GPU_ENABLED
+inline constexpr auto primitives(const Shell &g) {
+  return g.prims;
 }
 
 template<typename Shell>
-size_t nbf(Basis<Shell> &basis) {
-  size_t n = 0;
-  for (auto &[a,r] : basis) {
-    n += nbf(a);
-  }
-  return n;
+LIBINTX_GPU_ENABLED
+inline constexpr auto& primitive(const Shell &g, int k) {
+  return g.prims[k];
 }
 
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+inline constexpr auto& exp(const Shell &g, int k) {
+  return g.prims[k].a;
+}
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+inline constexpr auto& coeff(const Shell &g, int k) {
+  return g.prims[k].C;
+}
+
+template<typename Shell>
+LIBINTX_GPU_ENABLED
+constexpr auto& center(const Shell &g) {
+  return g.r;
+}
+
+} // libintx::gto
+
+namespace libintx {
 
 template<typename S>
 struct Unit : libintx::Shell {
   using Primitive = typename S::Primitive;
-  static constexpr array<Primitive,1> prims = {{ 0, 1 }};
+  static constexpr array<Primitive,1> prims = {{{ 0, 1 }}};
   static constexpr int K = 1;
   constexpr Unit() : libintx::Shell({0,true}) {}
 };
-
-template<typename Shell>
-LIBINTX_GPU_ENABLED
-constexpr inline auto shell(const Unit<Shell> &u) {
-  return u;
-}
 
 template<typename Shell>
 constexpr int nbf(const Unit<Shell> &u) {
@@ -206,7 +312,6 @@ LIBINTX_GPU_ENABLED
 constexpr inline auto center(const Unit<Shell> &u) {
   return array<double,3>{ 0, 0, 0 };
 }
-
 
 }
 

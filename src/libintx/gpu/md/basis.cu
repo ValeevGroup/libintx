@@ -334,7 +334,7 @@ namespace libintx::gpu::md {
     ab.reserve(pairs.size());
     for (auto [i,j] : pairs) {
       Gaussian2 g = {
-        shell(A[i]), shell(B[j]),
+        A[i], B[j],
         { center(A[i]), center(B[j]) }
       };
       ab.push_back(g);
@@ -377,13 +377,13 @@ namespace libintx::gpu::md {
     libintx_assert(!A.empty());
     libintx_assert(!idx.empty());
 
-    int L = shell(A[idx.front()]).L;
-    int K = shell(A[idx.front()]).K;
+    int L = A[idx.front()].L;
+    int K = A[idx.front()].K;
     int N = idx.size();
 
     for (auto i : idx) {
-      libintx_assert(shell(A[i]).K == K);
-      libintx_assert(shell(A[i]).L == L);
+      libintx_assert(A[i].K == K);
+      libintx_assert(A[i].L == L);
     }
 
     std::vector<Hermite> a;
@@ -391,7 +391,7 @@ namespace libintx::gpu::md {
     for (int k = 0; k < K; ++k) {
       for (auto i : idx) {
         auto &r = center(A[i]);
-        auto &g = shell(A[i]).prims;
+        auto &g = A[i].prims;
         auto e = g[k].a;
         auto C = g[k].C;
         a.push_back( { e, C, r, 1.0/(2*e) } );

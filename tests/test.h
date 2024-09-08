@@ -117,8 +117,9 @@ namespace libintx::test {
       //ps[k] = { 0.5+k, K*(k+1.0) };
       //printf("g[%i,%i] = %f*e**%f\n", L, k, ps[k].C, ps[k].a);
     }
+    auto r = test::random<double,3>(-0.25,0.25);
     return (
-      Gaussian(L, ps, pure)
+      Gaussian(L, r, ps, pure)
     );
   }
 
@@ -128,8 +129,7 @@ namespace libintx::test {
     bool pure = true;
     for (int i = 0; i < (int)N; ++i) {
       auto a = test::gaussian(std::get<0>(L), std::get<0>(K), pure);
-      auto r0 = test::random<double,3>(-0.25,0.25);
-      basis.push_back({a,r0});
+      basis.push_back(a);
       idx.push_back(Index1{i});
     }
     return std::tuple{basis,idx};
@@ -142,10 +142,8 @@ namespace libintx::test {
     for (int i = 0; i < (int)N; ++i) {
       auto a = test::gaussian(L.first, K.first, pure);
       auto b = test::gaussian(L.second, K.second, pure);
-      auto r0 = test::random<double,3>(-0.25,0.25);
-      auto r1 = test::random<double,3>(-0.25,0.25);
-      basis.push_back({a,r0});
-      basis.push_back({b,r1});
+      basis.push_back(a);
+      basis.push_back(b);
       idx.push_back(Index2{i*2,i*2+1});
     }
     return std::tuple{basis,idx};

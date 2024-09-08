@@ -36,7 +36,7 @@ namespace libintx::python {
   }
 
   auto basis_cast(const std::vector<PyGaussian> &pybasis) {
-    std::vector< std::tuple<libintx::Gaussian,libintx::array<double,3> > > basis;
+    Basis<libintx::Gaussian> basis;
     for (auto &g : pybasis) {
       basis.push_back(make_gaussian(g));
     }

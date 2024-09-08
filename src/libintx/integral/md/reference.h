@@ -110,17 +110,17 @@ namespace libintx::md::reference {
     auto &[B,kb] = Bk;
 
     auto prim = [](const auto &g, int k) {
-      return shell(g).prims[k];
+      return g.prims[k];
     };
 
-    int Bra = shell(A).L + shell(B).L;
-    int Ket = shell(C).L + shell(D).L;
+    int Bra = A.L + B.L;
+    int Ket = C.L + D.L;
 
     auto AB = center(A) - center(B);
     auto CD = center(C) - center(D);
 
-    for (int kd = 0; kd < shell(D).K; ++kd) {
-      for (int kc = 0; kc < shell(C).K; ++kc) {
+    for (int kd = 0; kd < D.K; ++kd) {
+      for (int kc = 0; kc < C.K; ++kc) {
 
         std::vector<double> r1(nherm2(Bra+Ket));
         {
@@ -148,8 +148,8 @@ namespace libintx::md::reference {
           }
         }
 
-        for (auto d : cartesian::shell(shell(D).L)) {
-          for (auto c : cartesian::shell(shell(C).L)) {
+        for (auto d : orbitals(D.L)) {
+          for (auto c : orbitals(C.L)) {
             for (int iq = 0; iq < nherm2(Ket); ++iq) {
               auto q =  reference::orbital(iq);
               double e = 1;
@@ -176,19 +176,19 @@ namespace libintx::md::reference {
   void compute(const auto &A, const auto &B, const auto &C, const auto &D, auto &ABCD) {
 
     auto prim = [](const auto &g, int k) {
-      return shell(g).prims[k];
+      return g.prims[k];
     };
 
-    int Bra = shell(A).L + shell(B).L;
-    int Ket = shell(C).L + shell(D).L;
+    int Bra = A.L + B.L;
+    int Ket = C.L + D.L;
 
     auto AB = center(A) - center(B);
     auto CD = center(C) - center(D);
 
-    for (int kd = 0; kd < shell(D).K; ++kd) {
-      for (int kc = 0; kc < shell(C).K; ++kc) {
-        for (int kb = 0; kb < shell(B).K; ++kb) {
-          for (int ka = 0; ka < shell(A).K; ++ka) {
+    for (int kd = 0; kd < D.K; ++kd) {
+      for (int kc = 0; kc < C.K; ++kc) {
+        for (int kb = 0; kb < B.K; ++kb) {
+          for (int ka = 0; ka < A.K; ++ka) {
 
             std::vector<double> r1(nherm2(Bra+Ket));
             {
@@ -216,10 +216,10 @@ namespace libintx::md::reference {
               }
             }
 
-            for (auto d : cartesian::shell(shell(D).L)) {
-              for (auto c : cartesian::shell(shell(C).L)) {
-                for (auto b : cartesian::shell(shell(B).L)) {
-                  for (auto a : cartesian::shell(shell(A).L)) {
+            for (auto d : orbitals(D)) {
+              for (auto c : orbitals(C)) {
+                for (auto b : orbitals(B)) {
+                  for (auto a : orbitals(A)) {
                     double v = 0;
                     for (int iq = 0; iq < nherm2(Ket); ++iq) {
                       auto q =  reference::orbital(iq);

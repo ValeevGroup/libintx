@@ -32,7 +32,10 @@ namespace libintx {
   struct array;
 
   struct Shell;
-  struct Gaussian;
+
+  template<typename>
+  struct Basis;
+  //struct Gaussian;
 
   template<typename First, typename Second>
   struct pair {

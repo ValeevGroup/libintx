@@ -7,8 +7,8 @@
 namespace libintx::gpu {
 
   std::unique_ptr<libintx::JEngine> make_jengine(
-    const std::vector< std::tuple< Gaussian, array<double,3> > > &basis,
-    const std::vector< std::tuple< Gaussian, array<double,3> > > &df_basis,
+    const Basis<Gaussian> &basis,
+    const Basis<Gaussian> &df_basis,
     std::function<void(double*)> V_linv,
     std::shared_ptr<const libintx::JEngine::Screening> screening = nullptr
   );

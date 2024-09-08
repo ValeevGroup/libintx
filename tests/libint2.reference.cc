@@ -28,7 +28,7 @@ namespace libintx::reference {
     }
     if (exponents.empty()) throw;
     if (coeff.empty()) throw;
-    std::array<double,3> center = {};
+    std::array<double,3> center = cast(g.r);
     ::libint2::Shell::do_enforce_unit_normalization(false);
     auto s = ::libint2::Shell(
       exponents,

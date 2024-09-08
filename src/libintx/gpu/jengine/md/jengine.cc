@@ -51,8 +51,8 @@ namespace libintx::gpu::jengine::md {
   }
 
   JEngine::JEngine(
-    const std::vector< std::tuple< Gaussian, Double<3> > > &basis,
-    const std::vector< std::tuple< Gaussian, Double<3> > > &df_basis,
+    const Basis<Gaussian> &basis,
+    const Basis<Gaussian> &df_basis,
     std::function<void(double*)> v_transform,
     std::shared_ptr<const Screening> screening)
     : v_transform_(v_transform),
@@ -60,7 +60,7 @@ namespace libintx::gpu::jengine::md {
   {
     // DF-ket
     for (size_t i = 0, kbf = 0; i < df_basis.size(); ++i) {
-      auto [x,r] = df_basis[i];
+      auto &x = df_basis[i];
       int l = x.L;
       if (Q_.blocks.size() < size_t(l+1)) {
         Q_.blocks.resize(l+1);
@@ -74,7 +74,7 @@ namespace libintx::gpu::jengine::md {
         auto [a,C] = x.prims[k];
         Primitive2 q = {
                         .exp = { a, 0 },
-                        .r = { r, {} },
+                        .r = { x.r, {} },
                         .C = C,
                         .norm = max
                         // .kbf = (int)kbf,
@@ -93,7 +93,7 @@ namespace libintx::gpu::jengine::md {
         Shell{
          .L = (uint8_t)l,
          .pure = (bool)x.pure,
-         .r = r,
+         .r = x.r,
          .prims = x.prims,
          .K = x.K,
          .range = { kbf, kbf+nbf }
@@ -117,14 +117,14 @@ namespace libintx::gpu::jengine::md {
 
     int pmax = 0;
     for (size_t i = 0, kbf = 0; i < basis.size(); ++i) {
-      const auto &[a,r] = basis[i];
+      const auto &a = basis[i];
       //printf("obs %i L=%i K=%i\n", i, a.L, a.K);
       Shell s;
       s.L = a.L;
       s.pure = a.pure;
       s.prims = a.prims;
       s.K = a.K;
-      s.r = r;
+      s.r = a.r;
       s.range = { kbf, kbf+nbf(s) };
       AB_.basis.push_back(s);
       pmax = std::max(pmax, 2*s.L);
@@ -634,8 +634,8 @@ namespace libintx::gpu::jengine::md {
 }
 
 std::unique_ptr<libintx::JEngine> libintx::gpu::make_jengine(
-  const std::vector< std::tuple< Gaussian, Double<3> > > &basis,
-  const std::vector< std::tuple< Gaussian, Double<3> > > &df_basis,
+  const Basis<Gaussian> &basis,
+  const Basis<Gaussian> &df_basis,
   std::function<void(double*)> v_transform,
   std::shared_ptr<const libintx::JEngine::Screening> screening)
 {
