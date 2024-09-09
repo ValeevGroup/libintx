@@ -2,12 +2,55 @@
 #define LIBINTX_AO_ENGINE_H
 
 #include "libintx/forward.h"
+#include "libintx/shell.h"
 
 #include <vector>
 #include <array>
+#include <tuple>
 #include <cstddef>
+#include <functional>
+#include <memory>
+
+namespace libintx {
+
+  struct Overlap::Operator::Parameters {
+  };
+
+  struct Kinetic::Operator::Parameters {
+  };
+
+  struct Coulomb::Operator::Parameters {
+  };
+
+  struct Nuclear::Operator::Parameters {
+    using Zr = std::tuple< int,std::array<double,3> >;
+    std::vector<Zr> centers;
+  };
+
+}
 
 namespace libintx::ao {
+
+  template<>
+  struct IntegralEngine<2> : IntegralEngine<> {
+
+    virtual ~IntegralEngine() = default;
+    virtual void set(const Nuclear::Operator::Parameters&) = 0;
+    virtual void compute(Operator, const std::vector<Index2>&, double*) = 0;
+
+    void overlap(const std::vector<Index2> &ij, double *V) {
+      this->compute(Overlap,ij,V);
+    };
+
+    void kinetic(const std::vector<Index2> &ij, double *V) {
+      this->compute(Kinetic,ij,V);
+    }
+
+    void nuclear(const std::vector<Index2> &ij, double *V) {
+      this->compute(Nuclear,ij,V);
+    }
+
+  };
 
   template<>
   struct IntegralEngine<3> : IntegralEngine<> {
@@ -48,6 +91,18 @@ namespace libintx::ao {
     ) = 0;
     size_t max_memory = 0;
   };
+
+  template<int ... Args>
+  std::unique_ptr< IntegralEngine<Args...> > integral_engine(
+    const Basis<Gaussian>&,
+    const Basis<Gaussian>&
+  ) = delete;
+
+  template<>
+  std::unique_ptr< IntegralEngine<2> > integral_engine(
+    const Basis<Gaussian>&,
+    const Basis<Gaussian>&
+  );
 
 }
 

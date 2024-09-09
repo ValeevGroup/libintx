@@ -2,9 +2,10 @@
 #define LIBINTX_MD_REFERENCE_H
 
 #include "libintx/boys/reference.h"
+#include "libintx/orbital.h"
+#include "libintx/forward.h"
 
 #include <utility>
-#include <tuple>
 #include <cmath>
 
 namespace libintx::md::reference {
@@ -16,20 +17,21 @@ namespace libintx::md::reference {
 
   constexpr auto orbital(int idx) {
     constexpr auto orbitals = hermite::orbitals2<max(XMAX,2*LMAX)+2*LMAX>;
-    assert(idx < orbitals.size());
+    assert((size_t)idx < orbitals.size());
     return orbitals[idx];
   }
 
   LIBINTX_GPU_ENABLED
   inline double E(int i, int j, int k, double a, double b, double R) {
+    //printf("E(%i,%i,%i)\n", i, j, k);
     auto p = a + b;
     assert(p);
     auto q = ((a ? a : 1)*(b ? b : 1))/p;
     assert(q);
     if (!a || !b) R = 0;
-    if ((k < 0) or (k > (i + j))) return 0;
+    if (k > (i + j)) return 0;
+    if ((k < 0) || (i < 0) || (j < 0)) return 0;
     if (i == 0 && j == 0 && k == 0) {
-      //printf("R=%f E(0)=%f\n", R, std::exp(-q*R*R));
       return 1;//std::exp(-q*R*R); // K_AB
     }
     if (i) {
@@ -93,6 +95,100 @@ namespace libintx::md::reference {
 
   }
 
+  template<Operator>
+  struct Integral;
+
+  template<>
+  struct Integral<Overlap> {
+    template<typename Orbital = Orbital>
+    static double compute(Orbital i, double ai, auto ri, Orbital j, double aj, auto rj, struct None = {}) {
+      auto r = ri-rj;
+      double v = 1;
+      v *= std::pow(math::pi/(ai+aj),1.5);
+      for (int ix = 0; ix < 3; ++ix) {
+        v *= std::exp(-ai*aj*r[ix]*r[ix]/(ai+aj));
+        v *= E(i[ix],j[ix],0,ai,aj,r[ix]);
+      }
+      return v;
+    }
+  };
+
+  template<>
+  struct Integral<Kinetic> {
+    static double compute(auto A, double a1, auto r1, auto B, double a2, auto r2, struct None = {}) {
+      Integral<Overlap> overlap;
+      double t = 0;
+      for (int ix = 0; ix < 3; ++ix) {
+        int ax = A[ix];
+        int bx = B[ix];
+        int abx = ax*bx;
+        Orbital dx = {0,0,0};
+        dx[ix] = 1;
+        t += 2*a1*a2*overlap.compute(A+dx,a1,r1,B+dx,a2,r2);
+        if (bx) t -= a1*bx*overlap.compute(A+dx,a1,r1,B-dx,a2,r2);
+        if (ax) t -= a2*ax*overlap.compute(A-dx,a1,r1,B+dx,a2,r2);
+        if (abx) t += 0.5*abx*overlap.compute(A-dx,a1,r1,B-dx,a2,r2);
+      }
+      return t;
+    }
+  };
+
+  template<>
+  struct Integral<Nuclear> {
+    static double compute(auto A, double a1, auto r1, auto B, double a2, auto r2, const auto &Cs) {
+      assert(!Cs.empty());
+      int L = A.L()+B.L();
+      auto P = center_of_charge(a1, r1, a2, r2);
+      double v = 0;
+      for (auto [Z,C] : Cs) {
+        std::vector<double> R(nherm2(L));
+        compute_r1(L, a1+a2, P-C, R);
+        for (int ip = 0; ip < nherm2(L); ++ip) {
+          auto p =  reference::orbital(ip);
+          double e = 1;
+          for (int i = 0; i < 3; ++i) {
+            e *= E(A[i], B[i], p[i], a1, a2, r1[i]-r2[i]);
+          }
+          v += -Z*e*R[ip];
+        }
+      }
+      v *= std::exp(-(a1*a2)/(a1+a2)*norm(r1,r2));
+      v *= 2*M_PI/(a1+a2);
+      // printf(
+      //   "%f, np.array([%f,%f,%f]), a2=%f, r2=np.array([%f,%f,%f]) v=%f\n",
+      //   a1, r1[0], r1[1], r1[2],
+      //   a2, r2[0], r2[1], r2[2],
+      //   v
+      // );
+      return v;
+    }
+  };
+
+  template<Operator Op>
+  inline void compute2(const auto &A, const auto &B, const auto& Params, auto &&V) {
+    using cartesian::orbitals;
+    using cartesian::index;
+    Integral<Op> integral;
+    for (auto a : orbitals(A)) {
+      for (auto b : orbitals(B)) {
+        double v = 0;
+        for (int kb = 0; kb < B.K; ++kb) {
+          for (int ka = 0; ka < A.K; ++ka) {
+            double C = 1;
+            C *= primitive(A,ka).C;
+            C *= primitive(B,kb).C;
+            v += C*integral.compute(
+              a,exp(A,ka),center(A),
+              b,exp(B,kb),center(B),
+              Params
+            );
+          }
+        }
+        V(index(a),index(b)) = v;
+      }
+    }
+  }
+
   void compute_p_q(int Bra, int Ket, const auto &r1, auto &pq) {
     for (int ip = 0; ip < nherm2(Bra); ++ip) {
       for (int iq = 0; iq < nherm2(Ket); ++iq) {
@@ -107,10 +203,6 @@ namespace libintx::md::reference {
 
     auto &[A,ka] = Ak;
     auto &[B,kb] = Bk;
-
-    auto prim = [](const auto &g, int k) {
-      return g.prims[k];
-    };
 
     int Bra = A.L + B.L;
     int Ket = C.L + D.L;
@@ -134,8 +226,8 @@ namespace libintx::md::reference {
           double pq = p*q;
           double K = 1;
           K *= 1/sqrt(pq*pq*(p+q));
-          K *= prim(A,ka).C*prim(B,kb).C;
-          K *= prim(C,kc).C*prim(D,kd).C;
+          K *= primitive(A,ka).C*primitive(B,kb).C;
+          K *= primitive(C,kc).C*primitive(D,kd).C;
           K *= std::exp(-(a*b)/p*norm(AB));
           K *= std::exp(-(c*d)/q*norm(CD));
           //K *= 2*std::pow(M_PI,2.5);
@@ -147,8 +239,8 @@ namespace libintx::md::reference {
           }
         }
 
-        for (auto d : orbitals(D.L)) {
-          for (auto c : orbitals(C.L)) {
+        for (auto d : cartesian::orbitals(D.L)) {
+          for (auto c : cartesian::orbitals(C.L)) {
             for (int iq = 0; iq < nherm2(Ket); ++iq) {
               auto q =  reference::orbital(iq);
               double e = 1;
@@ -174,10 +266,6 @@ namespace libintx::md::reference {
 
   void compute(const auto &A, const auto &B, const auto &C, const auto &D, auto &ABCD) {
 
-    auto prim = [](const auto &g, int k) {
-      return g.prims[k];
-    };
-
     int Bra = A.L + B.L;
     int Ket = C.L + D.L;
 
@@ -202,8 +290,8 @@ namespace libintx::md::reference {
               double pq = p*q;
               double K = 1;
               K *= 1/sqrt(pq*pq*(p+q));
-              K *= prim(A,ka).C*prim(B,kb).C;
-              K *= prim(C,kc).C*prim(D,kd).C;
+              K *= primitive(A,ka).C*primitive(B,kb).C;
+              K *= primitive(C,kc).C*primitive(D,kd).C;
               K *= std::exp(-(a*b)/p*norm(AB));
               K *= std::exp(-(c*d)/q*norm(CD));
               //K *= 2*std::pow(M_PI,2.5);
@@ -215,10 +303,10 @@ namespace libintx::md::reference {
               }
             }
 
-            for (auto d : orbitals(D)) {
-              for (auto c : orbitals(C)) {
-                for (auto b : orbitals(B)) {
-                  for (auto a : orbitals(A)) {
+            for (auto d : cartesian::orbitals(D.L)) {
+              for (auto c : cartesian::orbitals(C.L)) {
+                for (auto b : cartesian::orbitals(B.L)) {
+                  for (auto a : cartesian::orbitals(A.L)) {
                     double v = 0;
                     for (int iq = 0; iq < nherm2(Ket); ++iq) {
                       auto q =  reference::orbital(iq);

@@ -97,6 +97,7 @@ install(FILES ${PROJECT_BINARY_DIR}/libintx/config.h DESTINATION libintx)
 
 add_subdirectory(src/libintx)
 add_subdirectory(src/libintx/boys)
+add_subdirectory(src/libintx/ao/md)
 
 if (LIBINTX_CUDA OR LIBINTX_HIP)
   if (LIBINTX_CUDA AND LIBINTX_HIP)

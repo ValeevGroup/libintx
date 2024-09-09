@@ -33,6 +33,18 @@ if (LIBINTX_CUDA)
   target_link_libraries(boys.gpu.test libboys libintx.gpu)
 endif()
 
+foreach (n 2)
+  # tests
+  add_libintx_test(libintx.md${n}.test libintx.md${n}.test.cc)
+  target_link_libraries(libintx.md${n}.test libintx.md${n})
+  # perf benchmarks
+  add_executable(libintx.md${n}.perf EXCLUDE_FROM_ALL libintx.md${n}.perf.cc)
+  target_link_libraries(libintx.md${n}.perf libintx.md${n})
+  if (TARGET libintx.test.reference)
+    target_link_libraries(libintx.md${n}.perf libintx.test.reference)
+  endif()
+endforeach()
+
 foreach (n 3 4)
   if (NOT TARGET libintx.gpu.md${n})
     continue()

@@ -48,14 +48,9 @@ namespace libintx::test {
 
   struct enabled {
     const bool status;
-    enabled(int X, int C, int D) :
-      status(X <= XMAX && C <= LMAX && D <= LMAX)
-    {
-    }
-    enabled(int I, int J, int K, int L) :
-      status(std::max({I,J,K,L}) <= LMAX)
-    {
-    }
+    enabled(int A, int B) : status(std::max({A,B}) <= LMAX) {}
+    enabled(int X, int C, int D) : status(X <= XMAX && std::max({C,D}) <= LMAX) {}
+    enabled(int I, int J, int K, int L) : status(std::max({I,J,K,L}) <= LMAX) {}
     operator bool() const { return status; }
     template<typename Id>
     bool operator()(Id) const { return status; }
@@ -133,6 +128,8 @@ namespace libintx::test {
   }
 
   inline auto gaussian(int L, int K, bool pure = true) {
+    auto r = test::random<double,3>(-1.0,1.0);
+    //printf("r = { %f, %f, %f }\n", r[0], r[1], r[2]);
     std::vector<Gaussian::Primitive> ps(K);
     double a = test::random<double>(0.1, 0.5);
     for (int k = 0; k < K; ++k) {
@@ -140,7 +137,6 @@ namespace libintx::test {
       a *= 5.0;
       //printf("g[%i,%i] = %f*e**%f\n", L, k, ps[k].C, ps[k].a);
     }
-    auto r = test::random<double,3>(-0.25,0.25);
     return (
       Gaussian(L, r, ps, pure)
     );
