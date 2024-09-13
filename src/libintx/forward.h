@@ -1,6 +1,8 @@
 #ifndef LIBINTX_FORWARD_H
 #define LIBINTX_FORWARD_H
 
+#define libintx_pragma(expr) _Pragma(#expr)
+
 #define LIBINTX_NOINLINE __attribute__((noinline))
 
 #if defined(__CUDACC__) || defined(__HIPCC__)
@@ -15,8 +17,21 @@
 
 #if defined(__CUDACC__)
 #define LIBINTX_ALWAYS_INLINE __forceinline__
-#else
-#define LIBINTX_ALWAYS_INLINE inline
+#define libintx_unroll(expr) libintx_pragma(unroll expr)
+
+#elif defined(__clang__)
+#define LIBINTX_ALWAYS_INLINE [[gnu::always_inline]] inline
+#define libintx_unroll(expr) libintx_pragma(unroll (expr))
+
+#elif defined(__GNUC__)
+#define LIBINTX_ALWAYS_INLINE [[gnu::always_inline]] inline
+#define libintx_unroll(expr) libintx_pragma(GCC unroll expr)
+
+#endif // __CUDACC__
+
+#if !defined(NDEBUG)
+#undef libintx_unroll
+#define libintx_unroll(expr)
 #endif
 
 namespace boys {
