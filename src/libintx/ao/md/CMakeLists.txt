@@ -1,5 +1,12 @@
 math(EXPR lmax2 "2*${LIBINTX_MAX_L}")
 
+add_library(
+  libintx.md.basis
+  EXCLUDE_FROM_ALL
+  basis.cc
+  )
+set_target_properties(libintx.md.basis PROPERTIES OUTPUT_NAME intx.md.basis)
+
 # foreach (KET RANGE ${lmax2})
 
 #   foreach (BRA RANGE ${lmax2})
