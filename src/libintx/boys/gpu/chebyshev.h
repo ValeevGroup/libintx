@@ -1,5 +1,5 @@
-#ifndef BOYS_GPU_CHEBYSHEV_H
-#define BOYS_GPU_CHEBYSHEV_H
+#ifndef LIBINTX_BOYS_GPU_CHEBYSHEV_H
+#define LIBINTX_BOYS_GPU_CHEBYSHEV_H
 
 #include "libintx/boys/boys.h"
 #include "libintx/boys/asymptotic.h"
@@ -7,7 +7,7 @@
 
 #include <assert.h>
 
-namespace boys::gpu {
+namespace libintx::boys::gpu {
 
   template<int Order, int M, int MaxT, int Segments>
   struct Chebyshev {
@@ -104,4 +104,4 @@ namespace boys::gpu {
 
 }
 
-#endif /* BOYS_CUDA_CHEBYSHEV_H */
+#endif /* LIBINTX_BOYS_CUDA_CHEBYSHEV_H */

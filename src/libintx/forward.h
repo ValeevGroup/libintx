@@ -29,18 +29,6 @@
 
 #endif // __CUDACC__
 
-#if !defined(NDEBUG)
-#undef libintx_unroll
-#define libintx_unroll(expr)
-#endif
-
-namespace boys {
-
-  template<int Order, int M, int MaxT, int Segments>
-  struct Chebyshev;
-
-}
-
 namespace libintx {
 
   static constexpr struct None {} None;

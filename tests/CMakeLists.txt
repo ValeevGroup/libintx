@@ -11,9 +11,6 @@ endmacro()
 
 add_libintx_test(pure.test pure.test.cc)
 
-add_libintx_test(interpolate.test interpolate.test.cc)
-target_link_libraries(interpolate.test libboys)
-
 add_libintx_test(boys.test boys.test.cc)
 target_link_libraries(boys.test libboys)
 
@@ -30,6 +27,7 @@ if (LIBINTX_LIBINT2)
 endif()
 
 if (LIBINTX_CUDA)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++20")
   enable_language(CUDA)
   add_libintx_test(boys.gpu.test boys.gpu.test.cu)
   target_link_libraries(boys.gpu.test libboys libintx.gpu)

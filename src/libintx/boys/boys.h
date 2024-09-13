@@ -1,9 +1,9 @@
-#ifndef BOYS_BOYS_H
-#define BOYS_BOYS_H
+#ifndef LIBINTX_BOYS_BOYS_H
+#define LIBINTX_BOYS_BOYS_H
 
 #include <memory>
 
-namespace boys {
+namespace libintx::boys {
 
   struct Boys {
 
@@ -22,4 +22,4 @@ namespace boys {
 
 }
 
-#endif /* BOYS_BOYS_H */
+#endif /* LIBINTX_BOYS_BOYS_H */

@@ -34,7 +34,7 @@ void test(int grid) {
   //dim3 block = { Order+1, 32/(Order+1), 4 };
   dim3 block = { 1, 8, 32 };
 
-  typedef boys::gpu::Chebyshev<Order,M,117,Segments> Chebyshev;
+  typedef libintx::boys::gpu::Chebyshev<Order,M,117,Segments> Chebyshev;
 
   auto ptr = libintx::gpu::device::make_shared<double[]>(grid*block.y*block.z);
 

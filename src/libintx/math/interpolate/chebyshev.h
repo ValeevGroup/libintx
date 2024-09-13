@@ -5,7 +5,7 @@
 #include <Eigen/Dense>
 #include <vector>
 
-namespace boys {
+namespace libintx::math {
 
   template<typename T, int Rows = Eigen::Dynamic>
   using Vector = Eigen::Matrix<T, Rows, 1>;
@@ -56,7 +56,7 @@ namespace boys {
       Matrix<Real> A(Order+1,Order+1);
       for (int i = 0; i <= Order; ++i) {
         for (int k = 0; k <= Order; ++k) {
-          A(k,i) = boys::polyval(ChebyshevT_[i], x_[k]);
+          A(k,i) = math::polyval(ChebyshevT_[i], x_[k]);
         }
       }
       this->lu_ = A.fullPivLu();
@@ -89,7 +89,7 @@ namespace boys {
 
     static Real polyval(const Vector<Real> &p, Real x, Real a, Real b) {
       Real xd = (x - (b+a)/2)/(b-a);
-      return boys::polyval(p,xd);
+      return math::polyval(p,xd);
     }
 
   private:

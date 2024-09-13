@@ -1,5 +1,5 @@
-#ifndef BOYS_REFERENCE_H
-#define BOYS_REFERENCE_H
+#ifndef LIBINTX_BOYS_REFERENCE_H
+#define LIBINTX_BOYS_REFERENCE_H
 
 #include "libintx/boys/boys.h"
 
@@ -7,26 +7,50 @@
 #include <stdexcept>
 #include <cassert>
 #include <limits>
+#include <string>
 
-namespace boys {
+
+namespace libintx::boys {
 
   struct Reference : Boys {
 
-    /// computes a single value of \f$ F_m(T) \f$ using MacLaurin series to full precision of @c double
     double compute(double T, int m) const override {
+      if (T < m/4+1) { // low T, high m
+        return maclaurin(T,m);
+      }
+      return recursive(T,m);
+    }
+
+    // not stable for high m
+    static double recursive(long double T, int m) {
+      if (T == 0) return 1.0/(2*m+1);
+      long double Fn = std::sqrt(M_PI/(4*T))*std::erf(std::sqrt(T));
+      for (int i = 0; i < m; ++i) {
+        Fn = ((2*(i)+1)*Fn - std::exp(-T))/(2*T);
+      }
+      return Fn;
+    }
+
+    /// computes a single value of \f$ F_m(T) \f$ using MacLaurin series to full precision of @c double
+    static double maclaurin(long double T, int m) {
+
       assert(m < 100);
+
       static const double T_crit = std::numeric_limits<double>::is_bounded == true ? -log( std::numeric_limits<double>::min() * 100.5 / 2. ) : double(0) ;
       if (std::numeric_limits<double>::is_bounded && T > T_crit) {
-        throw std::overflow_error("FmEval_Reference<double>::eval: double lacks precision for the given value of argument T");
+        throw std::domain_error(
+          "boys::Reference::maclaurin: double lacks precision for argument T=" + std::to_string(T)
+        );
       }
-      static const double half = double(1)/2;
-      double denom = (m + half);
+
+      static const long double half = double(1)/2;
+      long double denom = (m + half);
       using std::exp;
-      double term = exp(-T) / (2 * denom);
-      double old_term = 0;
-      double sum = term;
-      const double epsilon = 1e-16; // get_epsilon(T);
-      const double epsilon_divided_10 = epsilon / 10;
+      long double term = exp(-T) / (2 * denom);
+      long double old_term = 0;
+      long double sum = term;
+      const long double epsilon = 1e-16; // get_epsilon(T);
+      const long double epsilon_divided_10 = epsilon / 10;
       do {
         denom += 1;
         old_term = term;
@@ -43,4 +67,4 @@ namespace boys {
 
 }
 
-#endif /* BOYS_REFERENCE_H */
+#endif /* LIBINTX_BOYS_REFERENCE_H */
