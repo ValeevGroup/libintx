@@ -81,6 +81,7 @@ set(LIBINTX_MAX_X ${LIBINTX_MAX_X} CACHE STRING "LIBINTX_MAX_X")
 
 set(LIBINTX_MAX_K 10 CACHE STRING "")
 
+option(LIBINTX_SIMD "Compile with SIMD vectorisation" ON)
 option(LIBINTX_CUDA "Compile GPU/CUDA libraries " OFF)
 option(LIBINTX_HIP "Compile GPU/HIP libraries" OFF)
 

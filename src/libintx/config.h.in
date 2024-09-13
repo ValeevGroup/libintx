@@ -11,6 +11,7 @@
 #define LIBINTX_MAX_K 10
 #endif
 
+#cmakedefine LIBINTX_SIMD
 #cmakedefine LIBINTX_CUDA
 #cmakedefine LIBINTX_HIP
 

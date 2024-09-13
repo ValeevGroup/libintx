@@ -4,103 +4,82 @@
 #include "libintx/forward.h"
 #include "libintx/config.h"
 
-#ifdef __AVX__
-#include <immintrin.h>
-#define LIBINTX_SIMD_AVX
+#ifdef LIBINTX_SIMD
+
+#if __has_include(<simd>)
+#include <simd>
+#elif __has_include(<experimental/simd>)
+#include <experimental/simd>
+#else
+#error "No std::simd library"
 #endif
 
-#ifdef __SSE3__
-#include <xmmintrin.h>
-#define LIBINTX_SIMD_128
+#else
+
+#pragma message("libintx::simd disabled")
+
 #endif
 
-namespace libintx {
-namespace simd {
+namespace libintx::simd {
 
-  template<size_t K = 1>
-  inline void transpose(size_t m, size_t n, const double *A, double *B) {
-    for (size_t i = 0; i < m; ++i) {
-      for (size_t j = 0; j < n; ++j) {
-        int ij = i+j*m;
-        int ji = j+i*n;
-        for (size_t k = 0; k < K; ++k) {
-          B[k+ji*K] = A[k+ij*K];
-        }
-      }
-    }
-  }
+#ifdef LIBINTX_SIMD
 
   template<typename T>
-  inline void copy(size_t N, const T *src, T *dst) {
-    for (size_t i = 0; i < N; ++i) {
-      dst[i] = src[i];
-    }
-  }
+  using simd_t = std::experimental::native_simd<T>;
 
-#ifdef LIBINTX_SIMD_128
+#define LIBINTX_SIMD_DOUBLE libintx::simd::simd_t<double>
 
-  inline __m128d load2(const double* p) {
-    return _mm_loadu_pd(p);
-  }
+  using std::experimental::is_simd_v;
 
-  inline void store(double* p, __m128d v) {
-    _mm_storeu_pd(p, v);
-  }
+#else
+
+  template<typename T>
+  using simd_t = T;
+
+  template<typename T>
+  constexpr auto is_simd_v = std::false_type{};
 
 #endif
 
-  LIBINTX_NOINLINE
-  inline void scale(int N, double s, double* __restrict__ V) {
-    int i = 0;
-#ifdef LIBINTX_SIMD_AVX
-    for (; i < N-3; i += 4) {
-      auto v = _mm256_loadu_pd(V+i);
-      v *= s;
-      _mm256_storeu_pd(V+i, v);
+  template<typename T, size_t N = 1>
+  constexpr size_t size = [](){
+    if constexpr (is_simd_v<T>) {
+      return T::size();
     }
-#endif
-    for (; i < N; ++i) {
-      V[i] *= s;
-    }
-  }
-
-  LIBINTX_NOINLINE
-  inline void axpy(int N, double A, const double* __restrict__ U, double* __restrict__ V) {
-    int i = 0;
-#ifdef LIBINTX_SIMD_AVX
-    for (; i < N-3; i += 4) {
-      auto u = _mm256_loadu_pd(U+i);
-      auto v = _mm256_loadu_pd(V+i);
-      v += A*u;
-      _mm256_storeu_pd(V+i, v);
-    }
-#endif
-    for (; i < N; ++i) {
-      V[i] += A*U[i];
-    }
-  }
-
-  inline void multiply_add_store(
-    int N, double s,
-    const double * __restrict__ U1,
-    const double * __restrict__ U2,
-    double * __restrict__ V)
-  {
-    int i = 0;
-#ifdef LIBINTX_SIMD_AVX
-    for (; i < N-3; i += 4) {
-      auto u1 = _mm256_loadu_pd(U1+i);
-      auto u2 = _mm256_loadu_pd(U2+i);
-      auto v = s*u1 + u2;
-      _mm256_storeu_pd(V+i, v);
-    }
-#endif
-    for (; i < N; ++i) {
-      V[i] = s*U1[i] + U2[i];
-    }
-  }
+    else return N;
+  }();
 
 }
+
+namespace libintx {
+  using simd::simd_t;
+  using simd::is_simd_v;
 }
+
+#if defined(LIBINTX_SIMD)
+#if defined(__AVX512F__)
+#pragma message("Using AVX512 vectorisation")
+static_assert(sizeof(libintx::simd_t<double>) == 64);
+#define LIBINTX_SIMD_ISA "AVX512"
+#elif defined(__AVX__)
+#pragma message("Using AVX vectorisation")
+static_assert(sizeof(libintx::simd_t<double>) == 32);
+#define LIBINTX_SIMD_ISA "AVX"
+#elif defined(__SSE__)
+#pragma message("Using SSE vectorisation")
+static_assert(sizeof(libintx::simd_t<double>) == 16);
+#define LIBINTX_SIMD_ISA "SSE"
+#elif defined(__ARM_NEON__) || defined(__ARM_NEON)
+#pragma message("Using NEON vectorisation")
+static_assert(sizeof(libintx::simd_t<double>) == 16);
+#define LIBINTX_SIMD_ISA "NEON"
+#endif
+#endif // LIBINTX_SIMD
+
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+#define LIBINTX_SIMD_REGISTERS 32
+#else
+#define LIBINTX_SIMD_REGISTERS 16
+#endif
 
 #endif /* LIBINTX_SIMD_H */
