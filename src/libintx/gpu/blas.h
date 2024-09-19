@@ -1,13 +1,10 @@
 #ifndef LIBINTX_GPU_BLAS_H
 #define LIBINTX_GPU_BLAS_H
 
+#include "libintx/forward.h"
 #include "libintx/gpu/forward.h"
 
 namespace libintx::gpu {
-
-  enum Order {
-    RowMajor, ColumnMajor
-  };
 
   void transpose(
     size_t M, size_t N,

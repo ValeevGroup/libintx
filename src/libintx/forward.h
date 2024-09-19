@@ -134,6 +134,22 @@ namespace libintx {
     Odd
   };
 
+  enum Order {
+    RowMajor, ColumnMajor
+  };
+
+  template<typename T>
+  struct cmajor {
+    T data = T();
+    unsigned long int ld = 0;
+    auto operator()(auto i, auto j) const {
+      return data[i + j*ld];
+    }
+    auto& operator()(auto i, auto j) {
+      return data[i + j*ld];
+    }
+  };
+
   enum class Operator {
     Overlap,
     Kinetic,
