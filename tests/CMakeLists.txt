@@ -33,7 +33,7 @@ if (LIBINTX_CUDA)
   target_link_libraries(boys.gpu.test libboys libintx.gpu)
 endif()
 
-foreach (n 2 3)
+foreach (n 2 3 4)
   # tests
   add_libintx_test(libintx.md${n}.test libintx.md${n}.test.cc)
   target_link_libraries(libintx.md${n}.test libintx.md${n})

@@ -109,6 +109,66 @@ namespace libintx::md {
 
   };
 
+  template<>
+  struct IntegralEngine<4> : libintx::ao::IntegralEngine<4> {
+
+    using Visitor = std::function<
+      void(BraKet<size_t>, BraKet<size_t>, const double*, size_t)
+      >;
+
+    explicit IntegralEngine(const std::shared_ptr< Basis<Gaussian> > &basis)
+      : IntegralEngine({basis,basis,basis,basis}) {}
+
+    explicit IntegralEngine(
+      const std::shared_ptr< Basis<Gaussian> > &bra,
+      const std::shared_ptr< Basis<Gaussian> > &ket
+    )
+      : IntegralEngine({bra,bra,ket,ket}) {}
+
+    explicit IntegralEngine(const std::shared_ptr< Basis<Gaussian> > (&basis)[4]);
+
+    ~IntegralEngine();
+
+    void compute(
+      Operator,
+      const std::vector<Index2>&,
+      const std::vector<Index2>&,
+      BraKet<const double*> norms,
+      const Visitor&
+    );
+
+    void compute(
+      Operator op,
+      const std::vector<Index2> &bra,
+      const std::vector<Index2> &ket,
+      BraKet<const double*> norms,
+      double *V,
+      const std::array<size_t,2> &dims
+    ) override;
+
+    const auto& basis(size_t idx) const {
+      return *basis_[idx];
+    }
+
+  private:
+
+    template<Operator, typename Params>
+    void compute(
+      const Params&,
+      const std::vector<Index2>&,
+      const std::vector<Index2>&,
+      BraKet<const double*> norms,
+      const Visitor&
+    );
+
+  public:
+    int num_threads = 1;
+
+  private:
+    std::shared_ptr< Basis<Gaussian> > basis_[4] = {};
+
+  };
+
 }
 
 #endif /* LIBINTX_AO_MD_ENGINE_H */

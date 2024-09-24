@@ -110,6 +110,12 @@ namespace libintx::ao {
     const Basis<Gaussian>&
   );
 
+  template<>
+  std::unique_ptr< IntegralEngine<4> > integral_engine(
+    const Basis<Gaussian>&,
+    const Basis<Gaussian>&
+  );
+
 }
 
 #endif /* LIBINTX_AO_ENGINE_H */
