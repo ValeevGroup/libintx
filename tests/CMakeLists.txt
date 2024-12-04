@@ -40,6 +40,11 @@ foreach (n 3 4)
   endif()
 endforeach()
 
+if (TARGET libintx.gpu.jengine)
+  add_executable(libintx.gpu.jengine.test EXCLUDE_FROM_ALL libintx.gpu.jengine.test.cc)
+  target_link_libraries(libintx.gpu.jengine.test libintx.gpu.jengine)
+endif()
+
 add_executable(libintx.md.test EXCLUDE_FROM_ALL libintx.md.test.cc)
 target_link_libraries(libintx.md.test libboys)
 add_test(NAME libintx.md COMMAND libintx.md.test)

@@ -82,7 +82,7 @@ endforeach()
 add_library(
   libintx.gpu.jengine
   EXCLUDE_FROM_ALL
-  jengine/md/jengine.cpp
+  jengine/md/jengine.cc
   jengine/md/hermite.cu
   ${libintx_gpu_jengine_sources}
   )
