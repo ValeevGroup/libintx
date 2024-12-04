@@ -11,6 +11,9 @@ if (LIBINTX_CUDA)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
   endif()
 
+  # NB: rdc blows up constant memory
+  set(CMAKE_CUDA_SEPARABLE_COMPILATION 0)
+
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -expt-relaxed-constexpr --resource-usage")
   add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<NOT:$<CONFIG:Release>>>:-src-in-ptx;-lineinfo>")
 
