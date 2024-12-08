@@ -39,7 +39,7 @@ jobs:
     - name: Build
       working-directory: ${{github.workspace}}/build
       run: |
-        cmake --build . --target all libintx.rysq
+        cmake --build . --target all all.tests
 
     # - name: Test
     #   working-directory: ${{github.workspace}}/build

@@ -1,13 +1,22 @@
+add_custom_target(all.tests)
+
 include_directories(${PROJECT_SOURCE_DIR}/include/eigen3)
 include_directories(${PROJECT_SOURCE_DIR}/tests)
 
-add_executable(interpolate.test EXCLUDE_FROM_ALL interpolate.test.cc)
-target_link_libraries(interpolate.test libboys)
-add_test(NAME interpolate COMMAND interpolate.test)
+macro(add_libintx_test name source)
+  add_executable(${name} EXCLUDE_FROM_ALL ${source})
+  add_test(NAME ${name} COMMAND ${name})
+  add_dependencies(all.tests ${name})
+endmacro()
 
-add_executable(boys.test EXCLUDE_FROM_ALL boys.test.cc)
+add_libintx_test(interpolate.test interpolate.test.cc)
+target_link_libraries(interpolate.test libboys)
+
+add_libintx_test(boys.test boys.test.cc)
 target_link_libraries(boys.test libboys)
-add_test(NAME boys COMMAND boys.test)
+
+add_libintx_test(libintx.md.test libintx.md.test.cc)
+target_link_libraries(libintx.md.test libboys)
 
 option(LIBINTX_LIBINT2 "" OFF)
 if (LIBINTX_LIBINT2)
@@ -20,9 +29,8 @@ endif()
 
 if (LIBINTX_CUDA)
   enable_language(CUDA)
-  add_executable(boys.gpu.test EXCLUDE_FROM_ALL boys.gpu.test.cu)
+  add_libintx_test(boys.gpu.test boys.gpu.test.cu)
   target_link_libraries(boys.gpu.test libboys libintx.gpu)
-  add_test(NAME boys.gpu COMMAND boys.gpu.test)
 endif()
 
 foreach (n 3 4)
@@ -30,7 +38,7 @@ foreach (n 3 4)
     continue()
   endif()
   # tests
-  add_executable(libintx.gpu.md${n}.test EXCLUDE_FROM_ALL libintx.gpu.md${n}.test.cc)
+  add_libintx_test(libintx.gpu.md${n}.test libintx.gpu.md${n}.test.cc)
   target_link_libraries(libintx.gpu.md${n}.test libintx.gpu.md${n})
   # perf benchmarks
   add_executable(libintx.gpu.md${n}.perf EXCLUDE_FROM_ALL libintx.gpu.md${n}.perf.cc)
@@ -41,10 +49,6 @@ foreach (n 3 4)
 endforeach()
 
 if (TARGET libintx.gpu.jengine)
-  add_executable(libintx.gpu.jengine.test EXCLUDE_FROM_ALL libintx.gpu.jengine.test.cc)
+  add_libintx_test(libintx.gpu.jengine.test libintx.gpu.jengine.test.cc)
   target_link_libraries(libintx.gpu.jengine.test libintx.gpu.jengine)
 endif()
-
-add_executable(libintx.md.test EXCLUDE_FROM_ALL libintx.md.test.cc)
-target_link_libraries(libintx.md.test libboys)
-add_test(NAME libintx.md COMMAND libintx.md.test)
