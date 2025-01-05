@@ -53,6 +53,29 @@ namespace libintx {
     if constexpr (Idx == 1) return idx.second;
   }
 
+  template<typename T, unsigned long int Capacity>
+  struct alignas(T) static_vector {
+    LIBINTX_GPU_ENABLED
+    auto size() const { return size_; }
+    LIBINTX_GPU_ENABLED
+    constexpr static auto capacity() { return Capacity; }
+    LIBINTX_GPU_ENABLED
+    auto begin() const { return data; }
+    LIBINTX_GPU_ENABLED
+    auto end() const { return data + size_; }
+    LIBINTX_GPU_ENABLED
+    auto& operator[](auto &&idx) {
+      return data[idx];
+    }
+    LIBINTX_GPU_ENABLED
+    const auto& operator[](auto &&idx) const {
+      return data[idx];
+    }
+    //private:
+    T data[Capacity];
+    unsigned long int size_ = 0;
+  };
+
   template<int ... Args>
   struct IntegralEngine;
 
