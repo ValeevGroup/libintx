@@ -170,7 +170,7 @@ namespace libintx::gpu::jengine::md {
       using iterator = decltype(std::get<1>(*it_).cbegin());
 
       if (it_ == end_) {
-        return std::tuple{int(0),iterator_range{iterator(),iterator()}};
+        return std::tuple{int(0),range{iterator(),iterator()}};
       }
 
       const auto& [p,ab] = *it_;
@@ -203,7 +203,7 @@ namespace libintx::gpu::jengine::md {
       }
       this->idx_ = idx;
       if (begin == end) goto start;
-      return std::tuple{int(p),iterator_range{begin,end}};
+      return std::tuple{int(p),range{begin,end}};
     }
 
     size_t maxg = 0;

@@ -34,16 +34,6 @@ namespace libintx {
     return ::std::max<T>({ t, ts... });
   }
 
-  template<typename It>
-  struct iterator_range {
-    iterator_range(It begin, It end)
-      : begin_(begin), end_(end) {}
-    It begin() const { return begin_; }
-    It end() const { return end_; }
-  private:
-    It begin_, end_;
-  };
-
   struct time {
 
     inline static auto now() {

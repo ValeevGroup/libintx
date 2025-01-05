@@ -83,6 +83,18 @@ namespace libintx {
     unsigned long int size_ = 0;
   };
 
+  template<typename T>
+  struct range {
+    explicit range(T end) : range(T(), end) {}
+    range(T begin, T end) : begin_(begin), end_(end) {}
+    T begin() const { return begin_; }
+    T end() const { return end_; }
+    long int size() const { return (end_-begin_); }
+    T operator[](T idx) const { return begin_+idx; }
+  private:
+    T begin_, end_;
+  };
+
   template<int ... Args>
   struct IntegralEngine;
 
