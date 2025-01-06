@@ -5,13 +5,11 @@
 #include "libintx/array.h"
 #include "libintx/math.h"
 #include "libintx/config.h"
-#include "libintx/utility.h"
 
 #include <cassert>
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
-#include <functional>
 
 namespace libintx::gto {
 
@@ -283,6 +281,59 @@ LIBINTX_GPU_ENABLED
 constexpr auto& center(const Shell &g) {
   return g.r;
 }
+
+template<typename T>
+// G = std::function<const Gaussian*(size_t)>;
+array<T,3> pack_centers(auto &&G) {
+  using math::infinity;
+  if constexpr (std::is_scalar_v<T>) {
+    auto *g = G(0);
+    if (g) return g->r;
+    return { infinity<T>, infinity<T>, infinity<T> };
+  }
+  else {
+    array<T,3> v = {};
+    for (size_t i = 0; i < T::size(); ++i) {
+      auto *g = G(i);
+      if (!g) {
+        for (int j = 0; j < 3; ++j) {
+          constexpr auto inf = infinity<typename T::value_type>;
+          v[j][i] = inf;
+        }
+        continue;
+      }
+      for (int j = 0; j < 3; ++j) {
+        v[j][i] = g->r[j];
+      }
+    }
+    return v;
+  }
+}
+
+template<typename T>
+// G = std::function<const Gaussian*(size_t)>;
+auto pack_primitives(auto &&G) {
+  auto *g = G(0);
+  using primitives_t = decltype(g->prims);
+  if constexpr (std::is_scalar_v<T>) {
+    if (!g) return primitives_t{};
+    return g->prims;
+  }
+  else {
+    static_vector< gto::Primitive<T>, primitives_t::capacity()> v = { {}, g->prims.size() };
+    for (size_t i = 0; i < T::size(); ++i) {
+      auto *g = G(i);
+      if (!g) continue;
+      for (size_t k = 0; k < g->prims.size(); ++k) {
+        auto [a,C] = primitives(*g)[k];
+        v[k].a[i] = a;
+        v[k].C[i] = C;
+      }
+    }
+    return v;
+  }
+}
+
 
 } // libintx::gto
 
