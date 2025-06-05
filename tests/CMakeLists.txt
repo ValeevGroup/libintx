@@ -9,6 +9,8 @@ macro(add_libintx_test name source)
   add_dependencies(all.tests ${name})
 endmacro()
 
+add_libintx_test(pure.test pure.test.cc)
+
 add_libintx_test(interpolate.test interpolate.test.cc)
 target_link_libraries(interpolate.test libboys)
 

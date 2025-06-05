@@ -60,7 +60,7 @@ namespace libintx::math {
 
   template<int N>
   constexpr double root(double y) {
-    long double e = std::numeric_limits<double>::epsilon()*100;
+    long double e = std::numeric_limits<double>::epsilon()*1;
     long double x = 1;
     // //return __ieee754_sqrt(v);
     while (abs(pow<N>(x) - y) > e) {
