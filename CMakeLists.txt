@@ -66,6 +66,11 @@ set(LIBINTX_CBLAS_H "" CACHE STRING "")
 set(LIBINTX_LAPACKE_H "" CACHE STRING "")
 mark_as_advanced(LIBINTX_CBLAS_H LIBINTX_LAPACKE_H)
 
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  set(LIBINTX_OPENMP_LIBRARIES OpenMP::OpenMP_CXX)
+endif()
+
 ### LIBINTX options/parameters
 
 set(LIBINTX_MAX_L 3 CACHE STRING "")
