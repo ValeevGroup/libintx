@@ -7,9 +7,8 @@
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/engine.h"
 
-#include <unsupported/Eigen/CXX11/Tensor>
-
 using namespace libintx;
+using libintx::test::zeros;
 
 void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
 
@@ -25,10 +24,10 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
   int NC = npure(C);
   int ND = npure(D);
 
-  auto [bra,ijs] = test::basis2({A,B}, {K.first,1}, M);
-  auto [ket,kls] = test::basis2({C,D}, {K.second,1}, N);
+  auto [bra,ijs] = test::make_basis<2>({A,B}, {K.first,1}, M);
+  auto [ket,kls] = test::make_basis<2>({C,D}, {K.second,1}, N);
 
-  Eigen::Tensor<double,6> result(M,NA,NB,NC,ND,N);
+  auto result = zeros(M,NA,NB,NC,ND,N);
   gpu::host::register_pointer(result.data(), result.size());
 
   gpuStream_t stream = 0;
@@ -36,17 +35,16 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
   md->compute(Coulomb, ijs, kls, result.data(), {(size_t)M*NA*NB, (size_t)NC*ND*N});
   gpu::stream::synchronize(stream);
 
-  for (int ij = 0; ij < ijs.size(); ++ij) {
-    for (int kl = 0; kl < kls.size(); ++kl) {
+  for (size_t ij = 0; ij < ijs.size(); ++ij) {
+    for (size_t kl = 0; kl < kls.size(); ++kl) {
 
       auto [i,j] = ijs[ij];
       auto [k,l] = kls[kl];
-      Eigen::Tensor<double,4> ab_cd_ref(npure(A), npure(B), npure(C), npure(D));
+      auto ab_cd_ref = zeros(npure(A), npure(B), npure(C), npure(D));
       {
-        Eigen::Tensor<double,4> ab_cd_cartesian(
+        auto ab_cd_cartesian = zeros(
           ncart(A), ncart(B), ncart(C), ncart(D)
         );
-        ab_cd_cartesian.setZero();
         libintx::md::reference::compute(bra[i], bra[j], ket[k], ket[l], ab_cd_cartesian);
         libintx::pure::reference::transform(
           A, B, C, D,

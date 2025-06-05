@@ -7,9 +7,8 @@
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/engine.h"
 
-#include <unsupported/Eigen/CXX11/Tensor>
-
 using namespace libintx;
+using libintx::test::zeros;
 
 void md_eri3_subcase(Operator op, int X, int C, int D, std::pair<int,int> K = {1,1}) {
 
@@ -24,10 +23,10 @@ void md_eri3_subcase(Operator op, int X, int C, int D, std::pair<int,int> K = {1
   int NC = npure(C);
   int ND = npure(D);
 
-  auto [bra,is] = test::basis1({X}, {K.first}, M);
-  auto [ket,kls] = test::basis2({C,D}, {K.second,1}, N);
+  auto [bra,is] = test::make_basis<1>({X}, {K.first}, M);
+  auto [ket,kls] = test::make_basis<2>({C,D}, {K.second,1}, N);
 
-  Eigen::Tensor<double,6> result(M,NX,1,NC,ND,N);
+  auto result = zeros(M,NX,1,NC,ND,N);
   gpu::host::register_pointer(result.data(), result.size());
 
   gpuStream_t stream = 0;

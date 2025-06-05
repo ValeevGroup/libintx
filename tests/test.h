@@ -3,11 +3,12 @@
 
 #include "libintx/shell.h"
 #include "libintx/utility.h"
-//#include "libintx/reference.h"
+#include "libintx/simd.h"
 
 #include <chrono>
 #include <random>
 #include <ostream>
+#include <iomanip>
 #include <ctime>
 #include <algorithm>
 
@@ -15,25 +16,9 @@
 #include "doctest.h"
 #endif
 
-namespace libintx::test {
+#include <unsupported/Eigen/CXX11/Tensor>
 
-  template<typename T>
-  struct Random {
-    Random() : g_(std::time(0)) {}
-    template<typename ... Args>
-    T operator()(Args ... args) const {
-      if constexpr (std::is_floating_point<T>::value) {
-        std::uniform_real_distribution<T> r(args...);
-        return r(g_);
-      }
-      else {
-        std::uniform_int_distribution<T> r(args...);
-        return r(g_);
-      }
-    }
-  private:
-    mutable std::default_random_engine g_;
-  };
+namespace libintx::test {
 
   inline auto& default_random_engine() {
     static std::default_random_engine g;
@@ -77,44 +62,82 @@ namespace libintx::test {
   };
 
   struct ReferenceValue {
-
-    ReferenceValue(double value, double tolerance) {
+    explicit ReferenceValue(double value, double epsilon = 1e-12) {
       value_ = value;
-      tolerance_ = tolerance;
+      epsilon_ = epsilon;
     }
-
     template<typename ... Idx>
-    ReferenceValue(double value, double tolerance, Idx ... idx)
-      : ReferenceValue(value, tolerance)
-    {
-      idx_ = " @ [" + ((std::to_string(idx) + " ") + ...) + "]";
+    auto at(Idx ... idx) const {
+      ReferenceValue r = *this;
+      r.idx_ = ((std::to_string(idx) + " ") + ...);
+      return r;
     }
-
     operator double() const { return value_; }
     friend
     std::ostream& operator<<(std::ostream& os, const ReferenceValue& v) {
-      os << double(v) << v.idx_;
+      os << std::setprecision(10) << std::fixed << double(v);
+      //os << double(v);
+      if (!v.idx_.empty()) os << " @ [ " << v.idx_ << "]";
       return os;
     }
     friend
     bool operator==(const ReferenceValue &rhs, double lhs) {
-      if (lhs == double(rhs)) return true;
-      return (std::abs(lhs-double(rhs)) <= rhs.tolerance_);
+      // printf("%e,%e,%i\n", lhs, double(rhs), std::equal(double(rhs),lhs));
+      // if (lhs == double(rhs)) return true;
+      auto m = std::max({ std::abs(rhs), std::abs(lhs), 1.0 });
+      return std::islessequal(std::abs(lhs-double(rhs)), m*rhs.epsilon_);
     }
     friend
     bool operator==(double lhs, const ReferenceValue &rhs) {
       return operator==(rhs,lhs);
     }
+    ReferenceValue epsilon(double e) const {
+      ReferenceValue r = *this;
+      r.epsilon_ = e;
+      return r;
+    }
   private:
-    double value_, tolerance_;
+    double value_, epsilon_;
     std::string idx_;
   };
 
+  template<typename T, size_t N>
+  using Tensor = Eigen::Tensor<T,N>;
+
+  template<typename T = double, typename ... Dims>
+  auto zeros(Dims ... dims) {
+    constexpr int N = sizeof...(Dims);
+    // if constexpr (N == 1) {
+    //   return Eigen::VectorXd::Zero().eval();
+    // }
+    // if constexpr (N == 2) {
+    //   return Eigen::MatrixXd::Zero().eval();
+    // }
+    // else {
+    Tensor<T,N> t(dims...);
+    t.setZero();
+    return t;
+  }
+
+  template<typename T = double>
+  auto symmetric(size_t N, auto &&g) {
+    auto S = zeros(N,N);
+    for (size_t j = 0; j < N; ++j) {
+      for (size_t i = 0; i <= j; ++i) {
+        T v = g(i,j);
+        S(i,j) = v;
+        S(j,i) = v;
+      }
+    }
+    return S;
+  }
+
   inline auto gaussian(int L, int K, bool pure = true) {
     std::vector<Gaussian::Primitive> ps(K);
+    double a = test::random<double>(0.1, 0.5);
     for (int k = 0; k < K; ++k) {
-      ps[k] = { double(5.12)/(L+k+1.37), double(L+K)*(k+2) };
-      //ps[k] = { 0.5+k, K*(k+1.0) };
+      ps[k] = { a, 1/a };
+      a *= 5.0;
       //printf("g[%i,%i] = %f*e**%f\n", L, k, ps[k].C, ps[k].a);
     }
     auto r = test::random<double,3>(-0.25,0.25);
@@ -123,40 +146,63 @@ namespace libintx::test {
     );
   }
 
-  inline auto basis1(std::tuple<int> L, std::tuple<int> K, size_t N) {
+  template<int N>
+  inline auto make_basis(std::array<int,N> L, std::array<int,N> K, size_t shells) {
+    using Index = decltype(
+      []{
+        if constexpr (N == 1) return Index1{};
+        if constexpr (N == 2) return Index2{};
+      }()
+    );
     Basis<Gaussian> basis;
-    std::vector<Index1> idx;
+    std::vector<Index> index;
     bool pure = true;
-    for (int i = 0; i < (int)N; ++i) {
-      auto a = test::gaussian(std::get<0>(L), std::get<0>(K), pure);
-      basis.push_back(a);
-      idx.push_back(Index1{i});
+    for (int i = 0; i < (int)shells; ++i) {
+      std::array<int,N> idx;
+      for (int j = 0; j < N; ++j) {
+        auto g = test::gaussian(L[j], K[j], pure);
+        basis.push_back(g);
+        idx[j] = j+i*N;
+      }
+      index.push_back(
+        std::apply([](auto ... args) { return Index{ args... }; }, idx)
+      );
     }
-    return std::tuple{basis,idx};
-  }
-
-  inline auto basis2(std::pair<int,int> L, std::pair<int,int> K, size_t N) {
-    Basis<Gaussian> basis;
-    std::vector<Index2> idx;
-    bool pure = true;
-    for (int i = 0; i < (int)N; ++i) {
-      auto a = test::gaussian(L.first, K.first, pure);
-      auto b = test::gaussian(L.second, K.second, pure);
-      basis.push_back(a);
-      basis.push_back(b);
-      idx.push_back(Index2{i*2,i*2+1});
-    }
-    return std::tuple{basis,idx};
+    return std::tuple{ basis, index };
   }
 
   template<typename F, typename T>
-  void check4(F Check, T Ref, double tolerance = 1e-6) {
+  void check2(F Check, T Ref, double epsilon = 1e-6) {
+    auto &dims = Ref.dimensions();
+    for (int j = 0; j < dims[1]; ++j) {
+      for (int i = 0; i < dims[0]; ++i) {
+        auto ref = test::ReferenceValue(Ref(i,j)).at(i,j);
+        Check(ref,i,j);
+      }
+    }
+  }
+
+  template<typename F, typename T>
+  void check3(F Check, T Ref) {
+    auto &dims = Ref.dimensions();
+    for (int k = 0; k < dims[2]; ++k) {
+      for (int j = 0; j < dims[1]; ++j) {
+        for (int i = 0; i < dims[0]; ++i) {
+          auto ref = test::ReferenceValue(Ref(i,j,k)).at(i,j,k);
+          Check(ref,i,j,k);
+        }
+      }
+    }
+  }
+
+  template<typename F, typename T>
+  void check4(F Check, T Ref) {
     auto &dims = Ref.dimensions();
     for (int l = 0; l < dims[3]; ++l) {
       for (int k = 0; k < dims[2]; ++k) {
         for (int j = 0; j < dims[1]; ++j) {
           for (int i = 0; i < dims[0]; ++i) {
-            test::ReferenceValue ref(Ref(i,j,k,l), tolerance, i,j,k,l);
+            auto ref = test::ReferenceValue(Ref(i,j,k,l)).at(i,j,k,l);
             Check(ref,i,j,k,l);
           }
         }
@@ -164,10 +210,25 @@ namespace libintx::test {
     }
   }
 
+  inline std::string header() {
+    std::string header;
+#ifdef LIBINTX_SIMD_ISA
+    header += "simd: " + str(LIBINTX_SIMD_ISA) + " ";
+    header += str(sizeof(LIBINTX_SIMD_DOUBLE)*8) + "-bits";
+#else
+    header += "simd: OFF";
+#endif
+    header += "\n";
+#ifdef __VERSION__
+    header += "cxx: " + str(__VERSION__) + "\n";
+#endif
+    return header;
+  }
+
   template<int N>
   auto parse_args(int argc, char **argv, int default_value) {
     std::array<int,N> args;
-    for (int iarg = 0; iarg < 2; ++iarg) {
+    for (int iarg = 0; iarg < N; ++iarg) {
       args[iarg] = default_value;
       if (argc > 1+iarg) args[iarg] = std::atoi(argv[1+iarg]);
     }
@@ -175,17 +236,5 @@ namespace libintx::test {
   }
 
 }
-
-// namespace libintx::reference {
-
-//   template<typename ... Args>
-//   double time(int N, Args ... args) {
-//     auto eri = libintx::reference::eri(std::get<0>(args)...);
-//     auto t = time::now();
-//     eri->repeat(N, std::get<1>(args)...);
-//     return time::since(t);
-//   }
-
-// }
 
 #endif

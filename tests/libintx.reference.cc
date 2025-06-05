@@ -10,7 +10,7 @@
 
 namespace libintx::reference {
 
-  constexpr double precision = 1e-10;
+  constexpr double precision = 1e-100;
 
   void initialize() {
     ::libint2::initialize();
@@ -21,10 +21,11 @@ namespace libintx::reference {
   }
 
   auto make_point_charges(const std::any &params) {
-    const auto &rs = std::any_cast< std::vector< libintx::array<double,3> > >(params);
+    using Params = std::vector< std::tuple<int,std::array<double,3> > >;
+    const auto &rs = std::any_cast<Params>(params);
     std::vector< std::pair<double,std::array<double,3> > > cs;
-    for (auto r : std::any_cast< std::vector< libintx::array<double,3> > >(rs)) {
-      cs.push_back({ 1, cast(r) });
+    for (auto [Z,r] : rs) {
+      cs.emplace_back(Z,r);
     }
     return cs;
   }
@@ -36,8 +37,8 @@ namespace libintx::reference {
       exponents.push_back(p.a);
       coeff.push_back(p.C);
     }
-    if (exponents.empty()) throw;
-    if (coeff.empty()) throw;
+    libintx_assert(!exponents.empty());
+    libintx_assert(!coeff.empty());
     std::array<double,3> center = cast(g.r);
     ::libint2::Shell::do_enforce_unit_normalization(false);
     auto s = ::libint2::Shell(

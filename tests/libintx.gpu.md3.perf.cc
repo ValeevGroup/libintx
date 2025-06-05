@@ -14,8 +14,6 @@ auto run(
   int Nij, int Nkl)
 {
 
-  Basis<Gaussian> basis;
-
   std::array<size_t,2> dims{ (size_t)Nij*npure(X), (size_t)npure(C)*npure(D)*Nkl };
   auto buffer = gpu::device::vector<double>(dims[0]*dims[1]);
 
@@ -32,8 +30,8 @@ auto run(
 
     printf("# K={%i,%i}: ", K.first, K.second);
 
-    auto [bra,is] = test::basis1({X}, {K.first}, Nij);
-    auto [ket,kls] = test::basis2({C,D}, {K.second,1}, Nkl);
+    auto [bra,is] = test::make_basis<1>({X}, {K.first}, Nij);
+    auto [ket,kls] = test::make_basis<2>({C,D}, {K.second,1}, Nkl);
 
     gpuStream_t stream = 0;
     md.engine = libintx::gpu::integral_engine<3>(bra, ket, stream);

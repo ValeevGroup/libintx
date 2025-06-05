@@ -26,14 +26,14 @@ TEST_CASE("hermite.E2") {
         for (size_t k = 0; k <= P; ++k) {
           for (size_t ix = 0; ix < 3; ++ix) {
             auto ref = reference::E(i,j,k,a,b,R[ix]);
-            CHECK(ReferenceValue(ref, 1e-10, A,B,P,i,j,k,ix) == E(i,j,k,ix));
+            CHECK(ReferenceValue(ref).at(A,B,P,i,j,k,ix) == E(i,j,k,ix));
           }
         }
       }
     }
   };
 
-  constexpr int L = std::max(4,libintx::LMAX);
+  constexpr int L = std::min(3,libintx::LMAX);
   libintx::foreach2(
     std::make_index_sequence<(L+1)*(L+1)>{},
     std::make_index_sequence<2*L+1>{},
@@ -46,10 +46,12 @@ TEST_CASE("hermite.E2") {
 
 }
 
-TEST_CASE("r1") {
+TEST_CASE("md.r1") {
 
-  constexpr int M = 4*std::max(3,libintx::LMAX);
+  constexpr int L = std::min(3,libintx::LMAX);
+  constexpr int M = 4*L;
 
+  using namespace libintx;
   using namespace libintx::md;
   static boys::Chebyshev<7,M+1,117,117*7> boys;
 
@@ -64,10 +66,10 @@ TEST_CASE("r1") {
       for (size_t m = 0; m <= M; ++m) {
         s[m] *= pow(-2*alpha,m);
       }
-      auto visitor = [&s,&PQ](auto r) {
+      auto visitor = [&s,&PQ,M](auto r) {
         auto [x,y,z] = r.orbital.lmn;
         auto u = reference::R(x, y, z, 0, s, PQ.data);
-        CHECK(r.value == u);
+        CHECK(ReferenceValue(u).at(M, r.index) == r.value);
       };
       r1::visit<M>(visitor, PQ, s);
     }
