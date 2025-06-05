@@ -46,8 +46,15 @@ namespace libintx {
   using Index1 = int;
   using Index2 = pair<Index1,Index1>;
 
+  template<typename ... Args>
+  bool operator<(const pair<Args...> &a, const pair<Args...> &b) {
+    if (a.first == b.first)
+      return (a.second < b.second);
+    return (a.first < b.first);
+  }
+
   template<int Idx, typename First, typename Second>
-  auto get(pair<First,Second>&& idx) {
+  auto get(const pair<First,Second>& idx) {
     static_assert(Idx == 0 || Idx == 1);
     if constexpr (Idx == 0) return idx.first;
     if constexpr (Idx == 1) return idx.second;

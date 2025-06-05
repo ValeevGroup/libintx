@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <chrono>
+#include <iostream>
 
 namespace libintx {
 
@@ -11,7 +12,7 @@ namespace libintx {
   auto str(const T &msg) {
     if constexpr (std::is_convertible_v<T, std::string> or
 		  std::is_convertible_v<T, std::string_view>) {
-      return msg;
+      return std::string(msg);
     }
     else {
       return std::to_string(msg);
@@ -76,7 +77,7 @@ namespace libintx {
   LIBINTX_ALWAYS_INLINE
   constexpr void foreach(const std::integer_sequence<T,Is...>&, F &&f) {
     ( f(std::integral_constant<T,Is>{}), ... );
-}
+  }
 
   template<typename F, typename T, T ... First, T ... Second>
   LIBINTX_ALWAYS_INLINE
@@ -95,6 +96,23 @@ namespace libintx {
       }
     );
   }
+
+  template<size_t N, typename F>
+  LIBINTX_ALWAYS_INLINE
+  constexpr void foreach(F &&f) {
+    foreach(std::make_index_sequence<N>{}, f);
+  }
+
+  template<size_t M, size_t N, typename F>
+  LIBINTX_ALWAYS_INLINE
+  constexpr void foreach2(F &&f) {
+    foreach2(
+      std::make_index_sequence<M>{},
+      std::make_index_sequence<N>{},
+      f
+    );
+  }
+
 
   template<typename T, T First, T ... Ts>
   constexpr void jump_table(std::integer_sequence<T,First,Ts...>, auto label, auto &&f) {
@@ -123,6 +141,11 @@ namespace libintx {
         f(first,second);
       }
     );
+  }
+
+  void println(const auto& ... args) {
+    std::cout << ((str(args) + " ") + ...);
+    std::cout << std::endl;;
   }
 
 }
