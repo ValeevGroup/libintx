@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os : [ macos-latest ]
+        os : [ macos-15 ]
         cxx : [ clang++ ]
         build_type : [ Debug ]
 
@@ -27,6 +27,7 @@ jobs:
       CMAKE_CONFIG : >
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DLIBINTX_MAX_L=2
+        -DLIBINTX_SIMD=OFF
 
     steps:
     - uses: actions/checkout@v3
