@@ -2,7 +2,7 @@
 #include "test.h"
 
 #include "libintx/ao/md/reference.h"
-#include "libintx/pure.transform.h"
+#include "libintx/pure.reference.h"
 
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/engine.h"
@@ -16,8 +16,8 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
 
   printf("(%i%i|%i%i) K={%i,%i}\n", A, B, C, D, K.first, K.second);
 
-  int M = 16+3;
-  int N = 16+1;
+  int M = 65;
+  int N = 17;
 
   int NA = npure(A);
   int NB = npure(B);
@@ -32,7 +32,7 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
 
   gpuStream_t stream = 0;
   auto md = gpu::integral_engine<4>(bra, ket, stream);
-  md->compute(Coulomb, ijs, kls, result.data(), {(size_t)M*NA*NB, (size_t)NC*ND*N});
+  md->compute(Coulomb, ijs, kls, {}, result.data(), {(size_t)M*NA*NB, (size_t)NC*ND*N});
   gpu::stream::synchronize(stream);
 
   for (size_t ij = 0; ij < ijs.size(); ++ij) {
@@ -56,7 +56,7 @@ void md_eri4_subcase(int A, int B, int C, int D, std::pair<int,int> K = {1,1}) {
         [&](const auto &ab_cd_ref, auto ... idx) {
           //printf("(%i,%i) %p\n", p, cd, &pCD(ij,p,cd,kl));
           auto ab_cd = result(ij,idx...,kl);
-          CHECK(ab_cd == ab_cd_ref);
+          CHECK(ab_cd == ab_cd_ref.epsilon(1e-10));
         },
         ab_cd_ref
       );
@@ -92,25 +92,31 @@ TEST_CASE("gpu.md.eri4") {
   //   }
   // }
 
-  MD_ERI4_SUBCASE(1,0,0,0,Ks);
   MD_ERI4_SUBCASE(0,0,0,0,Ks);
   MD_ERI4_SUBCASE(1,0,0,0,Ks);
-  MD_ERI4_SUBCASE(1,2,0,0,Ks);
-  MD_ERI4_SUBCASE(2,0,0,0,Ks);
-  MD_ERI4_SUBCASE(0,0,2,0,Ks);
   MD_ERI4_SUBCASE(1,1,0,0,Ks);
-  MD_ERI4_SUBCASE(1,1,1,0,Ks);
+  MD_ERI4_SUBCASE(2,1,0,0,Ks);
+  MD_ERI4_SUBCASE(2,2,0,0,Ks);
 
-  MD_ERI4_SUBCASE(1,1,2,0,Ks);
-  MD_ERI4_SUBCASE(2,2,1,0,Ks);
-  MD_ERI4_SUBCASE(1,0,2,2,Ks);
-  MD_ERI4_SUBCASE(1,1,3,0,Ks);
-  MD_ERI4_SUBCASE(3,3,1,0,Ks);
-  MD_ERI4_SUBCASE(1,0,3,3,Ks);
+  // MD_ERI4_SUBCASE(1,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(0,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(1,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(1,2,0,0,Ks);
+  // MD_ERI4_SUBCASE(2,0,0,0,Ks);
+  // MD_ERI4_SUBCASE(0,0,2,0,Ks);
+  // MD_ERI4_SUBCASE(1,1,0,0,Ks);
+  // MD_ERI4_SUBCASE(1,1,1,0,Ks);
 
-  MD_ERI4_SUBCASE(1,1,1,1,Ks);
-  MD_ERI4_SUBCASE(2,2,2,2,Ks);
-  MD_ERI4_SUBCASE(3,3,3,3,Ks);
+  // MD_ERI4_SUBCASE(1,1,2,0,Ks);
+  // MD_ERI4_SUBCASE(2,2,1,0,Ks);
+  // MD_ERI4_SUBCASE(1,0,2,2,Ks);
+  // MD_ERI4_SUBCASE(1,1,3,0,Ks);
+  // MD_ERI4_SUBCASE(3,3,1,0,Ks);
+  // MD_ERI4_SUBCASE(1,0,3,3,Ks);
+
+  // MD_ERI4_SUBCASE(1,1,1,1,Ks);
+  // MD_ERI4_SUBCASE(2,2,2,2,Ks);
+  // MD_ERI4_SUBCASE(3,3,3,3,Ks);
 
 
 

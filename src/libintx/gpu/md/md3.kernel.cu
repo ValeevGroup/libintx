@@ -23,10 +23,13 @@ namespace libintx::gpu::md {
 
   constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
 
+  template<int A, int B>
+  static __device__ libintx::md::pure_transform<A,B> pure_transform;
+
   template
   void IntegralEngine<3>::compute<LIBINTX_GPU_MD_MD3_KERNEL_X,LIBINTX_GPU_MD_MD3_KERNEL_KET>(
     const Basis1&,
-    const Basis2&,
+    const HermiteBasis&,
     TensorRef<double,2>,
     gpuStream_t stream
   );
@@ -34,35 +37,36 @@ namespace libintx::gpu::md {
   template<int X, int C, int D>
   auto IntegralEngine<3>::compute_v0(
     const Basis1& bra,
-    const Basis2& ket,
+    const HermiteBasis& ket,
     TensorRef<double,2> XCD,
     gpuStream_t stream)
   {
 
     constexpr int shmem = 0;
 
-    using kernel::Basis1;
-    using kernel::Basis2;
+    using Bra = kernel::Basis1<X>;
+    using Ket = kernel::Basis2<C,D>;
 
     //printf("ERI4::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
 
-    Basis1<X> x{bra.K, bra.N, bra.data};
-    Basis2<C,D> cd(ket.K, ket.N, ket.data, ket.k_stride, ket.pure_transform);
+    Bra x{bra.K, bra.N, bra.data};
+    auto *pure_transform_ket = symbol_address(pure_transform<C,D>.data);
+    Ket cd(ket.K, ket.N, ket.data(), ket.strides[1], (const double*)pure_transform_ket);
 
-    using x_cd_kernel_x = kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 128,1,1, MaxShmem>;
+    using x_cd_kernel_x = kernel::md3_x_cd_kernel<Bra, Ket, 128,1,1, MaxShmem>;
 
     using x_cd_kernel_xy = typename kernel::find_if<
       800, MaxShmem,
-      kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 64,2,1, MaxShmem>,
-      kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 32,4,1, MaxShmem>,
-      kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 16,8,1, MaxShmem>
+      kernel::md3_x_cd_kernel<Bra, Ket, 64,2,1, MaxShmem>,
+      kernel::md3_x_cd_kernel<Bra, Ket, 32,4,1, MaxShmem>,
+      kernel::md3_x_cd_kernel<Bra, Ket, 16,8,1, MaxShmem>
       >::type;
 
     using x_cd_kernel_xz = typename kernel::find_if<
       800, MaxShmem,
-      kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 64,1,2, MaxShmem>,
-      kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 32,1,4, MaxShmem>,
-      kernel::md3_x_cd_kernel<Basis1<X>, Basis2<C,D>, 16,1,8, MaxShmem>
+      kernel::md3_x_cd_kernel<Bra, Ket, 64,1,2, MaxShmem>,
+      kernel::md3_x_cd_kernel<Bra, Ket, 32,1,4, MaxShmem>,
+      kernel::md3_x_cd_kernel<Bra, Ket, 16,1,8, MaxShmem>
       >::type;
 
     using x_cd_kernel = std::conditional_t<
@@ -106,7 +110,7 @@ namespace libintx::gpu::md {
   template<int X, int C, int D>
   auto IntegralEngine<3>::compute_v2(
     const Basis1& bra,
-    const Basis2& ket,
+    const HermiteBasis& ket,
     TensorRef<double,2> XCD,
     gpuStream_t stream)
   {
@@ -143,7 +147,7 @@ namespace libintx::gpu::md {
         NX*x.N, NCD, cd.nherm,
         math::sqrt_4_pi5, // alpha
         qx.data(), NQ, NQ*NX*x.N,
-        cd.gdata(0,kcd), NCD, cd.stride,
+        cd.gdata(0,kcd), NCD, cd.strides[1],
         (kcd == 0 ? 0.0 : 1.0), // beta
         XCD.data(), NX*x.N, NX*x.N*NCD,
         cd.N, // batches
@@ -156,7 +160,7 @@ namespace libintx::gpu::md {
   template<int X, int Ket>
   void IntegralEngine<3>::compute(
     const Basis1& x,
-    const Basis2& ket,
+    const HermiteBasis& ket,
     TensorRef<double,2> XCD,
     gpuStream_t stream)
   {

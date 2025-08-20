@@ -12,13 +12,18 @@ namespace libintx::gpu::md {
     std::array<device::vector<double>,3> buffer;
   };
 
-  IntegralEngine<4>::IntegralEngine(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream) {
-    libintx_assert(!bra.empty());
-    libintx_assert(!ket.empty());
-    bra_ = bra;
-    ket_ = ket;
+  IntegralEngine<4>::IntegralEngine(gpuStream_t stream) {
     stream_ = stream;
     memory_.reset(new Memory);
+  }
+
+  IntegralEngine<4>::IntegralEngine(const Basis<Gaussian> &bra, const Basis<Gaussian> &ket, gpuStream_t stream)
+    : IntegralEngine(stream)
+  {
+    // libintx_assert(!bra.empty());
+    // libintx_assert(!ket.empty());
+    bra_ = bra;
+    ket_ = ket;
   }
 
   IntegralEngine<4>::~IntegralEngine() {}
@@ -27,26 +32,33 @@ namespace libintx::gpu::md {
     Operator,
     const std::vector<Index2> &bra,
     const std::vector<Index2> &ket,
+    BraKet<const double*> norms,
     double *V,
     const std::array<size_t,2> &dims)
   {
+    auto stream = this->stream_;
+    HermiteBasis p; p.init({bra_, bra_}, bra, norms.bra, stream);
+    HermiteBasis q; q.init({ket_, ket_}, ket, norms.ket, stream);
+    this->compute(p, q, TensorRef{V,dims}, stream);
+  }
 
+  void IntegralEngine<4>::compute(
+    const HermiteBasis& bra, const HermiteBasis& ket,
+    TensorRef<double,2> V,
+    gpuStream_t stream)
+  {
     using Kernel = std::function<void(
-      IntegralEngine&, const Basis2&, const Basis2&, TensorRef<double,2>, gpuStream_t
+      IntegralEngine&,
+      const HermiteBasis&, const HermiteBasis&,
+      TensorRef<double,2>, gpuStream_t
     )>;
-
     static auto ab_cd_kernels = make_array<Kernel,2*LMAX+1,2*LMAX+1>(
       [](auto ab, auto cd) {
         return &IntegralEngine::compute<ab,cd>;
       }
     );
-
-    auto stream = this->stream_;
-    auto p = make_basis(bra_, bra_, bra, this->memory_->p, stream);
-    auto q = make_basis(ket_, ket_, ket, this->memory_->q, stream);
-    auto kernel = ab_cd_kernels[p.first.L+p.second.L][q.first.L+q.second.L];
-    kernel(*this, p, q, TensorRef{V,dims}, stream);
-
+    auto kernel = ab_cd_kernels[bra.first.L+bra.second.L][ket.first.L+ket.second.L];
+    kernel(*this, bra, ket, V, stream);
   }
 
   template<int Idx>

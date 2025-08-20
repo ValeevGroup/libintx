@@ -1,7 +1,7 @@
 // -*-c++-*-
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "test.h"
+#include "doctest.h"
 
 #include "libintx/boys/gpu/chebyshev.h"
 #include "libintx/gpu/api/api.h"
@@ -47,12 +47,7 @@ void test(int grid) {
     // current_device.synchronize();
   }
 
-  // cuda::launch(
-  //   test<Chebyshev>,
-  //   { grid, block },
-  //   chebyshev,
-  //   ptr.get()
-  // );
+  test<Chebyshev><<<grid,block>>>(chebyshev,ptr.get());
 
   libintx::gpu::stream::synchronize();
 

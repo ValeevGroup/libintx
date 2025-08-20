@@ -19,17 +19,6 @@ namespace libintx::gpu::md {
   namespace cart = cartesian;
   namespace herm = hermite;
 
-  __device__
-  constexpr auto orbitals = hermite::orbitals2<2*LMAX>;
-
-  struct Gaussian2 {
-    Gaussian first, second;
-    struct {
-      array<double,3> first, second;
-    } r;
-  };
-
-
   template<int A, int B>
   struct E2 {
 
@@ -103,267 +92,251 @@ namespace libintx::gpu::md {
 
   };
 
+  template<int A, int B, int P = A+B>
+  struct Hermite2 {
+    Hermite h;
+    double E[nherm2(P)*npure(A)*npure(B)];
+  };
 
-  template<typename ThreadBlock, int A, int B, bool Pure>
-  __global__ __launch_bounds__(ThreadBlock::size())
-  void make_basis(const Gaussian2 *gbasis, double *H, size_t stride, size_t k_stride) {
+  template<int A, int B, int Batch>
+  __global__ __launch_bounds__(64)
+  void make_basis_kernel(TensorRef<Gaussian1,2> G1, TensorRef<Hermite2<A,B>,2> H2) {
 
-    namespace cart = cartesian;
+    auto &N = G1.dimensions()[0];
+    if (blockIdx.x*blockDim.x >= N) return;
 
-    auto thread_block = ThreadBlock();
+    auto thread_block = this_thread_block();
+    extern __shared__ double shmem[];
 
-    constexpr int DimX = ThreadBlock::x;
-    constexpr int DimY = ThreadBlock::y;
-    constexpr int NP = nherm2(A+B);
+    auto *shmem_G1 = reinterpret_cast<Gaussian1*>(shmem);
 
-    __shared__
-    union shmem {
-      Gaussian2 ab;
-      __device__ shmem() {}
-    } shmem;
+    // if (thread_block.thread_rank() == 0) {
+    //   printf("** %i,%i %lu\n", A, B, std::min<size_t>(blockDim.x, N-blockIdx.x*blockDim.x));
+    // }
 
-    //__shared__ Gaussian2 ab;
-    auto &ab = shmem.ab;
-
-    memcpy1(&gbasis[blockIdx.x], &ab, thread_block);
+    memcpy(
+      std::min<size_t>(blockDim.x, N-blockIdx.x*blockDim.x),
+      &G1(blockIdx.x*blockDim.x,blockIdx.y),
+      shmem_G1,
+      thread_block
+    );
     thread_block.sync();
 
-    __shared__ array<double,3> AB;
-    if (thread_block.thread_rank() == 0) {
-      AB = ab.r.first - ab.r.second;
-    }
+    auto partition = tiled_partition<16>(this_thread_block());
 
-    for (int ki = 0, k = 0; ki < ab.first.K; ++ki) {
-      for (int kj = 0; kj < ab.second.K; ++kj, ++k) {
+    auto &h = (
+      Batch ?
+      reinterpret_cast<Hermite*>(shmem_G1 + blockDim.x)[threadIdx.x] :
+      reinterpret_cast<Hermite2<A,B>*>(shmem_G1 + blockDim.x)[threadIdx.x].h
+    );
 
-        __shared__ E2<A,B> E;
-        __shared__ double* Hk;
-        __shared__ double a, b;
+    auto &g = shmem_G1[threadIdx.x];
+    auto &[ra,rb] = g.r;
+    auto &[a,b] = g.exp;
+    // P = (AB| overlap
+    double Kab = std::exp(-(a*b)/(a+b)*norm(ra,rb));
+    //double sij = (ij.first == ij.second ? 1 : 2);
+    // shmem values
+    h.exp = (a+b);
+    h.C = g.C*Kab;
+    h.r = center_of_charge(a, ra, b, rb);
+    h.inv_2_exp = 1/math::pow<A+B>(2*(a+b));
 
-        {
-          __shared__ Hermite h;
-          if (thread_block.thread_rank() == 0) {
-            Hk = H + blockIdx.x*stride + k*k_stride;
-            auto& [ai,Ci] = ab.first.prims[ki];
-            auto& [aj,Cj] = ab.second.prims[kj];
-            // P = (AB| overlap
-            double Kab = std::exp(-(ai*aj)/(ai+aj)*norm(AB));
-            //double sij = (ij.first == ij.second ? 1 : 2);
-            // shmem values
-            a = ai;
-            b = aj;
-            h.exp = (a+b);
-            h.C = Ci*Cj*Kab;
-            h.r = center_of_charge(a, ab.r.first, b, ab.r.second);
-            h.inv_2_exp = 1/math::pow<A+B>(2*(a+b));
-            //printf("%i: %f \n", blockIdx.x, h.exp);
-          }
-          thread_block.sync();
-          E.init(a, b, AB, thread_block);
-          memcpy1(&h, Hermite::hdata(Hk), thread_block);
-        }
-        thread_block.sync();
+    if (threadIdx.x + blockIdx.x*blockDim.x < N) assert(h.exp > 0);
 
-        if constexpr (Pure) {
 
-          constexpr int NA = npure(A);
-          constexpr int NB = npure(B);
 
-          static_assert(ncart(A) <= DimX);
-          static_assert(npure(B) <= DimX);
-
-          __shared__ double h[NB*ncart(A)*DimY];
-
-          for (int batch = 0; batch < (NP+DimY-1)/DimY; ++batch) {
-
-            int ip = batch*DimY + threadIdx.y;
-            int np = min(DimY,NP-batch*DimY);
-
-#define h(i,j,p) h[(j) + (i)*NB + (p)*NB*ncart(A)]
-
-            // [a'b'p] -> [a'bp]
-            if (threadIdx.x < ncart(A) && ip < NP) {
-              int i = threadIdx.x;
-              double v[ncart(B)] = {};
-              for (int j = 0; j < ncart(B); ++j) {
-                auto a = orbitals[cart::index(A)+i];
-                auto b = orbitals[cart::index(B)+j];
-                auto p = orbitals[ip];
-                v[j] = E(a,b,p);
-              }
-              pure::cartesian_to_pure<B>(
-                [&](auto j) { return v[index(j)]; },
-                [&](auto j, auto v) { h(i,index(j),threadIdx.y) = v; }
-              );
-            }
-            thread_block.sync();
-
-            // [a'bp] -> [abp]
-            double v[ncart(A)] = {};
-            if (threadIdx.x < NB && ip < NP) {
-              int j = threadIdx.x;
-              for (int i = 0; i < ncart(A); ++i) {
-                v[i] = h(i,j,threadIdx.y);
-              }
-            }
-            thread_block.sync();
-#undef h
-
-#define h(i,j,p) h[(i) + (j)*NA + (p)*NB*NA]
-            if (threadIdx.x < NB && ip < NP) {
-              int j = threadIdx.x;
-              pure::cartesian_to_pure<A>(
-                [&](auto i) { return v[index(i)]; },
-                [&](auto i, auto v) {
-                  //printf("%i,%i,%i %f\n", (int)index(i), (int)j, (int)threadIdx.y, v);
-                  h(index(i),j,threadIdx.y) = v;
-                }
-              );
-            }
-            thread_block.sync();
-#undef h
-
-            memcpy(NA*NB*np, h, Hermite::gdata(Hk)+batch*DimY*NA*NB, thread_block);
-            thread_block.sync();
-
-          }
-
-        }
-
-        if constexpr (!Pure) {
-          for (int ip = threadIdx.z; ip < nherm2(A+B); ip += blockDim.z) {
-            for (int i = threadIdx.y; i < ncart(A); i += blockDim.y) {
-              int j = threadIdx.x;
-              int idx = j;
-              idx += i*ncart(B);
-              idx += ip*ncart(B)*ncart(A);
-              auto a = orbitals[cart::index(A)+i];
-              auto b = orbitals[cart::index(B)+j];
-              auto p = orbitals[ip];
-              //printf("%i,%i,%i %f @%i\n", i, j, ip, E(p,a,b), H-h);
-              double e = E(a,b,p);
-              Hermite::gdata(Hk)[idx] = e;
-            }
-          }
-        }
-
+    if constexpr (!Batch) {
+      auto *shmem_H2 = reinterpret_cast<Hermite2<A,B>*>(shmem_G1 + blockDim.x);
+      if constexpr (A+B == 0) {
+        shmem_H2[threadIdx.x].E[0] = h.inv_2_exp;
       }
+
+      else {
+        libintx::md::E2<double,A,B,A+B> E2(a,b,ra-rb);
+
+        // if (threadIdx.x < N) {
+        //   // printf("** %i = r=%f,%f,%f, exp=%f,%f\n", threadIdx.x, g.r[0], g.r[1], g.r[2], a, b);
+        //   printf("** E(0,0,0) = %f\n", E2(Orbital{0,0,0},Orbital{0,0,0},Orbital{0,0,0}));
+        // }
+
+#pragma unroll
+        for (auto p : hermite::orbitals2<A+B-1>) {
+          int ip = hermite::index2(p);
+          double Eb[ncart(B)][npure(A)] = {};
+#pragma unroll
+          for (auto b : cartesian::orbitals<B>()) {
+            //if (!(p <= b)) continue;
+            double Ea[ncart(A)] = {};
+#pragma unroll
+            for (auto a : cartesian::orbitals<A>()) {
+              //if (!(p <= a+b)) continue;
+              Ea[index(a)] = E2(a,b,p);
+              // if (threadIdx.x < N) {
+              //   printf("** Ea[%i,%i] = %f\n", index(a), hermite::index2(p), Ea[index(a)]);
+              //   printf("** Ea[%i,%i] = %f\n", index(a), hermite::index2(p), E2(Orbital{0,0,0},b,p));
+              // }
+            }
+            pure::cartesian_to_pure<A>(
+              [&](auto a) { return Ea[index(a)]; },
+              [&](auto a, auto v) { Eb[index(b)][index(a)] = v; }
+            );
+          }
+#pragma unroll
+          for (int ia = 0; ia < npure(A); ++ia) {
+            pure::cartesian_to_pure<B>(
+              [&](auto b) { return Eb[index(b)][ia]; },
+              [&](auto b, auto v) {
+                shmem_H2[threadIdx.x].E[ia + index(b)*npure(A) + ip*npure(A,B)] = v;
+              }
+            );
+          }
+        }
+      }
+      //partition.sync();
+      thread_block.sync();
+      int pidx = partition.size()*(threadIdx.x/partition.size());
+      if (pidx + blockIdx.x*blockDim.x < N) {
+        memcpy(
+          std::min<size_t>(partition.size(), N-(pidx + blockIdx.x*blockDim.x)),
+          shmem_H2 + pidx,
+          &H2(pidx + blockIdx.x*blockDim.x,blockIdx.y),
+          partition
+        );
+      }
+      return;
+    } // !Batched
+
+    if constexpr (Batch) {
+      partition.sync();
+      auto inv_2_exp = h.inv_2_exp;
+      int pidx = partition.size()*(threadIdx.x/partition.size());
+      for (int i = 0; i < partition.size(); ++i) {
+        if (i + pidx + blockIdx.x*blockDim.x >= N) break;
+        memcpy1(
+          &reinterpret_cast<Hermite*>(shmem_G1 + blockDim.x)[i + pidx],
+          &H2(i + pidx + blockIdx.x*blockDim.x,blockIdx.y).h,
+          partition
+        );
+      }
+      auto r = ra-rb;
+      thread_block.sync();
+      libintx::md::E2<double,A,B,A+B-1> E2(a,b,ra-rb);
+      //printf("*** Batched %i,%i,%i\n", A,B,A+B-1);
+#pragma unroll
+      for (auto p : hermite::orbitals2<A+B-1>) {
+        int ip = hermite::index2(p);
+        double *shmem_E = reinterpret_cast<double*>(shmem) + threadIdx.x*npure(A)*ncart(B);
+        //double Eb[ncart(B)][npure(A)] = {};
+#pragma unroll
+        for (auto b : cartesian::orbitals<B>()) {
+          //if (!(p <= b)) continue;
+          double Ea[ncart(A)] = {};
+#pragma unroll
+          for (auto a : cartesian::orbitals<A>()) {
+            if (!(p <= a+b)) continue;
+            Ea[index(a)] = E2(a,b,p);
+          }
+          pure::cartesian_to_pure<A>(
+            [&](auto a) { return Ea[index(a)]; },
+            //[&](auto a, auto v) { Eb[index(b)][index(a)] = v; }
+            [&](auto a, auto v) { shmem_E[index(a) + index(b)*npure(A)] = v; }
+          );
+        }
+#pragma unroll
+        for (int ia = 0; ia < npure(A); ++ia) {
+          double Eb[ncart(B)] = {};
+#pragma unroll
+          for (int ib = 0; ib < ncart(B); ++ib) {
+            Eb[ib] = shmem_E[ia + ib*npure(A)];
+          }
+          pure::cartesian_to_pure<B>(
+            //[&](auto b) { return Eb[index(b)][ia]; },
+            [&](auto b) { return Eb[index(b)]; },
+            [&](auto b, auto v) { shmem_E[ia + index(b)*npure(A)] = v; }
+          );
+        }
+        partition.sync();
+        for (int i = 0; i < partition.size(); ++i) {
+          if (i + pidx + blockIdx.x*blockDim.x >= N) break;
+          int ip = hermite::index2(p);
+          memcpy(
+            npure(A,B),
+            &reinterpret_cast<double*>(shmem)[(i + pidx)*npure(A)*ncart(B)],
+            &H2(i + pidx + blockIdx.x*blockDim.x,blockIdx.y).E[ip*npure(A,B)],
+            partition
+          );
+        }
+        partition.sync();
+      } // ip
     }
 
   }
 
+
   template<int A, int B>
-  Basis2 make_basis(
-    const std::vector<Gaussian2> &ab,
-    device::vector<double> &H, // Hermite data buffer
+  void init_basis(
+    const TensorRef<Gaussian1,2> &G1,
+    TensorRef<Hermite2<A,B>,2> &H, // Hermite data
     gpuStream_t stream)
   {
 
     constexpr uint NP = nherm2(A+B);
-    constexpr int align = Basis2::alignment;
 
-    // auto idx = pairs.at(0);
-    auto a = ab[0].first;
-    auto b = ab[0].second;
-    int K = a.K*b.K;
-    int N = ab.size();
-    int n_aligned = (N+(align-N%align));
-    size_t extent = Hermite::extent(a,b);
-    size_t k_stride = extent*n_aligned;
+    auto [N,K] = G1.dimensions();
 
-    bool pure = (a.pure && b.pure);
-    H.resize(
-      k_stride*K +
-      npure(A)*npure(B)*ncart(A+B) // pure_transform data
-    );
-    double *pure_transform_ptr = H.data() + K*k_stride;
-
-    dim3 grid = { (unsigned int)N };
-
-    if (pure) {
-      constexpr bool Pure = true;
-      constexpr uint NX = std::max(ncart(A),npure(B));
-      using Block = thread_block<NX, std::min(NP,128/NX)>;
-      //ssert(false);
-      //printf("BLOCK<%i,%i,%i>\n", Block::x, Block::y, Block::z);
-      make_basis<Block,A,B,Pure><<<grid,Block(),0,stream>>>(ab.data(), H.data(), extent, k_stride);
-      constexpr libintx::md::pure_transform<A,B> pure_transform;
-      gpu::memcpy(
-        pure_transform_ptr,
-        pure_transform.data,
-        sizeof(pure_transform.data)
+    if constexpr (A+B <= 5) {
+      //dim3 block = K == 1 ? dim3{ 64, 1 } : dim3{ 32, 2 };
+      constexpr dim3 block = { 64, 1, 1 };
+      dim3 grid = { int(N+block.x-1)/block.x, (uint)K, 1 };
+      constexpr int Batch = (
+        sizeof(Gaussian1) + sizeof(Hermite2<A,B,A+B>) > 32*sizeof(double)
       );
+      static_assert(A+B > 0 || !Batch);
+      constexpr int shmem = (
+        Batch ?
+        std::max(sizeof(Gaussian1) + sizeof(Hermite), npure(A)*ncart(B)*sizeof(double)) :
+        sizeof(Gaussian1) + sizeof(Hermite2<A,B,A+B>)
+      );
+      static_assert(block.x*shmem <= 48*1024);
+      //println( A, B, N, grid.x, shmem);
+      make_basis_kernel<A,B,Batch><<<grid,block,shmem*block.x,stream>>>(G1, H);
+      gpu::check_last_error();
+      //gpu::stream::synchronize(stream);
     }
     else {
-      constexpr bool Pure = false;
-      constexpr uint NA = ncart(A);
-      constexpr uint NB = ncart(B);
-      constexpr uint MaxThreads = std::min<uint>(128,NA*NB*NP);
-      constexpr uint NX = NB;
-      constexpr uint NY = std::min<uint>(MaxThreads/NX,NA);
-      constexpr uint NZ = (NY != NA) ? 1 : std::min<uint>(MaxThreads/(NX*NY),64);
-      static_assert(NZ);
-      static_assert(NY == ncart(A) || NZ == 1);
-      //printf("BLOCK<%i,%i,%i>\n", NX, NY, NZ);
-      using Block = thread_block<NX,NY,NZ>;
-      make_basis<Block,A,B,Pure><<<grid,Block()>>>(ab.data(), H.data(), extent, k_stride);
-      pure_transform_ptr = nullptr;
+      libintx_assert("not implemented");
+      // dim3 grid = { (unsigned int)N };
+      // if (pure) {
+      //   constexpr bool Pure = true;
+      //   constexpr uint NX = std::max(ncart(A),npure(B));
+      //   using Block = thread_block<NX, std::min(NP,128/NX)>;
+      //   //ssert(false);
+      //   //printf("BLOCK<%i,%i,%i>\n", Block::x, Block::y, Block::z);
+      //   make_basis<Block,A,B,Pure><<<grid,Block(),0,stream>>>(pairs, H.data(), extent, k_stride);
+      //   constexpr libintx::md::pure_transform<A,B> pure_transform;
+      //   // gpu::memcpy(
+      //   //   pure_transform_ptr,
+      //   //   pure_transform.data,
+      //   //   sizeof(pure_transform.data)
+      //   // );
+      // }
+      // else {
+      //   constexpr bool Pure = false;
+      //   constexpr uint NA = ncart(A);
+      //   constexpr uint NB = ncart(B);
+      //   constexpr uint MaxThreads = std::min<uint>(128,NA*NB*NP);
+      //   constexpr uint NX = NB;
+      //   constexpr uint NY = std::min<uint>(MaxThreads/NX,NA);
+      //   constexpr uint NZ = (NY != NA) ? 1 : std::min<uint>(MaxThreads/(NX*NY),64);
+      //   static_assert(NZ);
+      //   static_assert(NY == ncart(A) || NZ == 1);
+      //   //printf("BLOCK<%i,%i,%i>\n", NX, NY, NZ);
+      //   using Block = thread_block<NX,NY,NZ>;
+      //   make_basis<Block,A,B,Pure><<<grid,Block()>>>(pairs, H.data(), extent, k_stride);
+      //   pure_transform_ptr = nullptr;
+      // }
     }
-
-    return Basis2 {
-      .first = a,
-      .second = b,
-      .N = N,
-      .K = K,
-      .data = H.data(),
-      .k_stride = k_stride,
-      .pure_transform = pure_transform_ptr
-    };
-
-  }
-
-  Basis2 make_basis(
-    const Basis<Gaussian> &A,
-    const Basis<Gaussian> &B,
-    const std::vector<Index2> &pairs,
-    device::vector<double> &H,
-    gpuStream_t stream)
-  {
-
-    std::vector<Gaussian2> ab;
-    ab.reserve(pairs.size());
-    for (auto [i,j] : pairs) {
-      Gaussian2 g = {
-        A[i], B[j],
-        { center(A[i]), center(B[j]) }
-      };
-      ab.push_back(g);
-    }
-
-    gpu::host::register_pointer(ab.data(), ab.size());
-
-    auto a = ab[0].first;
-    auto b = ab[0].second;
-
-    using F = std::function<
-      Basis2(
-        const std::vector<Gaussian2> &ab,
-        device::vector<double> &H,
-        gpuStream_t stream
-      )>;
-
-    static auto make_basis = make_array<F,LMAX+1,LMAX+1>(
-      [](auto ... args) -> F {
-        return &md::make_basis<args...>;
-      }
-    );
-
-    auto basis = make_basis[a.L][b.L](ab, H, stream);
-
-    gpu::stream::synchronize(stream);
-    gpu::host::unregister_pointer(ab.data());
-
-    return basis;
 
   }
 
@@ -400,6 +373,81 @@ namespace libintx::gpu::md {
     H.assign(a.data(), a.size());
 
     return Basis1{L,K,N,H.data()};
+
+  }
+
+  void HermiteBasis::init(
+    pair<const Basis<Gaussian>&> basis,
+    const std::vector<Index2> &pairs,
+    const double *norms,
+    gpuStream_t stream)
+  {
+    std::vector< std::tuple<double,Index2> > pairs2(pairs.size());
+    for (size_t i = 0; i < pairs.size(); ++i) {
+      double norm = (norms ? norms[i] : math::infinity<double>);
+      pairs2[i] = { norm, pairs[i] };
+    }
+    this->init(basis, pairs2, stream);
+  }
+
+  void HermiteBasis::init(
+    pair<const Basis<Gaussian>&> basis,
+    const std::vector< std::tuple<double,Index2> > &pairs,
+    gpuStream_t stream)
+  {
+
+    {
+      auto [nij,ij] = pairs.at(0);
+      auto &first = basis.first[ij.first];
+      auto &second = basis.second[ij.second];
+      this->first = first;
+      this->second = second;
+      this->K = first.K*second.K;
+      this->N = pairs.size();
+      this->gaussian1.resize(N*K);
+    }
+
+    TensorRef<Gaussian1,2> G1(this->gaussian1.data(), { this->N, this->K });
+
+    for (size_t idx = 0; auto [nij,ij] : pairs) {
+      auto &a = basis.first[ij.first];
+      auto &b = basis.second[ij.second];
+      libintx_assert(a == this->first && b == this->second);
+      libintx_assert(a.K*b.K == this->K);
+      double r2 = norm(a.r,b.r);
+      for (int kj = 0, k = 0; kj < b.K; ++kj) {
+        for (int ki = 0; ki < a.K; ++ki) {
+          Gaussian1 g = {
+            .exp = { a.prims[ki].a, b.prims[kj].a },
+            .r = { a.r, b.r },
+            .C = a.prims[ki].C*b.prims[kj].C,
+            .norm = static_cast< decltype(Gaussian1::norm) >(nij)
+          };
+          G1(idx,k++) = g;
+        }
+      }
+      ++idx;
+    } // pairs
+
+    size_t N_aligned = alignment*((N + alignment - 1)/alignment);
+
+    jump_table(
+      std::make_index_sequence<LMAX+1>{},
+      std::make_index_sequence<LMAX+1>{},
+      first.L, second.L,
+      [&](auto A, auto B) {
+        this->hermite.resize(
+          (sizeof(Hermite2<A,B>)/sizeof(double))*N_aligned*K
+        );
+        TensorRef<Hermite2<A,B>,2> H2{
+          reinterpret_cast<Hermite2<A,B>*>(this->hermite.data()),
+          { N_aligned, (size_t)K }
+        };
+        strides[0] = sizeof(Hermite2<A,B>)/sizeof(double);
+        strides[1] = strides[0]*N_aligned;
+        init_basis<A,B>(G1,H2,stream);
+      }
+    );
 
   }
 

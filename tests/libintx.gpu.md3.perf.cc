@@ -38,7 +38,7 @@ auto run(
     for (auto it : {0,1}) {
       (void)it;
       auto t0 = time::now();
-      md.engine->compute(op, is, kls, buffer.data(), dims);
+      md.engine->compute(op, is, kls, {}, buffer.data(), dims);
       libintx::gpu::stream::synchronize(stream);
       double t = time::since(t0);
       md.time = 1/t;

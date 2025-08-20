@@ -106,8 +106,8 @@ namespace libintx::gpu::md::kernel {
       auto &&BraKet) const
     {
 
-      auto &p_orbitals = orbitals(bra);
-      auto &q_orbitals = orbitals(ket);
+      constexpr auto p_orbitals = orbitals<Bra>();
+      constexpr auto q_orbitals = orbitals<Ket>();
 
       __shared__ Shmem shmem;
 
@@ -238,8 +238,9 @@ namespace libintx::gpu::md::kernel {
         // }
         hermite_to_cartesian<X>(
           inv_2_p,
-          [&](auto &&p) -> const double& {
-            return pCD[herm::index1(p)][icd_batch];
+          [&](auto ... p) {
+            constexpr int ip = herm::index1(Orbital{p.value...});
+            return pCD[ip][icd_batch];
           },
           [&](auto &&p) -> double& { return U[cart::index(p)]; }
         );
@@ -260,16 +261,19 @@ namespace libintx::gpu::md::kernel {
 
 
   // [q,ij,x,kl] kernel {DimX->q}
-  template<int DimX, int MinBlocks, int X, int Ket, typename Boys>
+  template<int DimX, int MinBlocks, int X, int CD, typename Boys>
   __global__
   __launch_bounds__(DimX,MinBlocks)
   static void compute_q_x_kernel(
     const Basis1<X> bra,
-    const Basis2<Ket> ket,
+    const Basis2<CD> ket,
     const std::pair<int,int> K,
     const Boys boys,
     auto QX)
   {
+
+    using Bra = Basis1<X>;
+    using Ket = Basis2<CD>;
 
     static constexpr int L = bra.L+ket.L;
     static constexpr int NP = bra.nherm;
@@ -339,7 +343,7 @@ namespace libintx::gpu::md::kernel {
 
     for (int iq = threadIdx.x; iq < NQ; iq += thread_block.x) {
 
-      const auto q = kernel::orbitals(ket)[iq];
+      const auto q = kernel::orbitals<Ket>()[iq];
       int phase = (q.L()%2 == 0 ? +1 : -1);
 
       double r[NP] = {};
@@ -352,7 +356,7 @@ namespace libintx::gpu::md::kernel {
       }
 
       for (int ip = 0; ip < NP; ++ip) {
-        const auto &p = kernel::orbitals(bra)[ip];
+        const auto &p = kernel::orbitals<Bra>()[ip];
         r[ip] = R[herm::index2(p+q)];
       }
 

@@ -10,7 +10,7 @@
 namespace libintx::gpu::md {
 
   struct Basis1;
-  struct Basis2;
+  struct HermiteBasis;
 
   template<int N>
   struct IntegralEngine;
@@ -30,6 +30,7 @@ namespace libintx::gpu::md {
       Operator op,
       const std::vector<Index1> &bra,
       const std::vector<Index2> &ket,
+      BraKet<const double*> norms,
       double*,
       const std::array<size_t,2>&
     ) override;
@@ -40,12 +41,12 @@ namespace libintx::gpu::md {
     double* allocate(size_t);
 
     template<int Bra, int Ket>
-    void compute(const Basis1&, const Basis2&, TensorRef<double,2>, gpuStream_t);
+    void compute(const Basis1&, const HermiteBasis&, TensorRef<double,2>, gpuStream_t);
 
     template<int,int,int>
     auto compute_v0(
       const Basis1& x,
-      const Basis2& ket,
+      const HermiteBasis& ket,
       TensorRef<double,2> XCD,
       gpuStream_t stream
     );
@@ -53,7 +54,7 @@ namespace libintx::gpu::md {
     template<int,int,int>
     auto compute_v2(
       const Basis1& x,
-      const Basis2& ket,
+      const HermiteBasis& ket,
       TensorRef<double,2> XCD,
       gpuStream_t stream
     );
@@ -71,6 +72,8 @@ namespace libintx::gpu::md {
   template<>
   struct IntegralEngine<4> : gpu::IntegralEngine<4> {
 
+    explicit IntegralEngine(gpuStream_t stream);
+
     IntegralEngine(
       const Basis<Gaussian> &bra,
       const Basis<Gaussian> &ket,
@@ -83,37 +86,50 @@ namespace libintx::gpu::md {
       Operator,
       const std::vector<Index2> &bra,
       const std::vector<Index2> &ket,
+      BraKet<const double*> norms,
       double*,
       const std::array<size_t,2>&
     ) override;
 
+    void compute(
+      const HermiteBasis& bra,
+      const HermiteBasis& ket,
+      TensorRef<double,2>,
+      gpuStream_t
+    );
+
   private:
 
     template<int Bra, int Ket>
-    void compute(const Basis2&, const Basis2&, TensorRef<double,2>, gpuStream_t);
+    void compute(
+      const HermiteBasis& bra,
+      const HermiteBasis& ket,
+      TensorRef<double,2>,
+      gpuStream_t
+    );
 
     template<int,int,int,int>
     auto compute_v0(
-      const Basis2& bra,
-      const Basis2& ket,
-      TensorRef<double,2> ABCD,
-      gpuStream_t stream
+      const HermiteBasis& bra,
+      const HermiteBasis& ket,
+      TensorRef<double,2>,
+      gpuStream_t
     );
 
     template<int,int,int,int>
     auto compute_v1(
-      const Basis2& bra,
-      const Basis2& ket,
-      TensorRef<double,2> ABCD,
-      gpuStream_t stream
+      const HermiteBasis& bra,
+      const HermiteBasis& ket,
+      TensorRef<double,2>,
+      gpuStream_t
     );
 
     template<int,int,int,int>
     auto compute_v2(
-      const Basis2& bra,
-      const Basis2& ket,
-      TensorRef<double,2> ABCD,
-      gpuStream_t stream
+      const HermiteBasis& bra,
+      const HermiteBasis& ket,
+      TensorRef<double,2>,
+      gpuStream_t
     );
 
     template<int>

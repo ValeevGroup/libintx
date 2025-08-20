@@ -21,6 +21,9 @@ namespace libintx::gpu::md::kernel {
   using libintx::md::hermite_to_pure;
   using libintx::pure::cartesian_to_pure;
 
+  template<int A, int B>
+  static __device__ libintx::md::pure_transform<A,B> pure_transform;
+
   template<int X>
   struct Basis1 {
     static constexpr int Centers = 1;
@@ -48,22 +51,20 @@ namespace libintx::gpu::md::kernel {
     const int K;
     const int N;
     const double *data;
-    const int stride;
-    const size_t k_stride;
-    const double *pure_transform;
-    explicit Basis2(const md::Basis2 &basis)
+    const size_t strides[2];
+    const double *pure_transform = nullptr;
+    explicit Basis2(const md::HermiteBasis &basis)
       : first(basis.first), second(basis.second),
         nbf(libintx::nbf(first)*libintx::nbf(second)),
         K(basis.K), N(basis.N),
-        data(basis.data),
-        stride(sizeof(Hermite)/sizeof(double) + nherm*nbf),
-        k_stride(basis.k_stride),
-        pure_transform(basis.pure_transform)
+        data(basis.data()),
+        strides{ basis.strides[0], basis.strides[1] }
+        //pure_transform(basis.pure_transform)
     {
     }
     LIBINTX_GPU_ENABLED
     auto hdata(int ij, int k) const {
-      return reinterpret_cast<const Hermite*>(data + ij*stride + k*k_stride);
+      return reinterpret_cast<const Hermite*>(data + ij*strides[0] + k*strides[1]);
     }
     LIBINTX_GPU_ENABLED
     auto gdata(int ij, int k) const {
@@ -91,7 +92,7 @@ namespace libintx::gpu::md::kernel {
     {
     }
     explicit Basis2(const Basis2<L> &basis)
-      : K(basis.K), N(basis.N), data(basis.data), k_stride(basis.k_stride)
+      : K(basis.K), N(basis.N), data(basis.data), k_stride(basis.strides[1])
     {
     }
     LIBINTX_GPU_ENABLED
@@ -113,16 +114,16 @@ namespace libintx::gpu::md::kernel {
     hermite::orbitals1<XMAX,1>
   };
 
-  template<int ... Args>
-  constexpr auto& orbitals(const Basis2<Args...>&) {
-    static_assert(orbitals2.size());
-    return orbitals2;
-  }
-
-  template<int X>
-  constexpr auto& orbitals(const Basis1<X>&) {
-    if constexpr (X%2 == 0) return orbitals1.first;
-    if constexpr (X%2 == 1) return orbitals1.second;
+  template<class Basis>
+  constexpr auto orbitals() {
+    if constexpr (Basis::Centers == 2) {
+      static_assert(orbitals2.size());
+      return orbitals2;
+    }
+    if constexpr (Basis::Centers == 1) {
+      if constexpr (Basis::L%2 == 0) return orbitals1.first;
+      if constexpr (Basis::L%2 == 1) return orbitals1.second;
+    }
   }
 
   // use unrolled hermite to pure code or matrix one
@@ -181,8 +182,8 @@ namespace libintx::gpu::md::kernel {
 
       using hermite::index2;
 
-      auto &p_orbitals = orbitals(bra);
-      auto &q_orbitals = orbitals(ket);
+      const auto &p_orbitals = orbitals<Bra>();
+      const auto &q_orbitals = orbitals<Ket>();
 
       static constexpr int C = Ket::First;
       static constexpr int D = Ket::Second;
@@ -254,9 +255,11 @@ namespace libintx::gpu::md::kernel {
           double pq = p*q;
           double alpha = pq/(p+q);
           double T = alpha*norm(P,Q);
-
           double s[L+1] = {};
+          assert(T >= 0);
           boys.template compute<L>(T, 0, s);
+          // printf("s[0] = %f\n", s[0]);
+          // printf("Ck = %f\n", Ck);
           Ck *= rsqrt(pq*pq*(p+q));
           //double Kab = exp(-(a*b)/p*norm(P));
           //double Kcd = 1;//exp(-norm(Q));
@@ -277,7 +280,8 @@ namespace libintx::gpu::md::kernel {
           for (int ip = 0; ip < NP; ++ip) {
             auto p = p_orbitals[ip];
             hermite_to_pure<C,D>(
-              [&](auto &&q) {
+              [&](auto &&iq) {
+                constexpr auto q = cartesian::orbitals<C+D>()[iq.value];
                 return r[index2(p+q)];
               },
               [&](auto c, auto d, auto u) {
@@ -297,6 +301,7 @@ namespace libintx::gpu::md::kernel {
               double pq = phase*r[index2(p+q)];
 #pragma unroll
               for (int icd = 0; icd < NCD; ++icd) {
+                //printf("*** E[%i,%i] = %f\n", icd, iq, Ecd[icd + iq*NCD]);
                 pCD[ip][icd] += pq*Ecd[icd + iq*NCD];
               }
             }
@@ -330,7 +335,10 @@ namespace libintx::gpu::md::kernel {
 
             hermite_to_cartesian<X>(
               inv_2_p,
-              [&](auto p) -> const double& { return pCD[herm::index1(p)][icd]; },
+              [&](auto ... p) -> const double& {
+                constexpr int ip = herm::index1(Orbital{p...});
+                return pCD[ip][icd];
+              },
               [&](auto p) -> double& { return pCD[herm::index1(p)][icd]; }
             );
 
@@ -375,6 +383,7 @@ namespace libintx::gpu::md::kernel {
 #pragma unroll
             for (int ip = 0; ip < nherm2(A+B-1); ++ip) {
               double E = Eab(threadIdx.x, iab, ip, blockIdx.x, kab);
+              //printf("E[%i,%i] = %f\n", iab, ip, E);
 #pragma unroll
               for (int icd = 0; icd < NCD; ++icd) {
                 abcd[icd] += pCD[ip][icd]*E;
@@ -489,8 +498,8 @@ namespace libintx::gpu::md::kernel {
       auto &&BraKet) const
     {
 
-      auto &p_orbitals = orbitals(bra);
-      auto &q_orbitals = orbitals(ket);
+      const auto &p_orbitals = orbitals<Bra>();
+      const auto &q_orbitals = orbitals<Ket>();
 
       __shared__ Shmem shmem;
 
@@ -546,6 +555,7 @@ namespace libintx::gpu::md::kernel {
           Ck *= rsqrt(pq*pq*(p+q));
           double T = alpha*norm(P,Q);
           double s[L+1];
+          assert(T >= 0);
           boys.template compute<L>(T,0,s);
           for (int i = 0; i <= L; ++i) {
             s[i] = math::sqrt_4_pi5*Ck*s[i];
@@ -590,7 +600,8 @@ namespace libintx::gpu::md::kernel {
           constexpr int phase = ((C+D)%2 == 0 ?  +1 : -1);
           if constexpr (!hermite_to_pure_too_complicated(C,D)) {
             hermite_to_pure<C,D>(
-              [&](auto &&q) {
+              [&](auto &&iq) {
+                constexpr auto q = orbitals2[iq.value];
                 return R[herm::index2(p+q)][threadIdx.x];
               },
               [&](auto &&c, auto &&d, auto u) {
@@ -670,8 +681,9 @@ namespace libintx::gpu::md::kernel {
             }
             hermite_to_cartesian<X>(
               inv_2_p,
-              [&](auto p) -> const double& {
-                return P[herm::index1(p)][iy][threadIdx.x];
+              [&](auto ... p) -> const double& {
+                constexpr int ip = herm::index1(Orbital{p...});
+                return P[ip][iy][threadIdx.x];
               },
               [&](auto p) -> double& { return U[cart::index(p)]; }
             );

@@ -22,18 +22,21 @@ namespace libintx::gpu::md {
 
   constexpr int MaxShmem = LIBINTX_GPU_MAX_SHMEM;
 
+  template<int A, int B>
+  static __device__ libintx::md::pure_transform<A,B> pure_transform;
+
   template
   void IntegralEngine<4>::compute<LIBINTX_GPU_MD_MD4_KERNEL_BRA,LIBINTX_GPU_MD_MD4_KERNEL_KET>(
-    const Basis2&,
-    const Basis2&,
+    const HermiteBasis&,
+    const HermiteBasis&,
     TensorRef<double,2>,
     gpuStream_t stream
   );
 
   template<int A, int B, int C, int D>
   auto IntegralEngine<4>::compute_v0(
-    const Basis2& bra,
-    const Basis2& ket,
+    const HermiteBasis& bra,
+    const HermiteBasis& ket,
     TensorRef<double,2> ABCD,
     gpuStream_t stream)
   {
@@ -44,9 +47,15 @@ namespace libintx::gpu::md {
     constexpr int shmem = 0;
     constexpr int NAB = npure(A,B);
 
+    libintx_assert(ABCD.data());
+    libintx_assert(bra.data());
+    libintx_assert(ket.data());
+
     //printf("IntegralEngine<4>::compute<%i,%i> bra.K=%i, ket.K=%i \n", Bra, Ket, bra.K, ket.K);
-    Bra ab(bra.K, bra.N, bra.data, bra.k_stride, bra.pure_transform);
-    Ket cd(ket.K, ket.N, ket.data, ket.k_stride, ket.pure_transform);
+    auto *pure_transform_ab = symbol_address(pure_transform<A,B>.data);
+    auto *pure_transform_cd = symbol_address(pure_transform<C,D>.data);
+    Bra ab(bra.K, bra.N, bra.data(), bra.strides[1], (const double*)pure_transform_ab);
+    Ket cd(ket.K, ket.N, ket.data(), ket.strides[1], (const double*)pure_transform_cd);
 
     using kernel_xy = typename kernel::find_if<
       (Bra::L+Ket::L <= 4 ? 900 : 800), MaxShmem, // 900 catches (pp|pp), (ds|pp)
@@ -63,19 +72,19 @@ namespace libintx::gpu::md {
 
     if constexpr (!std::is_same_v<kernel_xy,void>) {
       typename kernel_xy::ThreadBlock thread_block;
-      static_assert(md::Basis2::alignment%thread_block.x == 0);
+      static_assert(HermiteBasis::alignment%thread_block.x == 0);
       dim3 grid = {
         (uint)(ab.N+thread_block.x-1)/thread_block.x,
         (uint)(cd.N+thread_block.z-1)/thread_block.z
       };
       TensorRef<double,5> ab_p(
-        this->allocate<0>(thread_block.x*NAB*nherm2(A+B-1)*grid.x*bra.K),
-        { thread_block.x, NAB, nherm2(A+B-1), grid.x, (size_t)bra.K }
+        this->allocate<0>(thread_block.x*NAB*nherm2(A+B)*grid.x*bra.K),
+        { thread_block.x, NAB, nherm2(A+B), grid.x, (size_t)bra.K }
       );
       // E(ab,p,ij) -> (ij,ab,p)
       for (int kab = 0; kab < bra.K; ++kab) {
         gpu::batch_transpose(
-          NAB*nherm2(A+B-1), thread_block.x,
+          NAB*nherm2(A+B), thread_block.x,
           ab.gdata(0,kab), ab.stride,
           &ab_p(0,0,0,0,kab), thread_block.x,
           grid.x,
@@ -123,8 +132,8 @@ namespace libintx::gpu::md {
 
   template<int A, int B, int C, int D>
   auto IntegralEngine<4>::compute_v1(
-    const Basis2& bra,
-    const Basis2& ket,
+    const HermiteBasis& bra,
+    const HermiteBasis& ket,
     TensorRef<double,2> ABCD,
     gpuStream_t stream)
   {
@@ -173,7 +182,7 @@ namespace libintx::gpu::md {
         (uint)(NCD*cd.N+DimY-1)/DimY
       };
 
-      static_assert(md::Basis2::alignment%DimY == 0);
+      static_assert(md::HermiteBasis::alignment%DimY == 0);
       size_t nkl_aligned = cd.N + DimY-cd.N%DimY;
       size_t p_cd_size = DimX*NP*NCD*nkl_aligned*grid0.x;
 
@@ -241,7 +250,7 @@ namespace libintx::gpu::md {
         }
         else {
           for (int kq = 0; kq < ket.K; kq += k_batch) {
-            int nk = std::min(ket.K-kq, k_batch);
+            int nk = std::min<int>(ket.K-kq, k_batch);
             for (int k = 0; k < nk; ++k) {
               int ldR = (grid0.x*grid0.y)*(DimX*nherm2(Bra+Ket));
               kernel::compute_r1_kernel<DimX,DimY,0><<<grid0,thread_block,0,stream>>>(
@@ -271,10 +280,10 @@ namespace libintx::gpu::md {
           buffer1,
           { DimX, 1+nherm2(Bra-1)*NAB, grid1.x }
         };
-        static_assert(md::Basis2::alignment%DimX == 0);
+        static_assert(md::HermiteBasis::alignment%DimX == 0);
         gpu::batch_transpose(
           (1+nherm2(Bra-1)*NAB), DimX,
-          ab.gdata(0,kp)-1, ab.stride,
+          ab.gdata(0,kp)-1, ab.strides[1],
           batched_ab_p.data(), DimX,
           grid1.x,
           stream
@@ -286,8 +295,7 @@ namespace libintx::gpu::md {
           batched_ab_p,
           pCD.reshape(DimX, NP, NCD*nkl_aligned, grid1.x),
           (kp == 0 ? 0.0 : 1.0),
-          ABCD,
-          bra.pure_transform
+          ABCD
         );
 
       } // kp
@@ -304,11 +312,12 @@ namespace libintx::gpu::md {
 
   template<int A, int B, int C, int D>
   auto IntegralEngine<4>::compute_v2(
-    const Basis2& bra,
-    const Basis2& ket,
+    const HermiteBasis& bra,
+    const HermiteBasis& ket,
     TensorRef<double,2> ABCD,
     gpuStream_t stream)
   {
+
     //printf("IntegralEngine<4>::compute_v2<%i,%i,%i,%i>\n", A,B,C,D);
     using kernel::Basis2;
 
@@ -441,8 +450,8 @@ namespace libintx::gpu::md {
 
   template<int Bra, int Ket>
   void IntegralEngine<4>::compute(
-    const Basis2& bra,
-    const Basis2& ket,
+    const HermiteBasis& bra,
+    const HermiteBasis& ket,
     TensorRef<double,2> ABCD,
     gpuStream_t stream)
   {

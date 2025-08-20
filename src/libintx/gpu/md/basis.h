@@ -2,10 +2,18 @@
 #define LIBINTX_GPU_MD_BASIS_H
 
 #include "libintx/shell.h"
+#include "libintx/tensor.h"
 #include "libintx/gpu/forward.h"
 #include "libintx/gpu/api/api.h"
 
 namespace libintx::gpu::md {
+
+  struct Gaussian1 {
+    pair<double> exp;
+    pair< array<double,3> > r;
+    double C;
+    double norm;
+  };
 
   struct alignas(8) Hermite {
     double exp;
@@ -45,15 +53,6 @@ namespace libintx::gpu::md {
     const Hermite *data;
   };
 
-  struct Basis2 {
-    static constexpr size_t alignment = 128;
-    const Shell first, second;
-    const int N, K;
-    const double *data;
-    const size_t k_stride;
-    const double *pure_transform;
-  };
-
   Basis1 make_basis(
     const Basis<Gaussian> &A,
     const std::vector<Index1> &idx,
@@ -61,13 +60,35 @@ namespace libintx::gpu::md {
     gpuStream_t
   );
 
-  Basis2 make_basis(
-    const Basis<Gaussian> &A,
-    const Basis<Gaussian> &B,
-    const std::vector<Index2> &pairs,
-    device::vector<double> &H,
-    gpuStream_t
+  void init(
+    pair<const Basis<Gaussian>&> basis,
+    const std::vector< std::tuple<double,Index2> > &pairs,
+    TensorRef<Gaussian1,2> G1
   );
+
+  struct HermiteBasis {
+    void init(
+      pair<const Basis<Gaussian>&> basis,
+      const std::vector< std::tuple<double,Index2> > &pairs,
+      gpuStream_t
+    );
+    void init(
+      pair<const Basis<Gaussian>&> basis,
+      const std::vector<Index2> &pairs,
+      const double *norms,
+      gpuStream_t
+    );
+    static constexpr size_t alignment = 128;
+    Shell first, second;
+    size_t N, K;
+    size_t strides[2];
+    const double *data() const { return hermite.data(); }
+    const double* pure_transform = nullptr;
+  private:
+    device::vector<double> hermite;
+    host::vector<Gaussian1> gaussian1;
+    size_t k_stride;
+  };
 
 }
 

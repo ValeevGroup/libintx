@@ -272,8 +272,8 @@ namespace libintx::gpu::md::kernel {
 
       using hermite::index2;
 
-      const auto &p_orbitals = orbitals(bra);
-      const auto &q_orbitals = orbitals(ket);
+      const auto &p_orbitals = orbitals<Bra>();
+      const auto &q_orbitals = orbitals<Ket>();
 
       constexpr auto NP = Bra::nherm;
       constexpr ThreadBlock thread_block;
@@ -344,7 +344,7 @@ namespace libintx::gpu::md::kernel {
             for (int iq = 0; iq < ncart(Ket::First+Ket::Second); ++iq) {
 #pragma unroll
               for (int icd = 0; icd < NCD; ++icd) {
-                double Ecd = inv_2_q*ket.pure_transform[icd+iq*NCD];
+                double Ecd = inv_2_q*pure_transform<Ket::First,Ket::Second>[icd+iq*NCD];
                 V[icd] += r[iq+NQ]*Ecd;
               }
             }
@@ -407,8 +407,7 @@ namespace libintx::gpu::md::kernel {
       auto &&ABp,
       auto &&pX,
       double Ck,
-      auto &&ABX,
-      auto *hermite_to_pure_transform)
+      auto &&ABX)
     {
 
       constexpr auto thread_block = ThreadBlock();
@@ -448,7 +447,7 @@ namespace libintx::gpu::md::kernel {
           for (int ip = 0; ip < ncart(Bra::L); ++ip) {
             auto p = C*pX(threadIdx.x,ip+NP,kl,blockIdx.x);
             for (int iab = 0; iab < NAB; ++iab) {
-              V[iab] += p*hermite_to_pure_transform[iab + ip*NAB];
+              V[iab] += p*pure_transform<Bra::First,Bra::Second>.data2[ip][iab];
             }
           }
         } // !hermite_to_pure_too_complicated

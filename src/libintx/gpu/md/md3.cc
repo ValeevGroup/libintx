@@ -27,12 +27,13 @@ namespace libintx::gpu::md {
     Operator op,
     const std::vector<Index1> &bra,
     const std::vector<Index2> &ket,
+    BraKet<const double*> norms,
     double *V,
     const std::array<size_t,2> &dims)
   {
 
     using Kernel = std::function<void(
-      IntegralEngine&, const Basis1&, const Basis2&, TensorRef<double,2>, gpuStream_t
+      IntegralEngine&, const Basis1&, const HermiteBasis&, TensorRef<double,2>, gpuStream_t
     )>;
 
     static auto x_cd_kernels = make_array<Kernel,XMAX+1,2*LMAX+1>(
@@ -43,7 +44,7 @@ namespace libintx::gpu::md {
 
     auto stream = this->stream_;
     auto p = make_basis(bra_, bra, this->memory_->p, stream);
-    auto q = make_basis(ket_, ket_, ket, this->memory_->q, stream);
+    HermiteBasis q; q.init({ket_, ket_}, ket, norms.ket, stream);
     auto kernel = x_cd_kernels[p.L][q.first.L+q.second.L];
     kernel(*this, p, q, TensorRef{V,dims}, stream);
 

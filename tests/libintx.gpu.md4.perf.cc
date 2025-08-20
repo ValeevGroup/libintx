@@ -20,12 +20,6 @@ auto run(
   printf("# (%i%i|%i%i) ", A, B, C, D);
   printf("dims=%ix%i, memory=%fGB\n", Nij, Nkl, 8*buffer.size()/1e9);
 
-  struct {
-    std::unique_ptr< libintx::gpu::IntegralEngine<4> > engine;
-    double time = 0;
-    std::vector<double> ratio;
-  } md;
-
   for (auto K : Ks) {
 
     printf("# K={%i,%i}: ", K.first, K.second);
@@ -33,17 +27,21 @@ auto run(
     auto [bra,ijs] = test::make_basis<2>({A,B}, {K.first,1}, Nij);
     auto [ket,kls] = test::make_basis<2>({C,D}, {K.second,1}, Nkl);
 
+    struct {
+      std::unique_ptr< libintx::gpu::IntegralEngine<4> > engine;
+      double time = 0;
+      std::vector<double> ratio;
+    } md;
+
     gpuStream_t stream = 0;
     md.engine = libintx::gpu::integral_engine<4>(bra, ket, stream);
     md.engine->max_memory = 2ul*1024*1024*1024;
-    md.engine->compute(Coulomb, ijs, kls, buffer.data(), dims);
-    libintx::gpu::stream::synchronize(stream);
-    {
+    for (int i = 0; i < 4; ++i) {
       auto t0 = time::now();
-      md.engine->compute(Coulomb, ijs, kls, buffer.data(), dims);
+      md.engine->compute(Coulomb, ijs, kls, {}, buffer.data(), dims);
       libintx::gpu::stream::synchronize(stream);
       double t = time::since(t0);
-      md.time = 1/t;
+      md.time = std::max(md.time, 1/t);
     }
 
     printf("T(MD)=%f ", 1/md.time);

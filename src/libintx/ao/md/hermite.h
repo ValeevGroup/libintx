@@ -13,52 +13,53 @@ namespace libintx::md {
 
     alignas(T) T data[3][A+1][B+1][P+1];
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     auto operator()(int i, int j, int k, int axis) const {
+      assert(i <= A && j <= B && k <= P && axis <= 2);
       return data[axis][i][j][k];
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     auto x(int i, int j) const {
       static_assert(P == 0);
       return data[0][i][j][0];
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     auto y(int i, int j) const {
       static_assert(P == 0);
       return data[1][i][j][0];
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     auto z(int i, int j) const {
       static_assert(P == 0);
       return data[2][i][j][0];
     }
 
     template<int Axis>
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     const auto& p(Orbital a, Orbital b) const {
       return data[Axis][a[Axis]][b[Axis]];
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     const auto& px(Orbital a, Orbital b) const {
       return this->p<0>(a,b);
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     const auto& py(Orbital a, Orbital b) const {
       return this->p<1>(a,b);
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     const auto& pz(Orbital a, Orbital b) const {
       return this->p<2>(a,b);
     }
 
     template<typename Orbital>
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     auto operator()(Orbital a, Orbital b, Orbital p) const {
       T e{1};
       for (int i = 0; i < 3; ++i) {
@@ -67,7 +68,7 @@ namespace libintx::md {
       return e;
     }
 
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     E2(T a, T b, const array<T,3> &X) {
       constexpr bool Transpose = (B < A); // prefered init order
       auto E = [&](auto i, auto j, auto k, int x) ->auto& {
@@ -92,7 +93,7 @@ namespace libintx::md {
   private:
 
     template<int First, int Second>
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     static void init(T a, T b, const T* __restrict__ X, auto &&E) {
       // better performance if Second > First
       //static_assert(First <= Second);
@@ -133,13 +134,14 @@ libintx_unroll(2*LIBINTX_MAX_L+1)
     }
 
     template<int L, int N>
-    LIBINTX_ALWAYS_INLINE
+    LIBINTX_ALWAYS_INLINE LIBINTX_GPU_ENABLED
     static void init(int K, const T &inv_2_p, const T &X, T (&E)[N]) {
       if constexpr (L == 0) return;
       assert(K > 0);
       //assert(K < N);
       alignas(T) T Ep[N] = {};
-      Ep[0] = X*E[0] + E[1];
+      if constexpr (N == 1) Ep[0] = X*E[0];
+      else Ep[0] = X*E[0] + E[1];
 libintx_unroll(2*LIBINTX_MAX_L+1)
       for (int k = 1; k < K; ++k) {
         Ep[k] = inv_2_p*E[k-1] + X*E[k];
@@ -155,31 +157,31 @@ libintx_unroll(2*LIBINTX_MAX_L+1)
   };
 
 
-//   template<int A, int B, typename T>
-//   void hermite_to_cartesian(
-//     const auto &ai, const auto &aj,
-//     const auto &R,
-//     const T &C, const T *H, T *G)
-//   {
-//     constexpr auto orbitals2 = hermite::orbitals2<A+B>;
-//     constexpr int NP = nherm2(A+B);
-//     md::E2<T,A,B,A+B> E(ai,aj,R);
-//     //#pragma GCC unroll (28)
-//     for (auto b : cartesian::orbitals<B>()) {
-//       //#pragma GCC unroll (28)
-//       for (auto a : cartesian::orbitals<A>()) {
-//         int iab = index(a) + index(b)*ncart(A);
-//         T g = 0;
-// #pragma GCC unroll (455)
-//         for (int ip = 0; ip < NP; ++ip) {
-//           auto p = orbitals2[ip];
-//           auto e = E(a,b,p);
-//           g += e*H[ip];
-//         }
-//         G[iab] += C*g;
-//       }
-//     }
-//   }
+  template<int A, int B, typename T>
+  void hermite_to_cartesian(
+    const auto &ai, const auto &aj,
+    const auto &R,
+    const T &C, const T *H, T *G)
+  {
+    constexpr auto orbitals2 = hermite::orbitals2<A+B>;
+    constexpr int NP = nherm2(A+B);
+    md::E2<T,A,B,A+B> E(ai,aj,R);
+    //#pragma GCC unroll (28)
+    for (auto b : cartesian::orbitals<B>()) {
+      //#pragma GCC unroll (28)
+      for (auto a : cartesian::orbitals<A>()) {
+        int iab = index(a) + index(b)*ncart(A);
+        T g = 0;
+libintx_unroll (455)
+        for (int ip = 0; ip < NP; ++ip) {
+          auto p = orbitals2[ip];
+          auto e = E(a,b,p);
+          g += e*H[ip];
+        }
+        G[iab] += C*g;
+      }
+    }
+  }
 
 
   template<typename T, int Ax, int Ay, int Az, int Px = 0, int Py = 0, int Pz = 0>

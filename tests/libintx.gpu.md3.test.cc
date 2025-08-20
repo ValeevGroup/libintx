@@ -2,7 +2,7 @@
 #include "test.h"
 
 #include "libintx/ao/md/reference.h"
-#include "libintx/pure.transform.h"
+#include "libintx/pure.reference.h"
 
 #include "libintx/gpu/api/api.h"
 #include "libintx/gpu/engine.h"
@@ -31,7 +31,7 @@ void md_eri3_subcase(Operator op, int X, int C, int D, std::pair<int,int> K = {1
 
   gpuStream_t stream = 0;
   auto md = libintx::gpu::integral_engine<3>(bra, ket, stream);
-  md->compute(op, is, kls, result.data(), {(size_t)M*NX, (size_t)N*NC*ND});
+  md->compute(op, is, kls, {}, result.data(), {(size_t)M*NX, (size_t)N*NC*ND});
   gpu::stream::synchronize(stream);
 
   for (int i = 0; i < bra.size(); ++i) {
