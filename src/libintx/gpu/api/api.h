@@ -17,6 +17,8 @@ namespace libintx::gpu {
     using std::runtime_error::runtime_error;
   };
 
+  void check_last_error();
+
   struct current_device {
 
     static int get();
@@ -252,6 +254,13 @@ namespace libintx::gpu {
 
     //bool synchronize();
 
+  }
+
+  void* symbol_address(void *symbol);
+
+  template<typename T>
+  T* symbol_address(T &symbol) {
+    return reinterpret_cast<T*>(symbol_address((void*)&symbol));
   }
 
 }

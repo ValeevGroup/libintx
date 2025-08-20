@@ -3,6 +3,10 @@
 
 #include <cstring>
 
+void libintx::gpu::check_last_error() {
+  LIBINTX_GPU_API(GetLastError);
+}
+
 int libintx::gpu::current_device::get() {
   int device;
   LIBINTX_GPU_API(GetDevice, &device);
@@ -77,4 +81,10 @@ void libintx::gpu::host::register_pointer(const void *ptr, size_t size) {
 
 void libintx::gpu::host::unregister_pointer(const void *ptr) {
   LIBINTX_GPU_API(HostUnregister, const_cast<void*>(ptr));
+}
+
+void* libintx::gpu::symbol_address(void *symbol) {
+  void *ptr = nullptr;
+  LIBINTX_GPU_API(GetSymbolAddress, &ptr, symbol);
+  return ptr;
 }
