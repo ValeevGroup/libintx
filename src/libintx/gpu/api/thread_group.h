@@ -65,12 +65,24 @@ namespace libintx::gpu {
     }
   }
 
-  template<typename T>
   __device__ __forceinline__
-  void memcpy(size_t size, const T *src, T *dst, const auto &thread_group) {
+  void memcpy(size_t size, const uint32_t *src, uint32_t *dst, const auto &thread_group) {
     for (int i = thread_group.thread_rank(); i < size; i += thread_group.size()) {
       dst[i] = src[i];
     }
+  }
+
+  template<typename T>
+  __device__ __forceinline__
+  void memcpy(size_t n, const T *src, T *dst, const auto &thread_group) {
+    using byte4 = uint32_t;
+    static_assert(sizeof(T)%sizeof(byte4) == 0);
+    memcpy(
+      n*sizeof(T)/sizeof(byte4),
+      reinterpret_cast<const byte4*>(src),
+      reinterpret_cast<byte4*>(dst),
+      thread_group
+    );
   }
 
   template<typename T>

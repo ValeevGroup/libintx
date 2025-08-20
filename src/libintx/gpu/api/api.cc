@@ -23,8 +23,32 @@ int libintx::gpu::device::count() {
   return count;
 }
 
+libintx::gpuStream_t libintx::gpu::stream::create() {
+  gpuStream_t stream = 0;
+  LIBINTX_GPU_API(StreamCreate, &stream);
+  return stream;
+}
+
+void libintx::gpu::stream::destroy(libintx::gpuStream_t stream) {
+  LIBINTX_GPU_API(StreamDestroy, stream);
+}
+
 void libintx::gpu::stream::synchronize(gpuStream_t stream) {
   LIBINTX_GPU_API(StreamSynchronize, stream);
+}
+
+bool libintx::gpu::stream::query(gpuStream_t stream) {
+  try {
+    LIBINTX_GPU_API(StreamQuery, stream);
+    return true;
+  }
+  catch (libintx::gpu::runtime_error&) {
+    return false;
+  }
+}
+
+void libintx::gpu::stream::launch_hostfn(gpuStream_t stream, void(*fn)(void*), void *data) {
+  LIBINTX_GPU_API(LaunchHostFunc, stream, fn, data);
 }
 
 void* libintx::gpu::device_memory_t::allocate(size_t bytes) {

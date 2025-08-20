@@ -13,6 +13,8 @@ namespace libintx::gpu {
   struct Stream;
   struct Event;
 
+  std::unique_ptr<Event,void(*)> event();
+
   struct runtime_error : std::runtime_error {
     using std::runtime_error::runtime_error;
   };
@@ -47,8 +49,45 @@ namespace libintx::gpu {
   }
 
   namespace stream {
+    gpuStream_t create();
+    void destroy(gpuStream_t);
+    bool query(gpuStream_t = 0);
     void synchronize(gpuStream_t = 0);
+    void wait(const gpuStream_t&, const gpuEvent_t&);
+    void launch_hostfn(gpuStream_t, void(*)(void*), void* = nullptr);
   }
+
+
+  struct Stream {
+
+    Stream(const Stream&) = delete;
+    Stream(Stream&&) = delete;
+    Stream& operator=(const Stream&) = delete;
+    Stream& operator=(Stream&&) = delete;
+
+    explicit Stream(gpuStream_t stream = nullptr) {
+      this->reset(stream);
+    }
+
+    ~Stream() {
+      this->reset();
+    }
+
+    void reset(gpuStream_t stream = nullptr) {
+      if (this->stream_) stream::destroy(stream_);
+      stream_ = stream;
+    }
+
+    operator gpuStream_t() const { return stream_; }
+
+    void synchronize() { stream::synchronize(stream_); }
+    void wait(const gpuEvent_t &event) { stream::wait(stream_, event); }
+
+  private:
+    gpuStream_t stream_ = nullptr;
+
+  };
+
 
   void memcpy(void *dst, const void *src, size_t bytes);
   void memcpy(void *dst, const void *src, size_t bytes, gpuStream_t);
@@ -83,14 +122,6 @@ namespace libintx::gpu {
       );
     }
 
-    template<typename T, class memory_t>
-    std::shared_ptr<T> make_shared(size_t n) {
-      static_assert(std::is_array<T>::value, "");
-      using element_type = typename std::remove_extent<T>::type;
-      auto *ptr = allocate<element_type,memory_t>(n);
-      return std::shared_ptr<T>(ptr, &memory_t::free);
-    }
-
   }
 
   struct device_memory_t {
@@ -105,6 +136,22 @@ namespace libintx::gpu {
     static void free(void*);
     static void memset(void *dst, const int value, size_t bytes);
   };
+
+  template<typename T, class memory_t>
+  std::shared_ptr<T> make_shared(size_t n) {
+    static_assert(std::is_array<T>::value, "");
+    using element_type = typename std::remove_extent<T>::type;
+    static_assert(
+      sizeof(element_type) % alignof(element_type) == 0,
+      "Type alignment not supported"
+    );
+    static_assert(
+      std::is_trivially_constructible<element_type>::value,
+      "Non-trivial constructor not supported"
+    );
+    auto *ptr = detail::allocate<element_type,memory_t>(n);
+    return std::shared_ptr<T>(ptr, &memory_t::free);
+  }
 
   template<typename T, class memory_t>
   struct vector {
@@ -145,6 +192,18 @@ namespace libintx::gpu {
       memcpy(this->data(), data, sizeof(T)*size);
     }
 
+    void assign(const T *data, size_t size, gpuStream_t stream) {
+      resize(size);
+      memcpy(this->data(), data, sizeof(T)*size, stream);
+    }
+
+    template<typename U>
+    void assign(size_t size, U u) {
+      static_assert(std::is_same<memory_t,host_memory_t>::value, "");
+      this->resize(size);
+      std::fill(this->begin(), this->end(), u);
+    }
+
     void assign_zero(size_t size) {
       resize(size);
       this->memset(0);
@@ -170,6 +229,7 @@ namespace libintx::gpu {
       size_ = 0;
     }
 
+    bool empty() const { return (size_ == 0); }
     size_t size() const { return size_; }
     size_t capacity() const { return capacity_; }
 
@@ -214,7 +274,7 @@ namespace libintx::gpu {
 
     template<typename T>
     std::shared_ptr<T> make_shared(size_t n) {
-      return detail::make_shared<T, host_memory_t>(n);
+      return make_shared<T, host_memory_t>(n);
     }
 
     template<typename T>
@@ -246,7 +306,7 @@ namespace libintx::gpu {
 
     template<typename T>
     std::shared_ptr<T> make_shared(size_t n) {
-      return detail::make_shared<T, device_memory_t>(n);
+      return gpu::make_shared<T,device_memory_t>(n);
     }
 
     template<typename T>
