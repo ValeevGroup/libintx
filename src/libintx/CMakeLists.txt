@@ -18,7 +18,7 @@ if (LIBINTX_APPLE_ACCELERATE)
 endif()
 
 if (TARGET LAPACK::LAPACK)
-  target_link_libraries(libintx.blas LAPACK::LAPACK)
+  target_link_libraries(libintx.blas LAPACK::LAPACK ${LAPACKE_LIBRARIES})
 endif()
 
 install(

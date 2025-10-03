@@ -1,9 +1,9 @@
 name: libintx CI
 
-on: [push]
-
-env:
-  CMAKE_BUILD_PARALLEL_LEVEL : 4
+on:
+  pull_request:
+  push:
+    branches: [main]
 
 defaults:
   run:
@@ -16,31 +16,74 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os : [ macos-15 ]
-        cxx : [ clang++ ]
-        build_type : [ Debug ]
+        os :
+          - ubuntu-latest
+          - ubuntu-24.04-arm
 
-    name: "${{ matrix.os }}: ${{ matrix.cxx }} ${{ matrix.build_type }}"
+        compiler :
+          - clang
+          - gcc
+
+        build_type : 
+          # - Debug
+          - Release
+
+        simd:
+          - ON
+          - OFF
+        
+    name: "${{ matrix.os }}: ${{ matrix.compiler }} ${{ matrix.build_type }} ${{matrix.simd == 'ON' && '(simd)' || ''}}"
     runs-on: ${{ matrix.os }}
-    env:
-      CXX : ${{ matrix.cxx }}
-      CMAKE_CONFIG : >
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DLIBINTX_MAX_L=2
-        -DLIBINTX_SIMD=OFF
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
 
-    - name: "Configure: ${{ env.CMAKE_CONFIG }}"
+    - uses: actions/checkout@v4
+
+    - name: Set compiler and sccache environment
+      run: |
+        echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+
+        if [[ "${{ matrix.compiler }}" == "gcc" ]]; then
+          echo "CC=gcc" >> $GITHUB_ENV
+          echo "CXX=g++" >> $GITHUB_ENV
+        elif [[ "${{ matrix.compiler }}" == "clang" ]]; then
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+        else
+          echo "Unsupported compiler: ${{ matrix.compiler }}"
+          exit 1
+        fi
+
+    - name: Verify compiler
       run: |
         set -x;
-        cmake -B${{github.workspace}}/build $CMAKE_CONFIG
+        $CC --version
+        $CXX --version 
+
+    - name: Install Build Dependencies
+      run: |
+        set -x;
+        sudo apt-get update && sudo apt-get install -y \
+          libopenblas-dev \
+          liblapacke-dev
+
+    - name: Configure
+      run: |
+        set -x;
+        cmake -S . -B ./build -G "Ninja Multi-Config" \
+          -DLIBINTX_MAX_L=2 \
+          -DLIBINTX_SIMD=${{matrix.simd}} \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+          -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}}
+
 
     - name: Build
       working-directory: ${{github.workspace}}/build
       run: |
-        cmake --build . --target all all.tests
+        cmake --build . --target all all.tests --config ${{matrix.build_type}}
 
     - name: Test
       working-directory: ${{github.workspace}}/build
