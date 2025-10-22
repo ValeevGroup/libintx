@@ -1,6 +1,7 @@
 #ifndef LIBINTX_SHELL_H
 #define LIBINTX_SHELL_H
 
+#include "libintx/forward.h"
 #include "libintx/orbital.h"
 #include "libintx/array.h"
 #include "libintx/math.h"
@@ -10,13 +11,15 @@
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
+#include <memory>
 
 namespace libintx::gto {
 
   template<typename T>
   struct Primitive;
 
-  template<typename Shell, typename T = double>
+  // in libintx/forward.h
+  template<typename Shell, typename T>
   struct alignas(32) Gaussian;
 
 } // libintx::gto
@@ -86,7 +89,7 @@ struct Basis {
   const auto& operator[](size_t i) const { return shells_.at(i); }
 
   const auto& ranges() const { return ranges_; }
-  auto range(size_t i) const { return ranges_.at(i); }
+  const auto& range(size_t i) const { return ranges_.at(i); }
 
   void erase(auto &&f) {
     auto shells = std::move(shells_);
@@ -116,22 +119,49 @@ private:
 
 };
 
-template<typename Shell = Gaussian, typename Z, typename R, typename ... Args>
+template<typename S>
+inline auto nbf(const Basis<S> &basis) {
+  return basis.nbf();
+}
+
+template<typename Shell = Gaussian, typename Z, typename R>
 auto make_basis(
   const std::vector< std::tuple<Z,R> > &atoms,
   const auto &basis_set,
   bool normalize = true)
 {
-  Basis<Shell> basis;
+  auto basis = std::make_shared< Basis<Shell> >();
   for (auto [z,r] : atoms) {
     for (auto& [L,p] : basis_set.at(z)) {
       auto& [ r0,r1,r2 ] = r;
       Shell g(L, {r0,r1,r2}, p);
       if (normalize) g = normalized<Shell>(g);
-      basis.push_back(g);
+      basis->push_back(g);
     }
   }
   return basis;
+}
+
+template<typename Shell>
+auto make_basis(const std::vector<Shell> &shells) {
+  auto basis = std::make_shared< Basis<Shell> >();
+  for (auto &s : shells) {
+    basis->push_back(s);
+  }
+  return basis;
+}
+
+template<typename T, typename Shell>
+std::vector<T> make_basis(
+  const Basis<Shell> &basis,
+  const std::vector<Index1> &idx)
+{
+  std::vector<T> v;
+  v.reserve(idx.size());
+  for (auto &i : idx) {
+    v.push_back(T{basis[i]});
+  }
+  return v;
 }
 
 template<typename T, typename Shell>

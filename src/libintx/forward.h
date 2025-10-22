@@ -42,6 +42,15 @@ namespace libintx {
   struct Basis;
   //struct Gaussian;
 
+  namespace gto {
+
+    template<typename Shell, typename T = double>
+    struct alignas(32) Gaussian;
+
+  } // gto
+
+  using Gaussian = gto::Gaussian<Shell>;
+
   template<typename First, typename Second = First>
   struct pair {
     First first;
