@@ -171,9 +171,9 @@ namespace libintx::gpu::md::kernel {
           }
           auto PQ = P-Q;
           namespace r1 = libintx::md::r1;
-          r1::visit<L,r1::DepthFirst>(
-            [&](auto &&r) {
-              R[r.index][threadIdx.x] = r.value;
+          libintx::md::r1::visit<L,double>(
+            [&](auto idx, auto &&v) {
+              R[idx][threadIdx.x] = v;
             },
             PQ, s
           );

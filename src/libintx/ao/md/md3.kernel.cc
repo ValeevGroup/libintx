@@ -61,8 +61,9 @@ libintx_unroll(12+1)
       }
     );
     namespace r1 = libintx::md::r1;
-    auto f = [&](auto r) {
-      if constexpr (r.L >= X) R[r.index] += r.value;
+    auto f = [&](auto idx, auto &&v) {
+      constexpr auto p = hermite::orbitals2<X+Ket>[idx];
+      if constexpr (p.L() >= X) R[idx] += v;
       //R[r.index] += r.value;
     };
     r1::visit<X+Ket>(f, PQ, r0);
@@ -225,8 +226,9 @@ libintx_unroll(12+1)
             );
           }
           namespace r1 = libintx::md::r1;
-          auto f = [&](auto r) {
-            if constexpr (r.L >= X) R[i][r.index] += r.value;
+          auto f = [&](auto idx, auto &&v) {
+            constexpr auto p = hermite::orbitals2<X+Ket>[idx];
+            if constexpr (p.L() >= X) R[i][idx] += v;
             //R[r.index] += r.value;
           };
           r1::visit<X+Ket>(f, PQ, r0);

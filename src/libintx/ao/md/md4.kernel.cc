@@ -12,9 +12,9 @@
 #include "libintx/config.h"
 
 #if (LIBINTX_MD_MD4_KERNEL_KET <= 3)
-#define LIBINTX_AO_MD_R1_KERNEL_INLINE LIBINTX_ALWAYS_INLINE
+#define LIBINTX_AO_MD_R1_COMPUTE_INLINE LIBINTX_ALWAYS_INLINE
 #endif
-#include "libintx/ao/md/r1/kernel.h"
+#include "libintx/ao/md/r1.h"
 
 #ifndef LIBINTX_MD_MD4_KERNEL_BRA
 #error LIBINTX_MD_MD4_KERNEL_BRA undefined

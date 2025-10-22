@@ -118,14 +118,13 @@ namespace libintx::gpu::md::kernel {
       C *= -2*alpha;
     }
 
-    auto v = [&](auto r) {
+    auto v = [&](auto idx, auto &&v) {
       int kl = threadIdx.y + DimY*blockIdx.y;
-      R1(threadIdx.x, r.index, blockIdx.x, kl) = r.value;
+      R1(threadIdx.x, idx, blockIdx.x, kl) = v;
       //printf("r1[%i]=%f\n", threadIdx.x + r.index*thread_block.x + ridx, r.value);
     };
 
-    namespace r1 = libintx::md::r1;
-    r1::visit<L,r1::DepthFirst>(v, PQ, s);
+    libintx::md::r1::visit<L,double>(v, PQ, s);
 
   }
 

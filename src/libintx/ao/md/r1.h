@@ -1,146 +1,84 @@
-#ifndef LIBINTX_MD_R1_H
-#define LIBINTX_MD_R1_H
+#ifndef LIBINTX_AO_MD_R1_H
+#define LIBINTX_AO_MD_R1_H
 
 #include "libintx/orbital.h"
-#include <utility>
-#include <tuple>
+#include "libintx/math.h"
 
 namespace libintx::md::r1 {
 
-enum Order { DepthFirst = 1, BreadthFirst=2 };
-
-using libintx::Orbital;
-
-template<int X, int Y, int Z, int M, typename T = double>
-struct R {
-  static constexpr Orbital orbital = {{
-    uint8_t(X),
-    uint8_t(Y),
-    uint8_t(Z)
-  }};
-  static constexpr int L = X+Y+Z;
-  static constexpr int index = hermite::index2(orbital);
-  T value;
-};
-
-template<int P, int Q>
-struct visitor {
-
-  template<typename F, class R>
+  template<int L, typename T, int I = 0, int J = 0, int K = 0>
   LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-  constexpr static void apply1(F &&f, const R &r) {
-    //printf("%i,%i,%i\n", P, Q, r.L);
-    apply<0>(f,r);
-    apply<2>(f,r);
-    apply<4>(f,r);
-    apply<6>(f,r);
+  void visit(auto &&V, const auto &pq, const T* __restrict__ A1, const T* __restrict__ A2 = nullptr) {
+    constexpr int M = I+J+K;
+    std::integral_constant<int,hermite::index2(Orbital{I,J,K})> ijk;
+    V(ijk, A1[0]);
+    //V[ijk] = A1[0];
+    if constexpr (L > M) {
+      T A0[L-M] = {};
+      if constexpr (!J && !K) {
+        libintx_unroll(24)
+        for (int l = 0; l < L-M; ++l) {
+          A0[l] = pq[0]*A1[l+1];
+          if constexpr (I) A0[l] += I*A2[l+1];
+        }
+        visit<L,T,I+1,J,K>(V,pq,A0,A1);
+      }
+      if constexpr (!K) {
+        T A0[L-M] = {};
+        libintx_unroll(24)
+        for (int l = 0; l < L-M; ++l) {
+          A0[l] = pq[1]*A1[l+1];
+          if constexpr (J) A0[l] += J*A2[l+1];
+        }
+        visit<L,T,I,J+1,K>(V,pq,A0,A1);
+      }
+      {
+        T A0[L-M] = {};
+        libintx_unroll(24)
+        for (int l = 0; l < L-M; ++l) {
+          A0[l] = pq[2]*A1[l+1];
+          if constexpr (K) A0[l] += K*A2[l+1];
+        }
+        visit<L,T,I,J,K+1>(V,pq,A0,A1);
+      }
+    }
   }
 
-  template<int K, typename F, class R>
+  template<int L, typename T, size_t N>
   LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-  constexpr static void apply(F &&f, const R &r) {
-    constexpr bool valid = (
-      K <= Q &&
-      Q-K <= R::L &&
-      R::L-(Q-K) <= P
-    );
-    if constexpr (valid) apply<Q-K,0>(f,r);
+  void compute(auto &&PQ, const T (&s)[L+1], T (&R1)[N]) {
+    auto V = [&](auto &&idx, auto &&v) { return R1[idx] = v; };
+    r1::visit<L>(V, PQ, s);
   }
 
-  template<int QK, int Idx, typename F, class R>
-  LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-  constexpr static void apply(F &&f, const R &r) {
-    constexpr auto q = cartesian::orbital<QK,Idx>();
-    if constexpr (q <= R::orbital) {
-      constexpr auto p = R::orbital-q;
-      static_assert(p.L() <= P);
-      static_assert(q.L() <= Q);
-      constexpr int phase = (q.L()%2 ? -1 : +1);
-      f(p, q, phase*r.value);
+  template<int L, typename T, size_t N>
+#ifdef LIBINTX_AO_MD_R1_COMPUTE_INLINE
+  LIBINTX_AO_MD_R1_COMPUTE_INLINE
+#endif
+  void compute(const T &p, const T &q, auto &&PQ, const T &C, auto &&boys, T (&R1)[N]) {
+    T pq = p*q;
+    T alpha = pq/(p+q);
+    T x = alpha*norm(PQ);
+    T s[L+1] = {};
+    boys.template compute<L>(x, 0, s);
+    using std::sqrt;
+    auto Si = C/sqrt(pq*pq*(p+q))*math::sqrt_4_pi5;
+    //T Kab = exp(-(a*b)/p*norm(P));
+    //T Kcd = 1;//exp(-norm(Q));
+    //C *= Kcd;
+libintx_unroll(25)
+    for (int i = 0; i <= L; ++i) {
+      s[i] *= Si;
+      Si *= -2*alpha;
     }
-    if constexpr (Idx+1 < ncart(QK)) apply<QK,Idx+1>(f,r);
+    //printf("p,q,PQ = %f,%f,%f, s[0] = %f\n", p, q, norm(PQ), s[0]);
+    auto V = [&](auto &&idx, auto &&v) { return R1[idx] = v; };
+    r1::visit<L>(V, PQ, s);
+    // for (int i = 0; i < N; ++i) {
+    //   //printf("r1[%i] = %f\n", i, R1[i]);
+    // }
   }
 
-};
-
-
-template<int Axis, int I, int J, int K, int M, typename T, typename ... Rs>
-LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-auto r1_plus_axis(const auto& PQ, const R<I,J,K,M,T> &r1, const std::tuple<Rs...> &rs) {
-  constexpr int X = (Axis == 0);
-  constexpr int Y = (Axis == 1);
-  constexpr int Z = (Axis == 2);
-  constexpr int C = (
-    (Axis == 0 ? I : 1)*
-    (Axis == 1 ? J : 1)*
-    (Axis == 2 ? K : 1)
-  );
-  R<I+X,J+Y,K+Z,M-1,T> r;
-  r.value = PQ[Axis]*r1.value;
-  if constexpr (C) {
-    using R2 = R<I-X,J-Y,K-Z,M,T>;
-    r.value += C*std::get<const R2&>(rs).value;
-  }
-  return r;
 }
 
-template<Order Order, int I, int J, int K, typename T, class F, typename ... R2, typename ... R1>
-LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-void visit(F &&f, const auto& PQ,
-           const std::tuple<R2...> &r2,
-           const R<I,J,K,0,T> &r1_0,
-           const R1& ... r1)
-{
-  static_assert(Order == Order::BreadthFirst || Order == Order::DepthFirst);
-  if constexpr (Order == Order::BreadthFirst) {
-    f(r1_0);
-  }
-  if constexpr (sizeof...(r1)) {
-    {
-      visit<Order,I,J,K+1>(f, PQ, std::tie(r1...), r1_plus_axis<2>(PQ, r1, r2)...);
-    }
-    if constexpr (!K) {
-      visit<Order,I,J+1,K>(f, PQ, std::tie(r1...), r1_plus_axis<1>(PQ, r1, r2)...);
-    }
-    if constexpr (!J && !K) {
-      visit<Order,I+1,J,K>(f, PQ, std::tie(r1...), r1_plus_axis<0>(PQ, r1, r2)...);
-    }
-  }
-  if constexpr (Order == Order::DepthFirst) {
-    f(r1_0);
-  }
-}
-
-template<Order Order, typename T, class F, int N, std::size_t ... Idx>
-LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-void visit(F &&f, const auto& PQ, const T (&s)[N], std::index_sequence<Idx...>) {
-  visit<Order,0,0,0>(f, PQ, std::tuple<>{}, R<0,0,0,Idx,T>{ s[Idx] }...);
-}
-
-template<int L, Order Order = r1::Order::BreadthFirst, typename T, int N, class F>
-LIBINTX_GPU_ENABLED LIBINTX_ALWAYS_INLINE
-void visit(F &&f, const auto& PQ, const T (&s)[N]) {
-  visit<Order,T>(f, PQ, s, std::make_index_sequence<L+1>());
-}
-
-template<int L, Order Order = Order::BreadthFirst>
-LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
-void compute(const auto &PQ, const auto &s, auto* __restrict__ r1) {
-  auto f = [&](auto r) constexpr {
-    if constexpr (L >= r.L) r1[r.index] = r.value;
-  };
-  visit<L,Order>(f, PQ, s);
-}
-
-template<int L, Order Order = r1::Order::BreadthFirst>
-LIBINTX_GPU_DEVICE LIBINTX_ALWAYS_INLINE
-void compute1(const auto &PQ, const auto &s, auto* __restrict__ r1) {
-  auto f = [&](auto r) constexpr {
-    if constexpr (L == r.L) r1[r.index] = r.value;
-  };
-  visit<L,Order>(f, PQ, s);
-}
-
-}
-
-#endif /* LIBINTX_MD_R1_H */
+#endif /* LIBINTX_AO_MD_R1_H */

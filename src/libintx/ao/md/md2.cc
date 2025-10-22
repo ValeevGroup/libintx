@@ -143,6 +143,7 @@ libintx_unroll(28)
       P[i] = center_of_charge(a1, r1, a2, r2)[i];
     }
     T R[NP] = {};
+
     for (size_t i = 0; i < Cs.size(); ++i) {
 
       auto& [Zi,Ci] = Cs[i];
@@ -163,8 +164,8 @@ libintx_unroll(28)
         pi *= -2*p;
       }
 
-      auto V = [&,Zi=Zi](auto &&r) {
-        R[r.index] += -Zi*r.value;
+      auto V = [&,Zi=Zi](auto &&idx, auto &&v) {
+        R[idx] += -Zi*v;
       };
       namespace r1 = libintx::md::r1;
       r1::visit<A+B>(V, PC, s);
@@ -335,7 +336,7 @@ libintx_unroll(28)
     constexpr int N = simd::size<T,1>;
     int Batch = (this->Batch ? this->Batch : N);
 
-#pragma omp parallel num_threads(this->num_threads)
+#pragma omp parallel num_threads((int)this->num_threads)
     {
 
       // int K = nprim(a)*nprim(b);

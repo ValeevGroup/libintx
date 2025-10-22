@@ -274,7 +274,7 @@ namespace libintx::gpu::md::kernel {
 
           namespace r1 = libintx::md::r1;
           double r[nherm2(L)] = {};
-          r1::compute<L>(PQ, s, r);
+          r1::compute<L,double>(PQ, s, r);
 
 #pragma unroll
           for (int ip = 0; ip < NP; ++ip) {
@@ -563,9 +563,9 @@ namespace libintx::gpu::md::kernel {
           }
           auto PQ = P-Q;
           namespace r1 = libintx::md::r1;
-          r1::visit<L,r1::DepthFirst>(
-            [&](auto &&r) {
-              R[r.index][threadIdx.x] = r.value;
+          r1::visit<L,double>(
+            [&](auto &&idx, auto &&v) {
+              R[idx][threadIdx.x] = v;
             },
             PQ, s
           );

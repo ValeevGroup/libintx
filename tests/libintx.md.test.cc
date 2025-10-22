@@ -66,10 +66,10 @@ TEST_CASE("md.r1") {
       for (size_t m = 0; m <= M; ++m) {
         s[m] *= pow(-2*alpha,m);
       }
-      auto visitor = [&s,&PQ,M](auto r) {
-        auto [x,y,z] = r.orbital.lmn;
+      auto visitor = [&s,&PQ,M](auto idx, auto v) {
+        auto [x,y,z] = hermite::orbitals2<M.value>[idx].lmn;
         auto u = reference::R(x, y, z, 0, s, PQ.data);
-        CHECK(ReferenceValue(u).at(M, r.index) == r.value);
+        CHECK(ReferenceValue(u).at(M, idx) == v);
       };
       r1::visit<M>(visitor, PQ, s);
     }
