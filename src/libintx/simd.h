@@ -49,6 +49,21 @@ namespace libintx::simd {
     else return N;
   }();
 
+  template<typename T, size_t ... Is>
+  auto apply(auto &&f, const T &v, std::index_sequence<Is...>) {
+    return f(v[Is]...);
+  }
+
+  template<typename T>
+  auto apply(auto &&f, const T &v) {
+    if constexpr (is_simd_v<T>) {
+      return apply(f, v, std::make_index_sequence<simd::size<T>>{});
+    }
+    else {
+      return f(v);
+    }
+  }
+
 }
 
 namespace libintx {
