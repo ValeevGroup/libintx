@@ -5,40 +5,61 @@
 
 namespace libintx::md::kernel {
 
-  template<Operator Op, typename Parameters, int ...>
-  struct Kernel {
 #ifdef LIBINTX_SIMD_DOUBLE
-    using simd_t = LIBINTX_SIMD_DOUBLE;
-    static constexpr int Lanes = simd_t::size();
+  using simd_t = LIBINTX_SIMD_DOUBLE;
 #else
-    using simd_t = double;
-    static constexpr int Lanes = 1;
+  using simd_t = double;
 #endif
-    static constexpr auto batch(int a, int b, int c, int d) {
-      int ket = std::max(64/npure(c,d),1);
-      return BraKet<int>{ 1, ket };
+
+  struct Ket {
+    using type = double;
+    static constexpr auto batch(int c, int d) {
+      return std::max(64/npure(c,d),1);
     }
+  };
+
+  template<Operator Op>
+  struct Parameters {
+    double precision = 0.0;
+  };
+
+  template<Operator Op, typename T, typename U, int ...>
+  struct Kernel {
+
     virtual ~Kernel() = default;
+
     virtual void compute(
-      const Parameters&,
-      const HermiteBasis<2,simd_t> &bra,
-      const HermiteBasis<2,double> &ket,
-      simd_t* __restrict__ V
+      const Parameters<Op>&,
+      const HermiteBatch<T> &bra,
+      const HermiteBatch<U> &ket,
+      T* __restrict__ V
     ) = 0;
 
     virtual void compute_p_cd(
-      const Parameters&,
-      const HermiteBasis<2,simd_t> &bra,
-      const HermiteBasis<2,double> &ket,
-      const std::function<void(int,int,simd_t(&)[],int)> &V,
-      double precision
+      const Parameters<Op>&,
+      const HermiteBatch<T> &bra,
+      const HermiteBatch<U> &ket,
+      const std::function<void(const HermiteBatch<T>&,int,const T(&)[],int)> &V
     ) = 0;
 
   private:
-    std::unique_ptr<simd_t> memory_;
+    std::unique_ptr<T> memory_;
   };
 
-  template<int Bra, int Ket, Operator Op, typename Parameters>
-  std::unique_ptr< Kernel<Op,Parameters> > make_kernel(int,int,int,int);
+  template<int Bra, int Ket, Operator Op, typename T, typename U>
+  std::unique_ptr< Kernel<Op,T,U> > make_kernel(int,int,int,int);
+
+  template<Operator Op, typename T, typename U = double, int L = LMAX>
+  auto make_kernel(int A, int B, int C, int D) {
+    using Factory = std::function<
+      std::unique_ptr< Kernel<Op,T,U> >(int,int,int,int)
+      >;
+    static auto kernel_table = make_array<Factory,2*L+1,2*L+1>(
+      [&](auto AB, auto CD) {
+        return Factory(&kernel::make_kernel<AB,CD,Op,T,U>);
+      }
+    );
+    return kernel_table[A+B][C+D](A,B,C,D);
+  }
 
 }

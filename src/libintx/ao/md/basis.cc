@@ -4,7 +4,9 @@
 #include "libintx/config.h"
 #include "libintx/simd.h"
 
-#include <iostream>
+#include "libintx/boys/chebyshev.h"
+//#define LIBINTX_AO_MD_R1_COMPUTE_INLINE LIBINTX_ALWAYS_INLINE
+#include "libintx/ao/md/r1.h"
 
 namespace libintx::md {
 
@@ -15,11 +17,12 @@ namespace libintx::md {
     const gto::Primitive<T> &g2,
     const array<T,3> &r2,
     Phase<int> phase,
+    ao::screening::Norm<T> primitive_norm,
     Hermite<T> *h, T *hermite_to_ao)
   {
 
     //constexpr int NP = nherm2(A+B);
-    constexpr int NAB = npure(A)*npure(B);
+    constexpr int NAB = npure(A,B);
 
    // constexpr pure::Transform<A> pure_transform_a;
     // constexpr pure::Transform<B> pure_transform_b;
@@ -36,39 +39,82 @@ namespace libintx::md {
       .inv_2_exp = 1/math::pow<A+B>(phase.value*2*(a1 + a2))
     };
 
-    E2<T,A,B,A+B> E(a1, a2, r1-r2);
-
     T phases[A+B+1] = { 1 };
     for (int i = 1; i <= A+B; ++i) {
       phases[i] = phases[i-1]*phase.value;
     }
-    //libintx_unroll(28)
+
+    E2<T,A,B,A+B> E(a1, a2, r1-r2);
+
+    // libintx_unroll(28)
     for (auto p : hermite::orbitals2<A+B>) {
       T U[ncart(B)][ncart(A)] = {};
-      T phase_p = phases[p.L()];
-      //T phase_p = std::pow(phase.value, p.L());
       libintx_unroll(28)
       for (auto b : cartesian::orbitals<B>()) {
         libintx_unroll(28)
         for (auto a : cartesian::orbitals<A>()) {
-          U[index(b)][index(a)] = phase_p*E(a,b,p);
+          U[index(b)][index(a)] = E(a,b,p);
         }
       }
       auto *H = hermite_to_ao + hermite::index2(p)*NAB;
-      std::fill_n(H, npure(A,B), T(0));
+      std::fill_n(H, NAB, T(0));
       pure::cartesian_to_pure<A,B>(&U[0][0], H);
+      // for (int iab = 0; iab < NAB; ++iab) {
+      //   H[iab] *= phase_p;
+      // }
     }
+
+    h->norm = T(math::infinity<double>);
+    if (primitive_norm) {
+      constexpr int L = 2*A+2*B;
+      T r1[nherm2(L)] = { };
+      const auto &boys = boys::chebyshev<L>();
+      md::r1::compute<L>(h->exp, h->exp, h->r-h->r, T(1), boys, r1);
+      T V[NAB][NAB] = {};
+      for (size_t ip = 0; auto p : hermite::orbitals2<A+B>) {
+        T U[NAB] = {};
+        for (size_t iq = 0; auto q : hermite::orbitals2<A+B>) {
+          auto r = hermite::phase(q)*r1[hermite::index2(p+q)];
+          for (int icd = 0; icd < NAB; ++icd) {
+            U[icd] += hermite_to_ao[icd + iq*NAB]*r;
+          }
+          ++iq;
+        }
+        auto C = h->C*h->C;
+        for (int iab = 0; iab < NAB; ++iab) {
+          for (int icd = 0; icd < NAB; ++icd) {
+            V[iab][icd] += C*hermite_to_ao[iab + ip*NAB]*U[icd];
+          }
+        }
+        ++ip;
+      }
+      using std::sqrt;
+      h->norm = sqrt(
+        primitive_norm(NAB*NAB, &V[0][0], 1)
+      );
+    }
+
+    for (int ip = 0; auto p : hermite::orbitals2<A+B>) {
+      T phase_p = phases[p.L()];
+      for (int iab = 0; iab < NAB; ++iab) {
+        hermite_to_ao[iab + ip*NAB] *= phase_p;
+      }
+      ++ip;
+    }
+
   }
 
 
 
   template<int A, int B, typename T>
-  HermiteBasis<2,T> make_basis(
+  HermiteBatch<T> make_basis_batch(
     const Basis<Gaussian> &As,
     const Basis<Gaussian> &Bs,
     const std::vector<Index2> &pairs,
+    const double *norms,
+    ao::screening::Norm<T> primitive_norm,
     Phase<int> phase,
-    std::vector<T> &allocator)
+    int K)
   {
 
     // constexpr int NP = nherm2(A+B);
@@ -81,27 +127,21 @@ namespace libintx::md {
       else return T::size();
     }();
 
-    auto [first,second] = pairs.front();
-    const auto &a0 = As[first];
-    const auto &b0 = Bs[second];
-
     int N = pairs.size();
-    int K = a0.K*b0.K;
 
-    HermiteBasis<2,T> basis;
-    basis.first = a0;
-    basis.second = b0;
+    HermiteBatch<T> basis;
     basis.K = K;
     basis.N = N;
+    if (norms) basis.norm = *std::max_element(norms, norms+N);
     basis.extent_ = (sizeof(Hermite<T>)/sizeof(T) + npure(A,B)*nherm2(A+B));
-    allocator.resize(basis.extent_*K*((N+Lanes-1)/Lanes));
-    basis.data_ = allocator.data();
+    basis.data_.reset( new T[basis.extent_*K*((N+Lanes-1)/Lanes)] );
 
     T Inf = math::infinity<double>;
 
     for (int ij = 0; ij < N; ij += Lanes) {
       array<T,3> r1 = { Inf, Inf, Inf };
       array<T,3> r2 = { Inf, Inf, Inf };
+      T norms_ij = T(1);
       for (int l = 0; l < Lanes; ++l) {
         if (ij+l >= N) break;
         auto [i,j] = pairs[ij+l];
@@ -111,10 +151,12 @@ namespace libintx::md {
         libintx_assert(b.L == B);
         libintx_assert(a.K*b.K == K);
         if constexpr (std::is_scalar_v<T>) {
+          if (norms) norms_ij = norms[ij];
           r1 = center(a);
           r2 = center(b);
         }
         else {
+          if (norms) norms_ij[l] = norms[l+ij];
           for (int k = 0; k < 3; ++k) {
             r1[k][l] = center(a)[k];
             r2[k][l] = center(b)[k];
@@ -142,13 +184,17 @@ namespace libintx::md {
             g2.C[l] = c2;
           }
         }
+        auto *hermite = const_cast< Hermite<T>* >(basis.hermite(ij/Lanes,k));
+        auto *hermite_to_ao = const_cast<T*>(basis.hermite_to_ao(ij/Lanes,k));
         make_basis<A,B>(
           g1, r1,
           g2, r2,
           phase,
-          const_cast< Hermite<T>* >(basis.hermite(ij/Lanes,k)),
-          const_cast<T*>(basis.hermite_to_ao(ij/Lanes,k))
+          primitive_norm,
+          hermite,
+          hermite_to_ao
         );
+        hermite->norm = sqrt(K*norms_ij*hermite->norm);
       }
     }
 
@@ -158,27 +204,28 @@ namespace libintx::md {
 
 
   template<typename T>
-  HermiteBasis<2,T> make_basis(
+  HermiteBatch<T> make_basis_batch(
     const Basis<Gaussian> &As,
     const Basis<Gaussian> &Bs,
     const std::vector<Index2> &pairs,
     const double *norms,
+    ao::screening::Norm<T> primitive_norm,
     Phase<int> phase,
-    int Batch,
-    std::vector<T> &allocator)
+    int K)
   {
-    if (pairs.empty()) return HermiteBasis<2,T>{};
+    if (pairs.empty()) return HermiteBatch<T>{};
+    libintx_assert(K);
     auto [first,second] = pairs.front();
     const auto &a = As[first];
     const auto &b = Bs[second];
-    HermiteBasis<2,T> p;
+    HermiteBatch<T> p = {};
     jump_table(
       std::make_index_sequence<(LMAX+1)*(LMAX+1)>{},
       a.L + b.L*(LMAX+1),
       [&](auto AB) {
         constexpr int A = AB%(LMAX+1);
         constexpr int B = AB/(LMAX+1);
-        p = make_basis<A,B>(As, Bs, pairs, phase, allocator);
+        p = make_basis_batch<A,B,T>(As, Bs, pairs, norms, primitive_norm, phase, K);
       }
     );
     return p;
@@ -254,6 +301,49 @@ namespace libintx::md {
 
   }
 
+  template<typename T>
+  std::shared_ptr< HermiteBasis<2,T> > make_batch_basis(
+    int Batch,
+    const Basis<Gaussian> &first,
+    const Basis<Gaussian> &second,
+    const std::vector<Index2>& pairs,
+    const double *norms,
+    ao::screening::Norm<T> primitive_norm,
+    Phase<int> phase,
+    libintx::num_threads num_threads)
+  {
+
+    auto &A = first[pairs.at(0).first];
+    auto &B = second[pairs.at(0).second];
+
+    int K = A.K*B.K;
+    libintx_assert(A.L <= LMAX);
+    libintx_assert(B.L <= LMAX);
+
+    auto basis = std::make_shared< HermiteBasis<2,T> >(A,B,K,Batch);
+    size_t Batches = ((pairs.size() + Batch - 1)/Batch);
+    basis->batches.resize(Batches);
+
+    //#pragma omp parallel for schedule(static,1) num_threads(int{num_threads}) if(num_threads > 1)
+    for (size_t ij = 0; ij < Batches; ++ij) {
+      size_t begin = ij*Batch;
+      size_t end = std::min<size_t>(pairs.size(), (ij+1)*Batch);
+      basis->batches[ij] = make_basis_batch<T>(
+        first, second,
+        std::vector(pairs.begin() + begin, pairs.begin() + end),
+        norms ? norms + begin : nullptr,
+        primitive_norm,
+        phase,
+        K
+      );
+    }
+
+    return basis;
+
+  }
+
+  // explicit template instantiation
+
   template
   HermiteBasis<1,double> make_basis(
     const Basis<Gaussian> &A,
@@ -263,15 +353,16 @@ namespace libintx::md {
   );
 
   template
-  HermiteBasis<2,double> make_basis(
-    const Basis<Gaussian> &A,
-    const Basis<Gaussian> &B,
-    const std::vector<Index2> &pairs,
-    const double *norms,
-    Phase<int> phase,
+  std::shared_ptr< HermiteBasis<2,double> > make_batch_basis(
     int Batch,
-    std::vector<double> &allocator
-   );
+    const Basis<Gaussian> &first,
+    const Basis<Gaussian> &second,
+    const std::vector<Index2>& pairs,
+    const double *norms,
+    ao::screening::Norm<double> primitive_norm,
+    Phase<int> phase,
+    libintx::num_threads
+  );
 
 #ifdef LIBINTX_SIMD_DOUBLE
 
@@ -284,14 +375,15 @@ namespace libintx::md {
   );
 
   template
-  HermiteBasis<2,LIBINTX_SIMD_DOUBLE> make_basis(
-    const Basis<Gaussian> &A,
-    const Basis<Gaussian> &B,
-    const std::vector<Index2> &pairs,
-    const double *norms,
-    Phase<int> phase,
+  std::shared_ptr< HermiteBasis<2,LIBINTX_SIMD_DOUBLE> > make_batch_basis(
     int Batch,
-    std::vector<LIBINTX_SIMD_DOUBLE> &allocator
+    const Basis<Gaussian> &first,
+    const Basis<Gaussian> &second,
+    const std::vector<Index2>& pairs,
+    const double *norms,
+    ao::screening::Norm<LIBINTX_SIMD_DOUBLE> primitive_norm,
+    Phase<int> phase,
+    libintx::num_threads
    );
 
 #endif

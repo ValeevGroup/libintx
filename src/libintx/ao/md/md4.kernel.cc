@@ -344,12 +344,12 @@ libintx_unroll (455)
   }
 
 
-  template<Operator Op, typename Parameters, int A, int B, int C, int D>
-  struct Kernel<Op,Parameters,A,B,C,D> : Kernel<Op,Parameters> {
-    using simd_t = typename Kernel<Op,Parameters>::simd_t;
+  template<Operator Op, typename T, typename U, int A, int B, int C, int D>
+  struct Kernel<Op,T,U,A,B,C,D> : Kernel<Op,T,U> {
+    using simd_t = kernel::simd_t;
 
     static_assert(kernel::Bra == A+B);
-    static constexpr auto Batch = Kernel::batch(A,B,C,D);
+    static constexpr auto Batch = BraKet<int>{ 1, Ket::batch(C,D) };
 
     static constexpr int NP = nherm2(A+B);
     static constexpr int NAB = npure(A,B);
@@ -357,90 +357,94 @@ libintx_unroll (455)
 
     Kernel() {
       // may or may not be available or needed
-      gemm_kernel_ = transform1_gemm_kernel<simd_t,NP,NCD,nherm2(C+D-1)>().get();
+      gemm_kernel_ = transform1_gemm_kernel<T,NP,NCD,nherm2(C+D-1)>().get();
     }
 
     //LIBINTX_ALWAYS_INLINE
     void compute_p_cd(
-      const Parameters&,
-      const HermiteBasis<2,simd_t> &bra,
-      const HermiteBasis<2,double> &ket,
-      const std::function<void(int,int,simd_t(&)[],int)> &V,
-      double precision) override
+      const Parameters<Op>& params,
+      const HermiteBatch<T> &bra,
+      const HermiteBatch<U> &ket,
+      const std::function<void(const HermiteBatch<T>&,int,const T(&)[],int)> &V) override
       //auto &&V)
     {
 
       const auto &boys = boys::chebyshev<4*LMAX+1>();
 
-      // libintx_assert(bra.N == batch.bra);
+      libintx_assert(simd::size<T> >= (size_t)bra.N);
       libintx_assert(ket.N <= Batch.ket);
 
-      for (int ij = 0; ij < (bra.N+bra.Lanes-1)/bra.Lanes; ++ij) {
-        //printf("bra.N=%i, ij=%i\n", bra.N, ij);
-        for (int kab = 0; kab < bra.K; ++kab) {
+      //printf("bra.N=%i, ij=%i\n", bra.N, ij);
+      for (int kab = 0; kab < bra.K; ++kab) {
 
-          const auto &p = *bra.hermite(ij,kab);
+        const auto &p = *bra.hermite(0,kab);
 
-          // [p,cd,kl)
-          for (int kl = 0; kl < ket.N; ++kl) {
-            simd_t Rk[nherm2(A+B+C+D)] = {};
-            std::fill(
-              (simd_t*)std::begin(this->batch_ncd_np_3[kl]),
-              (simd_t*)std::end(this->batch_ncd_np_3[kl]),
-              simd_t()
-            );
-            for (int kcd = 0; kcd < ket.K; ++kcd) {
-              const auto &q = *ket.hermite(kl,kcd);
-              //if (p.norm*q.norm < precision) continue;
-              //continue;
-              auto* Ecd = ket.hermite_to_ao(kl,kcd);
-              simd_t R1[nherm2(A+B+C+D)] = {};
-              //auto &R1 = this->R1;
-              auto Cpq = p.C*q.C;
-              md::r1::compute<A+B+C+D,simd_t>(p.exp, q.exp, p.r-q.r, Cpq, boys, R1);
-              auto inv_2_q = q.inv_2_exp;
-              for (size_t iq = nherm2(C+D-1); iq < nherm2(A+B+C+D); ++iq) {
-                Rk[iq] += inv_2_q*R1[iq];
-              }
-              md::kernel::transform1<C,D,simd_t>(
-                R1, Ecd, this->pq, this->batch_ncd_np_3[kl],
-                this->gemm_kernel_
-              );
+        double p_norm = simd::apply(
+          [](auto&& ... vs) {
+            return std::max<double>({vs...});
+          },
+          p.norm
+        );
+
+        // [p,cd,kl)
+        for (int kl = 0; kl < ket.N; ++kl) {
+          T Rk[nherm2(A+B+C+D)] = {};
+          std::fill(
+            (T*)std::begin(this->batch_ncd_np_3[kl]),
+            (T*)std::end(this->batch_ncd_np_3[kl]),
+            T()
+          );
+          for (int kcd = 0; kcd < ket.K; ++kcd) {
+            const auto &q = *ket.hermite(kl,kcd);
+            if (p_norm*q.norm < params.precision) continue;
+            //continue;
+            auto* Ecd = ket.hermite_to_ao(kl,kcd);
+            T R1[nherm2(A+B+C+D)] = {};
+            //auto &R1 = this->R1;
+            auto Cpq = p.C*q.C;
+            md::r1::compute<A+B+C+D,T>(p.exp, q.exp, p.r-q.r, Cpq, boys, R1);
+            auto inv_2_q = q.inv_2_exp;
+            for (size_t iq = nherm2(C+D-1); iq < nherm2(A+B+C+D); ++iq) {
+              Rk[iq] += inv_2_q*R1[iq];
             }
-            hermite_to_pure<simd_t,C,D>(Rk, this->batch_ncd_np_3[kl]);
+            md::kernel::transform1<C,D,T>(
+              R1, Ecd, this->pq, this->batch_ncd_np_3[kl],
+              this->gemm_kernel_
+            );
           }
+          hermite_to_pure<T,C,D>(Rk, this->batch_ncd_np_3[kl]);
+        }
 
-          //const auto &p_cd_batch = this->batch_ncd_np_2;
-          V(ij, kab, this->batch_ncd_np_1, NCD*ket.N);
+        //const auto &p_cd_batch = this->batch_ncd_np_2;
+        V(bra, kab, this->batch_ncd_np_1, NCD*ket.N);
 
-        } // kab
-      } // ij
+      } // kab
 
     }
 
     void compute(
-      const Parameters &params,
-      const HermiteBasis<2,simd_t> &bra,
-      const HermiteBasis<2,double> &ket,
-      simd_t* __restrict__ V) override
+      const Parameters<Op> &params,
+      const HermiteBatch<T> &bra,
+      const HermiteBatch<double> &ket,
+      T* __restrict__ V) override
     {
 
       //printf("Bra.N=%i, Batch.bra=%i\n", bra.N, Batch.bra);
-      libintx_assert(bra.N <= Batch.bra*Kernel::Lanes);
+      libintx_assert((size_t)bra.N <= Batch.bra*simd::size<T>);
       libintx_assert(ket.N <= Batch.ket);
 
       // (ab,cd,kl) += E(ab,p)*[p,cd,kl)
-      auto V1 = [&](int ij, int kab, simd_t (&p_cd_batch)[], int ncd) {
+      auto V1 = [&](const auto &bra, int kab, const T (&p_cd_batch)[], int ncd) {
         //printf("idx=%i,%i, dims=%i,%i\n", ij, kl, nij, nkl);
-        const auto *E = bra.hermite_to_ao(ij,kab);
-        const auto &p = *bra.hermite(ij,kab);
-        transform2<A,B,simd_t>(
-          ncd, p, E, reinterpret_cast<const simd_t(&)[][NP]>(batch_ncd_np_2),
-          V+ij
+        const auto *E = bra.hermite_to_ao(0,kab);
+        const auto &p = *bra.hermite(0,kab);
+        transform2<A,B,T>(
+          ncd, p, E, reinterpret_cast<const T(&)[][NP]>(batch_ncd_np_2),
+          V
         );
       };
 
-      this->compute_p_cd(params, bra, ket, V1, 1e-10);
+      this->compute_p_cd(params, bra, ket, V1);
 
     }
 
@@ -448,21 +452,21 @@ libintx_unroll (455)
 
     blas::GemmKernel<double>* gemm_kernel_;
 
-    simd_t R1[nherm2(A+B+C+D)] = {};
-    simd_t Rq[nherm2(A+B+C+D)] = {};
-    simd_t pq[nherm2(C+D-1)][NP] = {};
+    T R1[nherm2(A+B+C+D)] = {};
+    T Rq[nherm2(A+B+C+D)] = {};
+    T pq[nherm2(C+D-1)][NP] = {};
     union {
-      simd_t batch_ncd_np_1[(Batch.ket*(NCD)+2)*NP]; // NB padded for transform2 tile
-      simd_t batch_ncd_np_2[Batch.ket*(NCD)][NP];
-      simd_t batch_ncd_np_3[Batch.ket][NCD][NP];
+      T batch_ncd_np_1[(Batch.ket*(NCD)+2)*NP]; // NB padded for transform2 tile
+      T batch_ncd_np_2[Batch.ket*(NCD)][NP];
+      T batch_ncd_np_3[Batch.ket][NCD][NP];
     };
 
   };
 
-  template<int Bra, int Ket, Operator Op, typename Parameters>
-  std::unique_ptr< Kernel<Op,Parameters> > make_kernel(int a, int b, int c, int d) {
+  template<int Bra, int Ket, Operator Op, typename T, typename U>
+  std::unique_ptr< Kernel<Op,T,U> > make_kernel(int a, int b, int c, int d) {
     static_assert(Bra == kernel::Bra);
-    std::unique_ptr< Kernel<Op,Parameters> > kernel;
+    std::unique_ptr< Kernel<Op,T,U> > kernel;
     jump_table(
       std::make_index_sequence<std::min(Bra,LMAX)+1>{},
       std::make_index_sequence<std::min(Ket,LMAX)+1>{},
@@ -471,7 +475,7 @@ libintx_unroll (455)
         constexpr int B = Bra-A;
         constexpr int D = Ket-C;
         if constexpr (std::max<int>(A,B) <= LMAX && std::max<int>(C,D) <= LMAX) {
-          kernel = std::make_unique< Kernel<Op,Parameters,A,B,C,D> >();
+          kernel = std::make_unique< Kernel<Op,T,U,A,B,C,D> >();
         }
       }
     );
@@ -479,12 +483,7 @@ libintx_unroll (455)
     return kernel;
   }
 
-
-  using CoulombKernel = Kernel<Coulomb,Coulomb::Operator::Parameters>;
-
   template
-  std::unique_ptr<CoulombKernel> make_kernel<Bra,Ket>(
-    int,int,int,int
-  );
+  std::unique_ptr< Kernel<Coulomb,simd_t,double> > make_kernel<Bra,Ket>(int,int,int,int);
 
 }

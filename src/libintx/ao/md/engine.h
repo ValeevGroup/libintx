@@ -11,6 +11,13 @@ namespace libintx::md {
   template<int>
   struct IntegralEngine;
 
+  template<int, typename ... Ts>
+  struct HermiteBasis;
+
+  // {
+  //   virtual ~HermiteBra() = default;
+  // };
+
   template<>
   struct IntegralEngine<2> : libintx::ao::IntegralEngine<2> {
 
@@ -37,7 +44,7 @@ namespace libintx::md {
     void compute(Operator, const std::vector<Index2>&, const Visitor&);
 
   public:
-    int num_threads = 1;
+    libintx::num_threads num_threads;
 
   private:
     template<typename T, Operator, typename Params>
@@ -102,7 +109,7 @@ namespace libintx::md {
     );
 
   public:
-    int num_threads = 1;
+    libintx::num_threads num_threads;
 
   private:
     std::shared_ptr< Basis<Gaussian> > basis_[3] = {};
@@ -113,7 +120,7 @@ namespace libintx::md {
   struct IntegralEngine<4> : libintx::ao::IntegralEngine<4> {
 
     using Visitor = std::function<
-      void(BraKet<size_t>, BraKet<size_t>, const double*, size_t)
+      void(BraKet<Index1>, BraKet<size_t>, const TensorRef<const double,6>)
       >;
 
     explicit IntegralEngine(const std::shared_ptr< Basis<Gaussian> > &basis)
@@ -129,13 +136,23 @@ namespace libintx::md {
 
     ~IntegralEngine();
 
+    std::shared_ptr< HermiteBasis<2> > make_bra(const std::vector<Index2>&, const double*) const;
+    std::shared_ptr< HermiteBasis<2> > make_ket(const std::vector<Index2>&, const double*) const;
+
     void compute(
       Operator,
-      const std::vector<Index2>&,
-      const std::vector<Index2>&,
-      BraKet<const double*> norms,
+      const HermiteBasis<2>&,
+      const HermiteBasis<2>&,
       const Visitor&
     );
+
+    // void compute(
+    //   Operator op,
+    //   const std::vector<Index2> &bra,
+    //   const std::vector<Index2> &ket,
+    //   BraKet<const double*> norms,
+    //   const Visitor&
+    // );
 
     void compute(
       Operator op,
@@ -150,19 +167,23 @@ namespace libintx::md {
       return *basis_[idx];
     }
 
-  private:
+  protected:
 
     template<Operator, typename Params>
     void compute(
       const Params&,
-      const std::vector<Index2>&,
-      const std::vector<Index2>&,
-      BraKet<const double*> norms,
+      const HermiteBasis<2>&,
+      const HermiteBasis<2>&,
       const Visitor&
     );
 
   public:
-    int num_threads = 1;
+    libintx::num_threads num_threads;
+    double precision = 0;
+    size_t computed = 0;
+    size_t screened = 0;
+    double thbasis = 0;
+    double tkernel = 0;
 
   private:
     std::shared_ptr< Basis<Gaussian> > basis_[4] = {};

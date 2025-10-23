@@ -3,11 +3,14 @@
 
 #include "libintx/shell.h"
 #include "libintx/ao/md/engine.h"
+#include "libintx/ao/screening.h"
 
 namespace libintx::md {
 
-  template<int Centers, typename T = double, int Batch = 1>
-  struct HermiteBasis;
+  template<int Centers>
+  struct HermiteBasis<Centers> {
+    virtual ~HermiteBasis() = default;
+  };
 
   template<typename T = double>
   struct alignas(T) Hermite {
@@ -21,7 +24,7 @@ namespace libintx::md {
     T C;
     array<T,3> r;
     T inv_2_exp;
-    double norm = 0;
+    T norm = T(0);
 
     LIBINTX_GPU_ENABLED
     static auto* hdata(T *p) {
@@ -64,35 +67,36 @@ namespace libintx::md {
   };
 
   template<typename T>
-  struct HermiteBasis<2,T> {
+  struct HermiteBatch {
     using Hermite = md::Hermite<T>;
-    Shell first, second;
-    int K, N;
-
     static constexpr auto Lanes = Hermite::Lanes;
-    //HermiteBasis() = default;
-    // HermiteBasis(const Shell &first, const Shell &second, int K, int N) {
-    //   init(first, second, K, N);
-    // }
-
+    float norm = math::infinity<float>;
+    int K, N;
     const Hermite* hermite(int i, int k) const {
-      return reinterpret_cast<const Hermite*>(data_ + (k + i*this->K)*extent_);
+      return reinterpret_cast<const Hermite*>(data_.get() + (k + i*this->K)*extent_);
     }
-
     const T* hermite_to_ao(int i, int k) const {
       return reinterpret_cast<const T*>(hermite(i,k) + 1);
     }
+    size_t extent_;
+    std::shared_ptr<T[]> data_;
+  };
 
-    const auto batch(size_t idx, size_t batch = 1) const {
-      assert(idx*batch*Lanes < this->N);
-      int M = std::min(batch*Lanes, this->N-idx*batch*Lanes);
-      //printf("idx=%i batch=%i, N=%i, M=%i\n", idx, batch, N, M);
-      return HermiteBasis<2,T>{ first, second, K, M, extent_, data_+idx*batch*K*extent_ };
+  template<typename T>
+  struct HermiteBasis<2,T> : HermiteBasis<2> {
+
+    Shell first, second;
+    int K;
+    int Batch;
+    std::vector< HermiteBatch<T> > batches;
+
+    HermiteBasis() = default;
+
+    HermiteBasis(const Shell &first, const Shell &second, int K, int Batch)
+      : first(first), second(second), K(K), Batch(Batch)
+    {
     }
 
-    //private:
-    size_t extent_;
-    T* data_ = nullptr;
   };
 
   template<typename T = double>
@@ -103,15 +107,26 @@ namespace libintx::md {
     std::vector< Hermite<T> >&
   );
 
-  template<typename T = double>
-  HermiteBasis<2,T> make_basis(
+  template<typename T>
+  HermiteBatch<T> make_basis_batch(
     const Basis<Gaussian> &A,
     const Basis<Gaussian> &B,
     const std::vector<Index2> &pairs,
     const double *norms,
-    Phase<int> phase,
+    ao::screening::Norm<T> primitive_norm,
+    Phase<int> phase
+  );
+
+  template<typename T>
+  std::shared_ptr< HermiteBasis<2,T> > make_batch_basis(
     int Batch,
-    std::vector<T>&
+    const Basis<Gaussian> &first,
+    const Basis<Gaussian> &second,
+    const std::vector<Index2>&,
+    const double *norms,
+    ao::screening::Norm<T> primitive_norm,
+    Phase<int> phase,
+    libintx::num_threads = { 1 }
   );
 
 }

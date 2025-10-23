@@ -3,142 +3,123 @@
 #include "libintx/ao/md/md4.kernel.h"
 
 #include "libintx/config.h"
+#include "libintx/tensor.h"
 #include "libintx/utility.h"
 
 namespace libintx::md {
 
+  std::shared_ptr< HermiteBasis<2> > IntegralEngine<4>::make_bra(
+    const std::vector<Index2> &pairs,
+    const double* norms) const
+  {
+    return make_batch_basis<kernel::simd_t>(
+      simd::size<kernel::simd_t>,
+      this->basis(0),
+      this->basis(1),
+      pairs,
+      norms, nullptr, // primitive_norm
+      Phase<int>{+1},
+      this->num_threads
+    );
+  }
+
+
+  std::shared_ptr< HermiteBasis<2> > IntegralEngine<4>::make_ket(
+    const std::vector<Index2> &pairs,
+    const double* norms) const
+  {
+    Shell C = this->basis(2)[pairs.at(0).first];
+    Shell D = this->basis(3)[pairs.at(0).second];
+    return make_batch_basis<double>(
+      kernel::Ket::batch(C.L, D.L),
+      this->basis(2),
+      this->basis(3),
+      pairs,
+      norms, nullptr, // primitive_norm
+      Phase<int>{-1},
+      this->num_threads
+    );
+  }
+
   template<Operator Op, typename Params>
   void IntegralEngine<4>::compute(
     const Params &params,
-    const std::vector<Index2> &bra,
-    const std::vector<Index2> &ket,
-    BraKet<const double*> norms,
+    const HermiteBasis<2> &bra2,
+    const HermiteBasis<2> &ket2,
     const Visitor &V)
   {
 
+    using simd_t = typename kernel::simd_t;
 
-    using Kernel = kernel::Kernel<Op,Params>;
-    using T = typename Kernel::simd_t;
-    const int Lanes = Kernel::Lanes;
+    auto &bra = dynamic_cast<const HermiteBasis<2,simd_t>&>(bra2);
+    auto &ket = dynamic_cast<const HermiteBasis<2,double>&>(ket2);
 
-    const auto &ab = make_basis< pair<const Gaussian&> >(this->basis(0), this->basis(1), bra);
-    int A = this->basis(0)[bra.at(0).first].L;
-    int B = this->basis(1)[bra.at(0).second].L;
-    int C = this->basis(2)[ket.at(0).first].L;
-    int D = this->basis(3)[ket.at(0).second].L;
+    int A = bra.first.L;
+    int B = bra.second.L;
+    int C = ket.first.L;
+    int D = ket.second.L;
 
-    auto batch = Kernel::batch(A,B,C,D);
+    libintx_assert(A <= LMAX);
+    libintx_assert(B <= LMAX);
+    libintx_assert(C <= LMAX);
+    libintx_assert(D <= LMAX);
 
-    //printf("batch = {%i,%i}\n", batch.bra, batch.ket);
+    size_t computed = 0;
+    size_t screened = 0;
 
-    using make_kernel = std::function<
-      std::unique_ptr<Kernel>(int,int,int,int)
-      >;
-    static auto kernel_table = make_array<make_kernel,2*LMAX+1,2*LMAX+1>(
-      [&](auto ab, auto cd) {
-        return make_kernel(&kernel::make_kernel<ab,cd,Op,Params>);
-      }
-    );
-
-    libintx_assert(batch.bra == 1);
-
-    // double precision = 0.0;
-    // if (norms.bra && norms.ket) {
-    //   precision = this->precision_;
-    // }
-
-    struct BraBatch {
-      HermiteBasis<2,T> basis;
-      std::vector<T> allocator;
-    };
-
-    struct KetBatch {
-      HermiteBasis<2,double> basis;
-      std::vector<double> allocator;
-    };
-
-    std::vector<BraBatch> bra_batches((bra.size() + Lanes*batch.bra - 1)/(Lanes*batch.bra));
-    std::vector<KetBatch> ket_batches((ket.size() + batch.ket - 1)/batch.ket);
-
-#pragma omp parallel num_threads(this->num_threads)
+#pragma omp parallel num_threads(int{this->num_threads})
     {
 
-#pragma omp for schedule(static,1)
-      for (size_t ij = 0; ij < bra_batches.size(); ++ij) {
-        std::vector<Index2> indices(
-          bra.begin() + ij*Lanes*batch.bra,
-          bra.begin() + std::min<size_t>(bra.size(), (ij+1)*Lanes*batch.bra)
-        );
-        const double *bra_norms = (norms.bra ? norms.bra + ij*Lanes*batch.bra : nullptr);
-        auto &bra_batch = bra_batches.at(ij);
-        bra_batch.basis = make_basis<T>(
-          this->basis(0), this->basis(1),
-          indices, bra_norms,
-          Phase<int>{+1},
-          Lanes,
-          bra_batch.allocator
-        );
-      }
+      auto kernel = kernel::make_kernel<Op,simd_t>(A, B, C, D);
 
-#pragma omp for schedule(static,1)
-      for (size_t kl = 0; kl < ket_batches.size(); ++kl) {
-        std::vector<Index2> indices(
-          ket.begin() + kl*batch.ket,
-          ket.begin() + std::min<size_t>(ket.size(), (kl+1)*batch.ket)
-        );
-        const double *ket_norms = (norms.ket ? norms.ket + kl*batch.ket : nullptr);
-        auto &ket_batch = ket_batches.at(kl);
-        ket_batch.basis = make_basis(
-          this->basis(2), this->basis(3),
-          indices, ket_norms,
-          Phase<int>{-1},
-          1,
-          ket_batch.allocator
-        );
-      }
-
-    // std::vector<T> p_allocator;
-    // auto p = make_basis<T>(this->basis(0), this->basis(1), bra, Phase<int>{1}, 1, p_allocator);
-
-      auto kernel = kernel_table[A+B][C+D](A, B, C, D);
+      size_t NA = npure(A);
+      size_t NB = npure(B);
+      size_t NC = npure(C);
+      size_t ND = npure(D);
 
       // int K = nprim(a)*nprim(b);
-      std::unique_ptr<T[]> V_batch(
-        new (std::align_val_t{64}) T[batch.bra*batch.ket*npure(A,B)*npure(C,D)]
-      );
+      std::vector<simd_t> V_batch((bra.Batch*ket.Batch*NA*NB*NC*ND)/simd::size<simd_t>);
 
-#pragma omp for collapse(2) schedule(dynamic,1)
-      for (size_t kl = 0; kl < ket_batches.size(); ++kl) {
-        for (size_t ij = 0; ij < bra_batches.size(); ++ij) {
-          auto &p = bra_batches[ij];
-          auto &q = ket_batches[kl];
-          //if (ij_batch_norms[ij_batch]*kl_batch_norm < precision) continue;
-          std::fill_n(V_batch.get(), batch.bra*batch.ket*npure(A,B)*npure(C,D), 0);
-          kernel->compute(params, p.basis, q.basis, V_batch.get());
-          BraKet<size_t> idx = { Lanes*ij*batch.bra, kl*batch.ket };
-          BraKet<size_t> dims = {
-            std::min<size_t>(Lanes*batch.bra, bra.size() - idx.bra),
-            static_cast<size_t>(q.basis.N)
+#pragma omp for collapse(2) schedule(dynamic,1), reduction(+:screened,computed)
+      for (size_t kl = 0; kl < ket.batches.size(); ++kl) {
+        for (size_t ij = 0; ij < bra.batches.size(); ++ij) {
+          auto &p = bra.batches[ij];
+          auto &q = ket.batches[kl];
+          //println("*",p.norm, q.norm, precision);
+          if (p.norm*q.norm < precision) {
+            screened += p.N*q.N;
+            continue;
+          }
+          computed += p.N*q.N;
+          std::fill(V_batch.begin(), V_batch.end(), 0.0);
+          kernel->compute({}, p, q, V_batch.data());
+          BraKet<Index1> idx = { int(ij*bra.Batch), int(kl*ket.Batch) };
+          BraKet<size_t> dims = { size_t(p.N), size_t(q.N) };
+          std::array<size_t,6> dims6 = {
+            (size_t)bra.Batch,
+            NA, NB, NC, ND,
+            dims.ket
           };
-          int ldV = Lanes*batch.bra;
-          V(dims, idx, reinterpret_cast<double*>(V_batch.get()), ldV);
+          V(idx, dims, TensorRef{ reinterpret_cast<const double*>(V_batch.data()), dims6 });
         }
       } // kl_batch
 
     } // omp parallel
 
+    this->screened += screened;
+    this->computed += computed;
+
   }
 
   void IntegralEngine<4>::compute(
     Operator Op,
-    const std::vector<Index2> &bra,
-    const std::vector<Index2> &ket,
-    BraKet<const double*> norms,
+    const HermiteBasis<2> &bra,
+    const HermiteBasis<2> &ket,
     const Visitor &V)
   {
     if (Op == Coulomb) {
       Coulomb::Operator::Parameters params;
-      this->compute<Coulomb>(params, bra, ket, norms, V);
+      this->compute<Coulomb>(params, bra, ket, V);
     }
   }
 
@@ -156,21 +137,26 @@ namespace libintx::md {
       size_t idx = nbf(basis(2)[k])*nbf(basis(3)[l]) + ket_start.back();
       ket_start.push_back(idx);
     }
-    auto v = [&](BraKet<size_t> batch, BraKet<size_t> idx, const double *U, size_t ldU) {
+    auto v = [&](BraKet<Index1> idx, BraKet<size_t> batch, const auto &U) {
       size_t ncd = 0;
-      for (int kl = 0; kl < batch.ket; ++kl) {
+      for (size_t kl = 0; kl < batch.ket; ++kl) {
         auto [k,l] = ket[idx.ket+kl];
         ncd += nbf(basis(2)[k])*nbf(basis(3)[l]);
       }
       for (size_t icd = 0; icd < ncd; ++icd) {
         for (size_t iab = 0; iab < NAB; ++iab) {
-          const auto *src =  U + (iab + icd*NAB)*ldU;
+          const auto *src =  U.data() + (iab + icd*NAB)*U.dimensions()[0];
           auto *dst = V + idx.bra + iab*bra.size() + (icd + ket_start[idx.ket])*dims[0];
           std::copy_n(src, batch.bra, dst);
         }
       }
     };
-    this->compute(Op, bra, ket, norms, v);
+    this->compute(
+      Op,
+      *this->make_bra(bra, norms.bra),
+      *this->make_ket(ket, norms.ket),
+      v
+    );
   }
 
   IntegralEngine<4>::IntegralEngine(const std::shared_ptr< Basis<Gaussian> > (&basis)[4])
