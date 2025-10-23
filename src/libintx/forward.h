@@ -51,6 +51,9 @@ namespace libintx {
 
   using Gaussian = gto::Gaussian<Shell>;
 
+  template<typename T, int Rank>
+  struct TensorRef;
+
   template<typename First, typename Second = First>
   struct pair {
     First first;

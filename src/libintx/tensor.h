@@ -22,9 +22,17 @@ namespace libintx {
     //     )
     // {
     // }
+
     template<typename ... Idx>
     LIBINTX_GPU_ENABLED
     auto& operator()(Idx ... idx) {
+      static_assert(sizeof...(idx) == Rank);
+      return data_[index(idx...)];
+    }
+
+    template<typename ... Idx>
+    LIBINTX_GPU_ENABLED
+    const auto& operator()(Idx ... idx) const {
       static_assert(sizeof...(idx) == Rank);
       return data_[index(idx...)];
     }
@@ -37,6 +45,14 @@ namespace libintx {
 
     LIBINTX_GPU_ENABLED
     const auto& dimensions() const { return dims_; }
+
+    size_t size() const {
+      size_t size = 1;
+      for (size_t i = 0; i < Rank; ++i) {
+        size *= dims_[i];
+      }
+      return size;
+    }
 
     template<typename ... Shape>
     auto reshape(Shape ... shape) const {
@@ -53,14 +69,14 @@ namespace libintx {
     template<int Dim = 0>
     LIBINTX_GPU_ENABLED
     auto index(auto i, auto ... is) const {
-      assert(i < std::get<Dim>(dims_) || (std::get<Dim>(dims_) == 0));
-      return (i + std::get<Dim>(dims_)*(index<Dim+1>)(is...));
+      assert(size_t(i) < std::get<Dim>(dims_) || (std::get<Dim>(dims_) == 0));
+      return (size_t(i) + std::get<Dim>(dims_)*(index<Dim+1>)(is...));
     }
 
     template<int Dim = 0>
     LIBINTX_GPU_ENABLED
     auto index(auto i) const {
-      assert(i < std::get<Dim>(dims_) || (std::get<Dim>(dims_) == 0));
+      assert(size_t(i) < std::get<Dim>(dims_) || (std::get<Dim>(dims_) == 0));
       return i;
     }
 
