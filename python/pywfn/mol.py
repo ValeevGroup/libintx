@@ -1,3 +1,5 @@
+import urllib.request
+
 elements = (
   "",
   "H", "He",
@@ -9,29 +11,31 @@ elements = (
 
 bohr_to_angstrom = 0.529177210903
 
-def parse(mol,format="xyz"):
+def parse(mol, format="xyz", name=None):
   lines = mol.splitlines()
   nxyz = int(lines[0])
-  atoms = []
+  class Atoms(list): pass
+  atoms = Atoms()
+  atoms.name = name
   for line in lines[2:2+nxyz]:
     [a,x,y,z] = line.split()
     Z = elements.index(a.capitalize())
-    r = (float(r)*(1/bohr_to_angstrom) for r in (x,y,z))
-    atoms.append((a, Z, tuple(r)))
+    r = tuple(float(r)*(1/bohr_to_angstrom) for r in (x,y,z))
+    atoms.append((a, Z, r))
   return atoms
 
-def load(name, file=None, format="xyz"):
-  text = None
-  if not file:
-    from . import resources
-    file = resources.file("mol", ("%s.%s" % (name,format)).lower())
-  with open(file) as f:
-    return parse(f.read(),format)
+def load(url, format="xyz", name=None):
+  with urllib.request.urlopen(url) as fh:
+    data = fh.read().decode()
+    #print(data)
+    return parse(data,format,name)
 
 class Library():
   def __init__(self):
     pass
   def __getattr__(self,name):
-    return load(name)
+    from . import resources
+    url = "file://%s" % resources.file("mol", ("%s.xyz" % name).lower())
+    return load(url,name=name)
 
 library = Library()

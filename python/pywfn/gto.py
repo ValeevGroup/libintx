@@ -1,3 +1,5 @@
+import urllib.request
+
 @staticmethod
 def nbf(L):
   return 2*L+1
@@ -25,13 +27,23 @@ class Gaussian(tuple):
     for (alpha,C) in self.primitives:
       if (alpha == 0): continue
       assert(alpha > 0)
-      two_alpha = 2*alpha;
-      two_alpha_to_am32 = two_alpha**(L+1)*sqrt(two_alpha)
-      N = sqrt(two_alpha_to_am32*NL)
+      alpha2 = 2*alpha;
+      N = sqrt(NL**2*alpha2**(L+1.5))
       pn.append((alpha,N*C))
+    # normalise to unity
+    # compute the self-overlap, scale coefficients by its inverse square root
+    overlap = 0.0
+    for i,(ai,Ci) in enumerate(pn):
+      for j,(aj,Cj) in enumerate(pn):
+        gamma = ai + aj;
+        overlap += (
+          (factorial2_Kminus1[2*L] * sqrt_Pi_cubed * Ci*Cj) /
+          (2**L * (ai+aj)**(L+1.5))
+        )
+    pn = [ (a,C/sqrt(overlap)) for (a,C) in pn ]
     return Gaussian(L, pn)
 
-def parse(basis, format="json"):
+def parse(basis, format="json", normalize=True, keep_zeros=False):
   if isinstance(basis, str):
     from json import loads as load
     basis = load(basis)
@@ -49,15 +61,31 @@ def parse(basis, format="json"):
       angular_momentum = f['angular_momentum']
       exponents = list(map(float, f['exponents']))
       coefficients = [list(map(float,c)) for c in f['coefficients']]
-      for i,L in enumerate(angular_momentum):
-        primitives = list(zip(exponents, coefficients[i]))
-        basis[Z].append(Gaussian(L, primitives).normalized)
+      if len(angular_momentum) == 1:
+        angular_momentum *= len(coefficients)
+      for (L,cs) in zip(angular_momentum,coefficients):
+        primitives = [ (e,c) for (e,c) in zip(exponents, cs) if c != 0.0 or keep_zeros ]
+        # print (coefficients[i])
+        # print (primitives)
+        # print()
+        g = Gaussian(L, primitives)
+        if normalize: g = g.normalized
+        basis[Z].append(g)
+        # print("Gaussian L=%i,%s normalized -> %s" % (L,primitives,basis[Z][-1]))
+  # print ("// { Z, { L, { { alpha, coeff }, ... } } }")
+  # for z in basis.keys():
+  #   print ("{",z,",\n  {")
+  #   for (l,g) in basis[z]:
+  #     print("   { %i, { %s } }," % (l,", ".join(["{ %17.12f, %17.12f }" % (a,c) for (a,c) in g])))
+  #   print("  }\n},")
   return basis
 
-def basis(name, file=None, format="json"):
+def basis(name, url=None, format="json", keep_zeros=False):
   data = None
-  if not file:
+  if not url:
     from . import resources
-    file = resources.file("gto", ("%s.%s" % (name,format)).lower())
-  with open(file) as fh:
-    return parse(fh.read(),format)
+    url = "file://" + str(resources.file("gto", ("%s.%s" % (name,format)).lower()))
+  with urllib.request.urlopen(url) as fh:
+    data = fh.read().decode()
+    #print(data)
+    return parse(data,format,keep_zeros)
