@@ -1,3 +1,4 @@
+set(CMAKE_POLICY_DEFAULT_CMP0148 NEW)
 add_subdirectory(pybind11)
 
 pybind11_add_module(

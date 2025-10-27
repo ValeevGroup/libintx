@@ -1,84 +1,52 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/functional.h>
+#include "libintx.h"
 #include "libintx/ao/engine.h"
-#include "libintx/gpu/md/engine.h"
 
 namespace py = pybind11;
 
-namespace pybind11::detail {
+namespace libintx::python::ao {
 
-  template <typename Type, size_t Size>
-  struct type_caster<libintx::array<Type, Size>>
-    : array_caster<libintx::array<Type, Size>, Type, false, Size> {};
+  using libintx::ao::IntegralEngine;
 
-  template <>
-  struct type_caster<libintx::Index2>
-    : tuple_caster<libintx::Index2, int, int> {};
+  template<int Centers, typename Bra, typename Ket>
+  void compute(
+    IntegralEngine<> &engine,
+    const std::vector<Bra> &bra,
+    const std::vector<Ket> &ket,
+    std::ptrdiff_t dst,
+    const std::array<size_t,2> &dims)
+  {
+    dynamic_cast<IntegralEngine<Centers>&>(engine)
+      .compute(Coulomb, bra, ket, {}, reinterpret_cast<double*>(dst), dims);
+  };
+
 
 }
 
-namespace libintx::python {
+#ifdef LIBINTX_GPU
+#include "libintx/gpu/md/engine.h"
 
-  using double2 = std::tuple<double,double>;
-  using double3 = std::tuple<double,double,double>;
-  using PyGaussian = std::tuple<int,std::vector<double2>,double3>;
+namespace libintx::python::gpu {
 
-  auto make_gaussian(const PyGaussian &obj) {
-    auto& [L,ps,r] = obj;
-    std::vector<Gaussian::Primitive> prims;
-    for (auto [a,C] : ps) {
-      prims.push_back({a,C});
+  auto integral_engine(
+    int centers,
+    const std::vector<PyGaussian> &bra,
+    const std::vector<PyGaussian> &ket,
+    std::ptrdiff_t stream)
+  {
+    using libintx::gpu::integral_engine;
+    std::unique_ptr< IntegralEngine<> > eri;
+    if (centers == 3) {
+      eri = integral_engine<3>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
     }
-    auto [r0,r1,r2] = r;
-    return Gaussian(L,{r0,r1,r2},prims);
-  }
-
-  auto basis_cast(const std::vector<PyGaussian> &pybasis) {
-    Basis<libintx::Gaussian> basis;
-    for (auto &g : pybasis) {
-      basis.push_back(make_gaussian(g));
+    if (centers == 4) {
+      eri = integral_engine<4>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
     }
-    return basis;
-  }
-
-  namespace ao {
-
-    using libintx::ao::IntegralEngine;
-
-    auto engine(
-      int centers,
-      const std::vector<PyGaussian> &bra,
-      const std::vector<PyGaussian> &ket,
-      std::ptrdiff_t stream)
-    {
-      using libintx::gpu::integral_engine;
-      std::unique_ptr< IntegralEngine<> > eri;
-      if (centers == 3) {
-        eri = integral_engine<3>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
-      }
-      if (centers == 4) {
-        eri = integral_engine<4>(basis_cast(bra), basis_cast(ket), gpuStream_t(stream));
-      }
-      return py::cast(std::move(eri));
-    }
-
-    template<int Centers, typename Bra, typename Ket>
-    void compute(
-      IntegralEngine<> &engine,
-      const std::vector<Bra> &bra,
-      const std::vector<Ket> &ket,
-      std::ptrdiff_t dst,
-      const std::array<size_t,2> &dims)
-    {
-      dynamic_cast<IntegralEngine<Centers>&>(engine)
-        .compute(Coulomb, bra, ket, reinterpret_cast<double*>(dst), dims);
-    };
-
-
+    return py::cast(std::move(eri));
   }
 
 }
+
+#endif // LIBINTX_GPU
 
 PYBIND11_MODULE(libintx, m) {
 
@@ -97,24 +65,24 @@ PYBIND11_MODULE(libintx, m) {
       "bra,ket - list of bra,ket shell indices\n"
       "dst,dims - destination array"
     )
-    .def(
-      "compute",
-      &libintx::python::ao::compute<3, libintx::Index1, libintx::Index2>,
-      py::arg("bra"),
-      py::arg("ket"),
-      py::arg("dst"),
-      py::arg("dims"),
-      "Compute 3-center integrals\n"
-      "bra,ket - list of bra,ket shell indices\n"
-      "dst,dims - destination array"
-    )
+    // .def(
+    //   "compute",
+    //   &libintx::python::ao::compute<3, libintx::Index1, libintx::Index2>,
+    //   py::arg("bra"),
+    //   py::arg("ket"),
+    //   py::arg("dst"),
+    //   py::arg("dims"),
+    //   "Compute 3-center integrals\n"
+    //   "bra,ket - list of bra,ket shell indices\n"
+    //   "dst,dims - destination array"
+    // )
     ;
 
 #ifdef LIBINTX_GPU
   auto gpu = m.def_submodule("gpu");
   gpu.def(
-    "aoeri",
-    &libintx::python::ao::engine,
+    "integral_engine",
+    &libintx::python::gpu::integral_engine,
     py::arg("centers"),
     py::arg("bra"),
     py::arg("ket"),
