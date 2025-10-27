@@ -17,9 +17,11 @@
 #if __has_include(<mkl_cblas.h>)
 #include <mkl_cblas.h>
 #include <mkl_version.h>
+#include <mkl_service.h>
 #else
 #include <mkl/mkl_cblas.h>
 #include <mkl/mkl_version.h>
+#include <mkl/mkl_service.h>
 #endif // __has_include(<mkl_cblas.h>)
 
 #elif defined(LIBINTX_APPLE_ACCELERATE) // defined(LIBINTX_INTEL_MKL)
@@ -75,6 +77,19 @@ std::string libintx::blas::version() {
   return "?";
 }
 
+int libintx::blas::get_num_threads() {
+#if defined(LIBINTX_INTEL_MKL)
+  return mkl_get_max_threads();
+#endif
+  return 0;
+}
+
+void libintx::blas::set_num_threads(int num_threads) {
+#if defined(LIBINTX_INTEL_MKL)
+  mkl_set_num_threads(num_threads);
+#endif
+}
+
 void libintx::blas::gemm(
   Op OpA, Op OpB,
   size_t m, size_t n, size_t k,
@@ -99,6 +114,71 @@ void libintx::blas::gemm(
 
 }
 
+void libintx::blas::syev(size_t N, char uplo, MatrixRef<double> A, double* w) {
+
+  std::unique_ptr<double[]> tmp;
+  if (!w) {
+    tmp = std::make_unique<double[]>(N);
+    w = tmp.get();
+  }
+
+#ifndef LIBINTX_APPLE_LAPACK
+
+  auto err = LAPACKE_dsyev(
+    LAPACK_COL_MAJOR,
+    'V', uplo,
+    N, A.data, A.ld,
+    w
+  );
+  if (err) {
+    throw std::runtime_error("libintx::blas: LAPACKE_dsyev returned error");
+  }
+
+  // for (size_t i = 0; i < N; ++i) {
+  //   printf("%e\n", w[i]);
+  // }
+
+#else // Apple doesnt have lapacke
+
+  //using lapack_int = MKL_INT;
+  using lapack_int = __LAPACK_int;
+  lapack_int n = N;
+  lapack_int lda = A.ld;
+  lapack_int lwork = -1;
+  lapack_int err = 0;
+
+  double work_query = 0;
+  dsyev_(
+    "V", &uplo,
+    &n,
+    A.data, &lda,
+    w,
+    &work_query, &lwork,
+    &err
+  );
+  if (err) {
+    throw std::runtime_error("libintx::blas: dsyev_ returned error");
+  }
+
+  lwork = static_cast<lapack_int>(work_query);
+  std::unique_ptr<double[]> work(new double[lwork]);
+
+  dsyev_(
+    "V", &uplo,
+    &n,
+    A.data, &lda,
+    w,
+    work.get(), &lwork,
+    &err
+  );
+  if (err) {
+    throw std::runtime_error("libintx::blas: dsyev_ returned error");
+  }
+
+#endif
+}
+
+
 void libintx::blas::sygvd(
   size_t N, char uplo,
   MatrixRef<double> A,
@@ -115,12 +195,13 @@ void libintx::blas::sygvd(
 
 #ifndef LIBINTX_APPLE_LAPACK
 
-  LAPACKE_dsygvd(
+  auto err = LAPACKE_dsygvd(
     LAPACK_COL_MAJOR, type,
     'V', uplo,
     N, A.data, A.ld, B.data, B.ld,
     w
   );
+  libintx_assert(err == 0);
 
 #else // Apple doesnt have lapacke
 
@@ -148,8 +229,11 @@ void libintx::blas::sygvd(
   );
   libintx_assert(info == 0);
 
-  std::unique_ptr<double[]> work(new double[static_cast<size_t>(work_query)]);
-  std::unique_ptr<lapack_int[]> iwork(new lapack_int[static_cast<size_t>(iwork_query)]);
+  lwork = static_cast<lapack_int>(work_query);
+  liwork = static_cast<lapack_int>(iwork_query);
+
+  std::unique_ptr<double[]> work(new double[lwork]);
+  std::unique_ptr<lapack_int[]> iwork(new lapack_int[liwork]);
 
   dsygvd_(
     &itype, "V", &uplo,

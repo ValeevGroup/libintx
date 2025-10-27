@@ -15,6 +15,24 @@ namespace libintx::blas {
     Transpose
   };
 
+  int get_num_threads();
+  void set_num_threads(int num_threads);
+
+  struct scoped_num_threads {
+    explicit scoped_num_threads(int num_threads)
+      : state_(get_num_threads())
+    {
+      set_num_threads(num_threads);
+    }
+    ~scoped_num_threads() {
+      set_num_threads(this->state_);
+    }
+  private:
+    const int state_;
+    scoped_num_threads(scoped_num_threads&&) = delete;
+    scoped_num_threads(const scoped_num_threads&) = delete;
+  };
+
   template<typename T>
   struct GemmKernel {
     struct Impl;
@@ -44,6 +62,13 @@ namespace libintx::blas {
     const double *B, size_t ldB,
     double beta,
     double *C, size_t ldC
+  );
+
+  void syev(
+    size_t N,
+    char uplo,
+    MatrixRef<double> A,
+    double *x
   );
 
   void sygvd(
