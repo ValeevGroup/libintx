@@ -10,7 +10,6 @@ endif()
 
 if (LIBINTX_INTEL_MKL)
   target_compile_definitions(libintx.blas PRIVATE LIBINTX_INTEL_MKL)
-  target_link_libraries(libintx.blas mkl_rt)
 endif()
 
 if (LIBINTX_APPLE_ACCELERATE)

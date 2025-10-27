@@ -11,7 +11,12 @@ if (NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # set the project name
-project(libintx)
+project(libintx CXX)
+
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  set(LIBINTX_OPENMP_LIBRARIES OpenMP::OpenMP_CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 # set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -62,14 +67,34 @@ if (TARGET LAPACK::LAPACK)
   unset(_lib)
 endif()
 
+if (LIBINTX_INTEL_MKL AND NOT DEFINED LIBINTX_MKL_GNU_THREAD)
+  foreach (_lib in ${OpenMP_CXX_LIB_NAMES})
+    if (_lib MATCHES "gomp")
+      option(LIBINTX_MKL_GNU_THREAD "" ON)
+      break()
+    endif()
+  endforeach()
+endif()
+
+if (LIBINTX_INTEL_MKL)
+  # mkl_rt needed by python
+  set(LAPACK_LIBRARIES mkl_rt;${LAPACK_LIBRARIES})
+  if (LIBINTX_MKL_GNU_THREAD)
+    list(TRANSFORM LAPACK_LIBRARIES REPLACE "mkl_intel_thread" "mkl_gnu_thread")
+    list(TRANSFORM LAPACK_LIBRARIES REPLACE ".*iomp5.*" "gomp")
+    #message(STATUS "** LAPACK: using mkl_gnu_thread: ${LAPACK_LIBRARIES}")
+    message("** LAPACK: using MKL GNU threads: ${LAPACK_LIBRARIES}")
+  endif()
+  set_target_properties(
+    LAPACK::LAPACK
+    PROPERTIES
+    INTERFACE_LINK_LIBRARIES "${LAPACK_LIBRARIES}"
+  )
+endif()
+
 set(LIBINTX_CBLAS_H "" CACHE STRING "")
 set(LIBINTX_LAPACKE_H "" CACHE STRING "")
 mark_as_advanced(LIBINTX_CBLAS_H LIBINTX_LAPACKE_H)
-
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-  set(LIBINTX_OPENMP_LIBRARIES OpenMP::OpenMP_CXX)
-endif()
 
 ### LIBINTX options/parameters
 
@@ -97,7 +122,8 @@ install(FILES ${PROJECT_BINARY_DIR}/libintx/config.h DESTINATION libintx)
 
 add_subdirectory(src/libintx)
 add_subdirectory(src/libintx/boys)
-add_subdirectory(src/libintx/ao/md)
+add_subdirectory(src/libintx/ao)
+add_subdirectory(src/libintx/hf)
 
 if (LIBINTX_CUDA OR LIBINTX_HIP)
   if (LIBINTX_CUDA AND LIBINTX_HIP)
