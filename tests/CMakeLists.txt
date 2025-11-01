@@ -65,6 +65,11 @@ endforeach()
 #   target_link_libraries(libintx.gpu.jengine.test libintx.gpu.jengine)
 # endif()
 
+if (TARGET libintx.hf)
+  add_libintx_test(libintx.hf.test libintx.hf.test.cc)
+  target_link_libraries(libintx.hf.test libintx.hf)
+endif()
+
 # # set(SIMINT_VECTOR avxfma)
 # # add_subdirectory(simint)
 # target_sources(libintx.md4.perf PRIVATE reference.simint.cc)
