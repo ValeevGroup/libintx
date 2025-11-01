@@ -70,7 +70,7 @@ namespace libintx::test {
     operator double() const { return value_; }
     friend
     std::ostream& operator<<(std::ostream& os, const ReferenceValue& v) {
-      os << std::setprecision(10) << std::fixed << double(v);
+      os << std::setprecision(12) << std::fixed << double(v);
       //os << double(v);
       if (!v.idx_.empty()) os << " @ [ " << v.idx_ << "]";
       return os;

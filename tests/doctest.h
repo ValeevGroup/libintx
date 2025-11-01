@@ -3512,7 +3512,7 @@ String toString(const char* in) { return String("\"") + (in ? in : "{null string
 #endif // DOCTEST_CONFIG_TREAT_CHAR_STAR_AS_STRING
 String toString(bool in) { return in ? "true" : "false"; }
 String toString(float in) { return fpToString(in, 5) + "f"; }
-String toString(double in) { return fpToString(in, 10); }
+String toString(double in) { return fpToString(in, 12); }
 String toString(double long in) { return fpToString(in, 15); }
 
 #define DOCTEST_TO_STRING_OVERLOAD(type, fmt)                                                      \
