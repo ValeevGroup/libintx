@@ -127,13 +127,15 @@ namespace libintx {
   };
 
   template<typename T>
-  struct cmajor {
-    T data = T();
+  struct MatrixRef {
+    T* data = nullptr;
     unsigned long int ld = 0;
-    auto operator()(auto i, auto j) const {
+    template<typename Idx>
+    const auto& operator()(Idx i, Idx j) const {
       return data[i + j*ld];
     }
-    auto& operator()(auto i, auto j) {
+    template<typename Idx>
+    auto& operator()(Idx i, Idx j) {
       return data[i + j*ld];
     }
   };

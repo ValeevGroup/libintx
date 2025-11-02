@@ -101,8 +101,8 @@ void libintx::blas::gemm(
 
 void libintx::blas::sygvd(
   size_t N, char uplo,
-  cmajor<double*> A,
-  cmajor<double*> B,
+  MatrixRef<double> A,
+  MatrixRef<double> B,
   double* w,
   int type)
 {

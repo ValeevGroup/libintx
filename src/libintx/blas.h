@@ -48,8 +48,8 @@ namespace libintx::blas {
 
   void sygvd(
     size_t N, char uplo,
-    cmajor<double*> A,
-    cmajor<double*> B,
+    MatrixRef<double> A,
+    MatrixRef<double> B,
     double* x = nullptr,
     int type = 1
   );
