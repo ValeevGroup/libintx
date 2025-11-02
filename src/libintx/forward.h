@@ -152,6 +152,11 @@ namespace libintx {
     }
   };
 
+  struct num_threads {
+    int value = 1;
+    operator int() const { return this->value; }
+  };
+
   enum class Operator {
     Overlap,
     Kinetic,
