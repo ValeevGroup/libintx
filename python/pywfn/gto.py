@@ -84,7 +84,7 @@ def basis(name, url=None, format="json", keep_zeros=False):
   data = None
   if not url:
     from . import resources
-    url = "file://" + str(resources.file("gto", ("%s.%s" % (name,format)).lower()))
+    url = "file://" + str(resources.file("lib/gto", ("%s.%s" % (name,format)).lower()))
   with urllib.request.urlopen(url) as fh:
     data = fh.read().decode()
     #print(data)

@@ -35,7 +35,7 @@ class Library():
     pass
   def __getattr__(self,name):
     from . import resources
-    url = "file://%s" % resources.file("mol", ("%s.xyz" % name).lower())
+    url = "file://%s" % resources.file("lib/mol", ("%s.xyz" % name).lower())
     return load(url,name=name)
 
 library = Library()
