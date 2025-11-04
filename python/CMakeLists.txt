@@ -9,12 +9,16 @@ set_target_properties(boys-python PROPERTIES OUTPUT_NAME boys)
 target_link_libraries(boys-python PRIVATE libintx.boys)
 
 pybind11_add_module(
-  libintx-python EXCLUDE_FROM_ALL
+  libintx-python
+  EXCLUDE_FROM_ALL
+  NO_EXTRAS
   src/libintx/libintx.cc
-)
+  src/libintx/hf.cc
+  )
 set_target_properties(libintx-python PROPERTIES OUTPUT_NAME libintx)
+target_link_libraries(libintx-python PRIVATE libintx.hf)
 
-if (LIBINTX_GPU)
-  target_link_libraries(libintx-python PRIVATE libintx.gpu.md.eri3)
-  target_link_libraries(libintx-python PRIVATE libintx.gpu.md.eri4)
-endif()
+# if (LIBINTX_GPU)
+#   target_link_libraries(libintx-python PRIVATE libintx.gpu.md.eri3)
+#   target_link_libraries(libintx-python PRIVATE libintx.gpu.md.eri4)
+# endif()

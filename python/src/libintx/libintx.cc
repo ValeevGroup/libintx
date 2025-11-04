@@ -48,10 +48,11 @@ namespace libintx::python::gpu {
 
 #endif // LIBINTX_GPU
 
-PYBIND11_MODULE(libintx, m) {
+namespace libintx::python::hf {
+  void init(py::module);
+}
 
-  // py::class_<libintx::Gaussian>(m, "Gaussian")
-  //   .def(py::init(&libintx::python::make_gaussian));
+PYBIND11_MODULE(libintx, m) {
 
   py::class_< libintx::ao::IntegralEngine<> >(m, "IntegralEngine")
     .def(
@@ -77,6 +78,8 @@ PYBIND11_MODULE(libintx, m) {
     //   "dst,dims - destination array"
     // )
     ;
+
+  libintx::python::hf::init(m.def_submodule("hf"));
 
 #ifdef LIBINTX_GPU
   auto gpu = m.def_submodule("gpu");
